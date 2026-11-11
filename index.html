@@ -426,10 +426,100 @@
           return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>;
         case 'search':
           return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
+        case 'users':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
         default:
           return null;
       }
     };
+
+    // ==============================================================
+    // MAESTRA DE CLIENTES Y PROVEEDORES (Extraída de Ventas y Compras SII)
+    // ==============================================================
+    const DEFAULT_CLIENTS_DIRECTORY = [
+      { id: 'cli-1', rut: '78310099-1', name: 'ALMACÉN JEANNETE MARIBEL CLAVERÍA JARA E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-2', rut: '96913600-7', name: 'TRANSAP S A', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-3', rut: '69081400-5', name: 'I MUNICIPALIDAD DE OLIVAR', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-4', rut: '76341301-2', name: 'TRANSPORTES AZOCAR SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-5', rut: '76514900-2', name: 'COMERCIALIZADORA MARTINEZ Y DUERY LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-6', rut: '65094473-9', name: 'CORPORACION EDUCACIONAL CIMA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-7', rut: '76752827-2', name: 'AGRÍCOLA YAMAI LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-8', rut: '61979830-9', name: 'SUBSECRETARIA DE ENERGIA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-9', rut: '76956140-4', name: 'ETHON PHARMACEUTICALS COMERCIALIZADORA IMP EXP Y DIST SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-10', rut: '78942140-4', name: 'PIRAZZOLI Y ZELAYA COMPANIA LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-11', rut: '77898559-4', name: 'SOCIEDAD DE SERVICIOS RD INGENIERIA SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-12', rut: '76775212-1', name: 'CONSTRUCTORA ALTAFE SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-13', rut: '96986330-8', name: 'MAESTRANZA Y SERVICIOS INTEGRALES METALMECANICOS CACHAPOAL S A', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-14', rut: '86968900-9', name: 'NEXXO S.A.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-15', rut: '77536026-7', name: 'PREVENCION SEGURIDAD SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-16', rut: '76429684-2', name: 'PROYECTOS Y MONTAJES ELECTRICOS MARCELO ANTONIO ORELLANA ALIAGA E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-17', rut: '77036418-3', name: 'EDMA SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-18', rut: '76663298-K', name: 'SOCIEDAD COMERCIAL RECIMASS LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-19', rut: '69081200-2', name: 'I MUNICIPALIDAD DE RENGO', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-20', rut: '78030396-4', name: 'SOCIEDAD DE INVERSION CHAMONATE SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-21', rut: '76136210-0', name: 'SERVICIOS AGROINDUSTRIALES SUBSOLE S.A.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-22', rut: '76491976-9', name: 'SALON DE EVENTOS SORAYA JARA LUZARDO E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-23', rut: '76272684-K', name: 'MANTENIMIENTO INDUSTRIAL SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-24', rut: '78020704-3', name: 'MEB INNOVA SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-25', rut: '77987406-0', name: 'VYC SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-26', rut: '18039391-9', name: 'MIGUEL ANGEL ALEGRIA RAMIREZ', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-27', rut: '76204564-8', name: 'COMERCIAL JUAN CARLOS LARA E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-28', rut: '77873759-0', name: 'TRANSPORTES Y SERVICIOS RAUL IGNACIO BASTIAS SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-29', rut: '76011140-6', name: 'AGRICOLA E INVERSIONES RAPALLO LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-30', rut: '76117389-8', name: 'TRANSPORTES CACHAPOAL LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-31', rut: '79917240-2', name: 'DISTRIBUIDORA RUBIO LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-32', rut: '76083626-5', name: 'AMBIENTE Y SANEAMIENTO LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-33', rut: '78245061-1', name: 'CIBOX COMERCIALIZADORA SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-34', rut: '77410142-K', name: 'SOCIEDAD DRES. HIDALGO Y ABARCA LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-35', rut: '96931410-K', name: 'INGENIERIA Y DESARROLLOS MINEROS INDUSTRIALES SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-36', rut: '76227912-6', name: 'AGRICOLA GALLITO COLORADO LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-37', rut: '78137728-7', name: 'SOCIEDAD EDUCACIONAL BLOOMING MINDS SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-38', rut: '78964720-8', name: 'ESTACIONES DE SERVICIO EN RED LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-39', rut: '77337356-6', name: 'AGROCOMERCIAL LOS OLIVOS SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-40', rut: '77688620-3', name: 'SERVICIOS AMBIENTALES AMACO LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-41', rut: '78394924-5', name: 'S.A MECÁNICA SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-42', rut: '19490814-8', name: 'EDUARDO ALEJANDRO TOLEDO CARVAJAL', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-43', rut: '93772000-9', name: 'PRODALAM S.A.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-44', rut: '78044920-9', name: 'TEKNORIEGO SOLUCIONES AMBIENTALES SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-45', rut: '77634018-9', name: 'RESTAURANT KITCHENWOK SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-46', rut: '76941291-3', name: 'TRANSPORTES FARÍAS VILLEGAS GUILLERMO FARÍAS E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-47', rut: '76723229-2', name: 'FIXCARSERVICE SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-48', rut: '77637116-5', name: 'JOHANNA SEPULVEDA BASTIAS E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-49', rut: '77842230-1', name: 'AQUANTA INGENIERIA COMPUTACIONAL SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-50', rut: '70687100-4', name: 'CUERPO DE BOMBEROS OLIVAR', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-51', rut: '78650610-7', name: 'VICTOR RICARDO LEIVA CASTRO SOCIEDAD ANONIMA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-52', rut: '76590187-1', name: 'FRIPACK SERVICE SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-53', rut: '79593470-7', name: 'LEIVA HERMANOS LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-54', rut: '77482319-0', name: 'TRANSPORTES ARIDOS CACHAPOAL SPA.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-55', rut: '96809930-2', name: 'LOS NOBLES S A', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-56', rut: '77060923-2', name: 'COMERCIALIZADORA ACCESS INDUSTRIAL TECHNOLOGY CHILE SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-57', rut: '78121716-6', name: 'CASA OLIVO RESTORANT SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-58', rut: '76787159-7', name: 'COMERCIAL GUZMAN SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-59', rut: '78114353-7', name: 'SERVICIOS GRÁFICOS SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-60', rut: '76905736-6', name: 'Ripio Chile SpA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-61', rut: '77721980-4', name: 'COMERCIAL G Q LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-62', rut: '86617300-1', name: 'Importadora de Repuestos RACO S.A.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-63', rut: '77986558-4', name: 'SUBLIMASTER SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-64', rut: '97006000-6', name: 'BANCO DE CREDITO E INVERSIONES', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-65', rut: '76740515-4', name: 'SOCIEDAD LOS PALMA LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-66', rut: '77112653-7', name: 'COMERCIAL Y SERVICIOS TORCAZ LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-67', rut: '78212899-K', name: 'CHANG HON SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-68', rut: '76671160-K', name: 'SOCIEDAD COM RODRIGUEZ Y LEIVA LTDA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-69', rut: '78782660-1', name: 'JMC SERVICIOS SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-70', rut: '77660960-9', name: 'ACENOR ACEROS DEL NORTE SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-71', rut: '78866720-5', name: 'INVERSIONES Y COMERCIAL TRANCURA SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-72', rut: '78011639-0', name: 'GRUPO TIPS SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-73', rut: '76330872-3', name: 'COMERCIAL NGHO LIMITADA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-74', rut: '96896480-1', name: 'SONEPAR CHILE SA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-75', rut: '76097146-4', name: 'CHRISTIAN MONTOYA LTDA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-76', rut: '96722400-6', name: 'Pacifico Cable S.P.A.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-77', rut: '77398220-1', name: 'MercadoLibre Chile Ltda.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-78', rut: '76799646-2', name: 'IM-PORTA SPA', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-79', rut: '96945440-8', name: 'SOC CONCESIONARIA AUTOPISTA CENTRAL S A', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-80', rut: '76516950-K', name: 'Mercado Pago Operadora S.A.', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-81', rut: '10241983-9', name: 'ALBERTO SEGUNDO ACEVEDO PINO', contactPerson: '', phone: '', email: '', address: '' },
+      { id: 'cli-82', rut: '76134941-4', name: 'ADMIN. DE SUPERMERCADOS HIPER LIMITADA', contactPerson: '', phone: '', email: '', address: '' }
+    ];
 
     function App() {
       // Datos Reales
@@ -567,6 +657,28 @@
         localStorage.setItem('olivar_workshop_consumables', JSON.stringify(consumablesCatalog));
       }, [consumablesCatalog]);
 
+      // MAESTRA DE CLIENTES Y PROVEEDORES (Con persistencia en localStorage)
+      const [clientsMaster, setClientsMaster] = useState(() => {
+        const saved = localStorage.getItem('olivar_clients_master');
+        return saved ? JSON.parse(saved) : DEFAULT_CLIENTS_DIRECTORY;
+      });
+
+      useEffect(() => {
+        localStorage.setItem('olivar_clients_master', JSON.stringify(clientsMaster));
+      }, [clientsMaster]);
+
+      const [clientsSearch, setClientsSearch] = useState('');
+      const [clientsFilterType, setClientsFilterType] = useState('all');
+      const [showAddClientModal, setShowAddClientModal] = useState(false);
+      const [newClientForm, setNewClientForm] = useState({
+        rut: '',
+        name: '',
+        contactPerson: '',
+        phone: '',
+        email: '',
+        address: ''
+      });
+
       // Estado de acabados e iluminación (100% PRECIOS EDITABLES POR EL USUARIO)
       const [finishesState, setFinishesState] = useState({
         termosellado: { active: false, label: 'Termosellado perimetral con ojetillos', price: 2500, perSqm: true },
@@ -613,6 +725,8 @@
       const [itemHeight, setItemHeight] = useState(1.0);
       const [itemQty, setItemQty] = useState(1);
       const [itemPrice, setItemPrice] = useState(14000);
+      const [installationFee, setInstallationFee] = useState(0);
+      const [freightFee, setFreightFee] = useState(0);
       const [discountAmount, setDiscountAmount] = useState(0);
       const [taxRate, setTaxRate] = useState(19); // 19% IVA Chile
 
@@ -722,6 +836,158 @@
         }
       };
 
+      // --- GESTIÓN DE LA MAESTRA DE CLIENTES Y PROVEEDORES ---
+      const handleSelectClientFromMaster = (clientRut) => {
+        if (!clientRut) return;
+        const found = clientsMaster.find(c => c.rut === clientRut);
+        if (!found) return;
+        setIntranetClientData(prev => ({
+          ...prev,
+          name: found.name || prev.name,
+          documentId: found.rut || prev.documentId,
+          contactPerson: found.contactPerson || prev.contactPerson,
+          phone: found.phone || prev.phone,
+          email: found.email || prev.email,
+          deliveryAddress: found.address || prev.deliveryAddress
+        }));
+        showToast(`🏢 Cliente cargado: ${found.name}`);
+      };
+
+      const handleSaveCurrentClientToMaster = () => {
+        const name = (intranetClientData.name || '').trim();
+        const rut = (intranetClientData.documentId || '').trim();
+        if (!name && !rut) {
+          alert('Por favor ingresa al menos la Razón Social o el RUT para registrar en la Maestra.');
+          return;
+        }
+        setClientsMaster(prev => {
+          const index = prev.findIndex(c => (rut && c.rut.toUpperCase() === rut.toUpperCase()) || (name && c.name.toLowerCase() === name.toLowerCase()));
+          if (index >= 0) {
+            const updated = [...prev];
+            updated[index] = {
+              ...updated[index],
+              name: name || updated[index].name,
+              rut: rut || updated[index].rut,
+              contactPerson: intranetClientData.contactPerson || updated[index].contactPerson,
+              phone: intranetClientData.phone || updated[index].phone,
+              email: intranetClientData.email || updated[index].email,
+              address: intranetClientData.deliveryAddress || updated[index].address
+            };
+            return updated;
+          } else {
+            return [{
+              id: 'cli-' + Date.now(),
+              name,
+              rut,
+              contactPerson: intranetClientData.contactPerson || '',
+              phone: intranetClientData.phone || '',
+              email: intranetClientData.email || '',
+              address: intranetClientData.deliveryAddress || ''
+            }, ...prev];
+          }
+        });
+        showToast(`💾 Cliente guardado / actualizado en la Maestra`);
+      };
+
+      const handleUpdateClientInMaster = (id, field, value) => {
+        setClientsMaster(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+      };
+
+      const handleDeleteClientFromMaster = (id) => {
+        if (window.confirm('¿Seguro que deseas eliminar este cliente de la Maestra?')) {
+          setClientsMaster(prev => prev.filter(c => c.id !== id));
+          showToast('🗑️ Cliente eliminado de la Maestra');
+        }
+      };
+
+      const handleAddNewClientToMaster = (e) => {
+        e.preventDefault();
+        if (!newClientForm.name.trim() && !newClientForm.rut.trim()) {
+          alert('Ingresa al menos el nombre o RUT del cliente.');
+          return;
+        }
+        const newClient = {
+          id: 'cli-' + Date.now(),
+          rut: newClientForm.rut.trim(),
+          name: newClientForm.name.trim(),
+          contactPerson: newClientForm.contactPerson.trim(),
+          phone: newClientForm.phone.trim(),
+          email: newClientForm.email.trim(),
+          address: newClientForm.address.trim()
+        };
+        setClientsMaster(prev => [newClient, ...prev]);
+        setNewClientForm({ rut: '', name: '', contactPerson: '', phone: '', email: '', address: '' });
+        setShowAddClientModal(false);
+        showToast(`✅ Nuevo cliente ${newClient.name} agregado`);
+      };
+
+      const handleQuoteThisClient = (client) => {
+        setIntranetClientData(prev => ({
+          ...prev,
+          name: client.name || '',
+          documentId: client.rut || '',
+          contactPerson: client.contactPerson || '',
+          phone: client.phone || '',
+          email: client.email || '',
+          deliveryAddress: client.address || ''
+        }));
+        setIntranetTab('cotizador');
+        showToast(`📋 Datos de ${client.name} cargados en el Cotizador`);
+      };
+
+      const handleResetClientsMaster = () => {
+        if (window.confirm('¿Restablecer la Maestra de Clientes al listado original del SII (82 clientes)?')) {
+          setClientsMaster(DEFAULT_CLIENTS_DIRECTORY);
+          localStorage.setItem('olivar_clients_master', JSON.stringify(DEFAULT_CLIENTS_DIRECTORY));
+          showToast('🔄 Maestra de clientes restablecida con éxito');
+        }
+      };
+
+      const handleExportClientsCSV = () => {
+        const headers = ['RUT', 'Razon Social', 'Contacto', 'Telefono', 'Email', 'Direccion'];
+        const rows = clientsMaster.map(c => [
+          `"${(c.rut || '').replace(/"/g, '""')}"`,
+          `"${(c.name || '').replace(/"/g, '""')}"`,
+          `"${(c.contactPerson || '').replace(/"/g, '""')}"`,
+          `"${(c.phone || '').replace(/"/g, '""')}"`,
+          `"${(c.email || '').replace(/"/g, '""')}"`,
+          `"${(c.address || '').replace(/"/g, '""')}"`
+        ]);
+        const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Maestra_Clientes_Letreros_Olivar_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('📥 Planilla Excel / CSV descargada');
+      };
+
+      const filteredClients = useMemo(() => {
+        let list = clientsMaster || [];
+        if (clientsFilterType === 'contact') {
+          list = list.filter(c => c.contactPerson && c.contactPerson.trim() !== '');
+        } else if (clientsFilterType === 'phone') {
+          list = list.filter(c => c.phone && c.phone.trim() !== '');
+        } else if (clientsFilterType === 'email') {
+          list = list.filter(c => c.email && c.email.trim() !== '');
+        }
+        if (clientsSearch && clientsSearch.trim()) {
+          const q = clientsSearch.toLowerCase();
+          list = list.filter(c =>
+            (c.name && c.name.toLowerCase().includes(q)) ||
+            (c.rut && c.rut.toLowerCase().includes(q)) ||
+            (c.contactPerson && c.contactPerson.toLowerCase().includes(q)) ||
+            (c.phone && c.phone.toLowerCase().includes(q)) ||
+            (c.email && c.email.toLowerCase().includes(q)) ||
+            (c.address && c.address.toLowerCase().includes(q))
+          );
+        }
+        return list;
+      }, [clientsMaster, clientsSearch, clientsFilterType]);
+
       const selectedProductConfig = useMemo(() => {
         if (selectedCatalogId === 'custom') {
           return {
@@ -749,18 +1015,22 @@
       const financialTotals = useMemo(() => {
         const subtotal = quoteItems.reduce((acc, item) => acc + item.subtotal, 0);
         const disc = Math.min(subtotal, Math.max(0, parseFloat(discountAmount) || 0));
-        const taxableSubtotal = Math.max(0, subtotal - disc);
-        const taxAmount = Math.round((taxableSubtotal * taxRate) / 100);
-        const total = taxableSubtotal + taxAmount;
+        const install = Math.max(0, parseFloat(installationFee) || 0);
+        const freight = Math.max(0, parseFloat(freightFee) || 0);
+        const netBase = Math.max(0, subtotal - disc) + install + freight;
+        const taxAmount = Math.round((netBase * taxRate) / 100);
+        const total = netBase + taxAmount;
 
         return {
           subtotal,
           discountAmount: disc,
-          taxableSubtotal,
+          installationFee: install,
+          freightFee: freight,
+          taxableSubtotal: netBase,
           taxAmount,
           total
         };
-      }, [quoteItems, discountAmount, taxRate]);
+      }, [quoteItems, discountAmount, installationFee, freightFee, taxRate]);
 
       const currentCorrelativeCode = useMemo(() => {
         const year = new Date().getFullYear();
@@ -1118,6 +1388,37 @@
           status: 'Emitida'
         };
 
+        if (intranetClientData.name || intranetClientData.documentId) {
+          const cName = (intranetClientData.name || '').trim();
+          const cRut = (intranetClientData.documentId || '').trim();
+          setClientsMaster(prev => {
+            const idx = prev.findIndex(c => (cRut && c.rut.toUpperCase() === cRut.toUpperCase()) || (cName && c.name.toLowerCase() === cName.toLowerCase()));
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = {
+                ...updated[idx],
+                name: cName || updated[idx].name,
+                rut: cRut || updated[idx].rut,
+                contactPerson: intranetClientData.contactPerson || updated[idx].contactPerson,
+                phone: intranetClientData.phone || updated[idx].phone,
+                email: intranetClientData.email || updated[idx].email,
+                address: intranetClientData.deliveryAddress || updated[idx].address
+              };
+              return updated;
+            } else {
+              return [{
+                id: 'cli-' + Date.now(),
+                name: cName,
+                rut: cRut,
+                contactPerson: intranetClientData.contactPerson || '',
+                phone: intranetClientData.phone || '',
+                email: intranetClientData.email || '',
+                address: intranetClientData.deliveryAddress || ''
+              }, ...prev];
+            }
+          });
+        }
+
         setQuoteHistory([quoteRecord, ...quoteHistory]);
         setCorrelativeNumber(prev => prev + 1);
         handleOpenPrintModal(quoteRecord);
@@ -1173,6 +1474,12 @@
         message += `\n*💵 Subtotal Neto:* ${formatCLP(q.totals.subtotal)}`;
         if (q.totals.discountAmount > 0) {
           message += `\n*🏷️ Descuento Especial:* -${formatCLP(q.totals.discountAmount)}`;
+        }
+        if (q.totals.installationFee > 0) {
+          message += `\n*🔧 Instalación en Terreno:* +${formatCLP(q.totals.installationFee)}`;
+        }
+        if (q.totals.freightFee > 0) {
+          message += `\n*🚚 Flete / Traslado:* +${formatCLP(q.totals.freightFee)}`;
         }
         if (q.totals.taxAmount > 0) message += `\n*🏛️ IVA (19%):* ${formatCLP(q.totals.taxAmount)}`;
         message += `\n*💰 TOTAL FINAL: ${formatCLP(q.totals.total)} CLP*\n`;
@@ -2463,6 +2770,16 @@
                       <span>Tarifario & Materiales (Excel)</span>
                     </button>
 
+                    <button
+                      onClick={() => setIntranetTab('clientes')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                        intranetTab === 'clientes' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                      }`}
+                    >
+                      <Icon name="users" className="w-4 h-4" />
+                      <span>Maestra de Clientes ({clientsMaster.length})</span>
+                    </button>
+
                     <div className="flex items-center gap-1.5 ml-auto">
                       <a
                         href="cotizador.html"
@@ -2528,6 +2845,38 @@
                             <span className="w-2 h-2 rounded-full bg-red-600"></span>
                             1. Datos del Cliente / Empresa
                           </h3>
+
+                          {/* Selector Rápido de Maestra de Clientes */}
+                          <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-bold text-red-400 flex items-center gap-1.5">
+                                <Icon name="users" className="w-3.5 h-3.5" />
+                                <span>Cargar desde Maestra de Clientes ({clientsMaster.length})</span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setShowAddClientModal(true)}
+                                className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition"
+                                title="Registrar nuevo cliente en la Maestra"
+                              >
+                                <Icon name="plus" className="w-3 h-3 text-red-500" />
+                                <span>+ Nuevo</span>
+                              </button>
+                            </div>
+                            <select
+                              onChange={(e) => handleSelectClientFromMaster(e.target.value)}
+                              defaultValue=""
+                              className="w-full bg-zinc-900 text-zinc-200 px-2.5 py-1.5 rounded-lg border border-zinc-700 text-xs focus:border-red-500 focus:outline-none"
+                            >
+                              <option value="">-- Seleccionar cliente / empresa registrada --</option>
+                              {clientsMaster.map(c => (
+                                <option key={c.id} value={c.rut}>
+                                  {c.name} ({c.rut})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
                           <div className="space-y-3 text-xs">
                             <div>
                               <label className="block text-zinc-300 font-semibold mb-1">Razón Social o Nombre del Cliente / Empresa *</label>
@@ -2684,6 +3033,16 @@
                                 </select>
                               </div>
                             </div>
+
+                            <button
+                              type="button"
+                              onClick={handleSaveCurrentClientToMaster}
+                              className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white py-2 rounded-xl border border-zinc-700 font-bold flex items-center justify-center gap-1.5 transition text-xs shadow-sm mt-2"
+                              title="Guardar estos datos del cliente en la Maestra permanente"
+                            >
+                              <Icon name="save" className="w-3.5 h-3.5 text-red-500" />
+                              <span>💾 Guardar / Actualizar en Maestra</span>
+                            </button>
                           </div>
                         </div>
 
@@ -2715,6 +3074,44 @@
                                 </div>
                               </span>
                               <span className="text-red-500 font-mono font-bold">-{formatCLP(financialTotals.discountAmount)}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-zinc-400">
+                              <span className="flex items-center gap-1">
+                                Instalación en Terreno ($):
+                                <div className="relative inline-block ml-1">
+                                  <span className="absolute left-2 top-0.5 text-zinc-500 font-mono text-xs">$</span>
+                                  <input
+                                    type="number"
+                                    step="1000"
+                                    min="0"
+                                    placeholder="0"
+                                    value={installationFee || ''}
+                                    onChange={(e) => setInstallationFee(Math.max(0, parseFloat(e.target.value) || 0))}
+                                    className="w-24 bg-zinc-950 text-white pl-5 pr-1.5 py-0.5 rounded border border-zinc-700 text-right text-xs font-mono font-bold focus:border-red-600 focus:outline-none"
+                                  />
+                                </div>
+                              </span>
+                              <span className="text-white font-mono font-bold">+{formatCLP(financialTotals.installationFee)}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between text-zinc-400">
+                              <span className="flex items-center gap-1">
+                                Flete / Traslado ($):
+                                <div className="relative inline-block ml-1">
+                                  <span className="absolute left-2 top-0.5 text-zinc-500 font-mono text-xs">$</span>
+                                  <input
+                                    type="number"
+                                    step="1000"
+                                    min="0"
+                                    placeholder="0"
+                                    value={freightFee || ''}
+                                    onChange={(e) => setFreightFee(Math.max(0, parseFloat(e.target.value) || 0))}
+                                    className="w-24 bg-zinc-950 text-white pl-5 pr-1.5 py-0.5 rounded border border-zinc-700 text-right text-xs font-mono font-bold focus:border-red-600 focus:outline-none"
+                                  />
+                                </div>
+                              </span>
+                              <span className="text-white font-mono font-bold">+{formatCLP(financialTotals.freightFee)}</span>
                             </div>
                             {taxRate > 0 && (
                               <div className="flex justify-between text-zinc-400">
@@ -3939,6 +4336,332 @@
                   </div>
                 )}
 
+                {/* SUB-PESTAÑA 5: MAESTRA Y DIRECTORIO DE CLIENTES & PROVEEDORES (EXCEL) */}
+                {intranetTab === 'clientes' && (
+                  <div className="space-y-6">
+                    {/* Header y Acciones */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                      <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 text-red-500 border border-red-500/30 text-xs font-bold mb-2">
+                          <Icon name="table" className="w-3.5 h-3.5" />
+                          BASE DE DATOS DE TALLER (PLANILLA EXCEL)
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
+                          Maestra y Directorio de Clientes
+                        </h2>
+                        <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
+                          Edita la información de tus clientes y proveedores directamente en la tabla. Los cambios se guardan automáticamente en tu navegador y se autocompletan en el Cotizador.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            localStorage.setItem('olivar_clients_master', JSON.stringify(clientsMaster));
+                            showToast('💾 Todos los cambios guardados correctamente');
+                          }}
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg shadow-red-600/20"
+                        >
+                          <Icon name="save" className="w-4 h-4" />
+                          <span>Guardar Todo</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowAddClientModal(true)}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs border border-zinc-700 transition flex items-center gap-1.5"
+                        >
+                          <Icon name="plus" className="w-4 h-4 text-red-500" />
+                          <span>Agregar Cliente</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleExportClientsCSV}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium px-3.5 py-2.5 rounded-xl text-xs border border-zinc-800 transition flex items-center gap-1.5"
+                          title="Descargar listado completo en archivo Excel CSV"
+                        >
+                          <Icon name="download" className="w-4 h-4 text-emerald-400" />
+                          <span>Exportar CSV</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleResetClientsMaster}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white font-medium px-3.5 py-2.5 rounded-xl text-xs border border-zinc-800 transition flex items-center gap-1.5"
+                          title="Restaurar a los clientes originales de la planilla SII"
+                        >
+                          <Icon name="refresh" className="w-4 h-4" />
+                          <span>Restablecer Lista Base</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Barra de Filtros y Búsqueda */}
+                    <div className="p-4 rounded-xl bg-black border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="relative flex-1 max-w-md">
+                        <Icon name="search" className="w-4 h-4 absolute left-3.5 top-3 text-zinc-500" />
+                        <input
+                          type="text"
+                          placeholder="Buscar cliente (RUT, Razón Social, contacto, teléfono, correo...)"
+                          value={clientsSearch}
+                          onChange={(e) => setClientsSearch(e.target.value)}
+                          className="w-full bg-zinc-950 text-white pl-10 pr-4 py-2 rounded-lg border border-zinc-800 text-xs focus:border-red-600 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                        {[
+                          { id: 'all', label: `Todos (${clientsMaster.length})` },
+                          { id: 'contact', label: 'Con Contacto' },
+                          { id: 'phone', label: 'Con Teléfono' },
+                          { id: 'email', label: 'Con Email' }
+                        ].map(f => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => setClientsFilterType(f.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                              clientsFilterType === f.id
+                                ? 'bg-red-600 text-white'
+                                : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                            }`}
+                          >
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* TABLA: DIRECTORIO DE CLIENTES */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-4 shadow-xl">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 font-heading">
+                          <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                          Directorio Maestro de Clientes & Proveedores ({filteredClients.length})
+                        </h3>
+                        <span className="text-xs text-zinc-500 font-mono">Modificación directa en casilla</span>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-zinc-800 text-zinc-400 uppercase text-[10px] tracking-wider">
+                              <th className="py-3 px-3 w-32">RUT</th>
+                              <th className="py-3 px-3 min-w-[220px]">Razón Social / Nombre</th>
+                              <th className="py-3 px-3 min-w-[150px]">Persona de Contacto</th>
+                              <th className="py-3 px-3 min-w-[140px]">Teléfono / WhatsApp</th>
+                              <th className="py-3 px-3 min-w-[160px]">Correo Electrónico</th>
+                              <th className="py-3 px-3 min-w-[180px]">Dirección / Comuna</th>
+                              <th className="py-3 px-3 text-center w-36">Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-zinc-900 font-sans">
+                            {filteredClients.length === 0 ? (
+                              <tr>
+                                <td colSpan={7} className="py-8 text-center text-zinc-500 italic">
+                                  No se encontraron clientes con el filtro aplicado.
+                                </td>
+                              </tr>
+                            ) : (
+                              filteredClients.map((client) => (
+                                <tr key={client.id} className="hover:bg-zinc-900/60 transition group">
+                                  <td className="py-2.5 px-3">
+                                    <input
+                                      type="text"
+                                      value={client.rut || ''}
+                                      onChange={(e) => handleUpdateClientInMaster(client.id, 'rut', e.target.value)}
+                                      placeholder="12345678-9"
+                                      className="w-full bg-zinc-950 font-mono font-bold text-red-400 border border-zinc-800 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <input
+                                      type="text"
+                                      value={client.name || ''}
+                                      onChange={(e) => handleUpdateClientInMaster(client.id, 'name', e.target.value)}
+                                      placeholder="Razón Social..."
+                                      className="w-full bg-zinc-950 text-white font-medium border border-zinc-800 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <input
+                                      type="text"
+                                      value={client.contactPerson || ''}
+                                      onChange={(e) => handleUpdateClientInMaster(client.id, 'contactPerson', e.target.value)}
+                                      placeholder="Ej. Juan Pérez"
+                                      className="w-full bg-zinc-950 text-zinc-300 border border-zinc-800 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <input
+                                      type="text"
+                                      value={client.phone || ''}
+                                      onChange={(e) => handleUpdateClientInMaster(client.id, 'phone', e.target.value)}
+                                      placeholder="+56 9 1234 5678"
+                                      className="w-full bg-zinc-950 text-emerald-400 font-mono border border-zinc-800 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <input
+                                      type="email"
+                                      value={client.email || ''}
+                                      onChange={(e) => handleUpdateClientInMaster(client.id, 'email', e.target.value)}
+                                      placeholder="contacto@empresa.cl"
+                                      className="w-full bg-zinc-950 text-zinc-300 border border-zinc-800 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-3">
+                                    <input
+                                      type="text"
+                                      value={client.address || ''}
+                                      onChange={(e) => handleUpdateClientInMaster(client.id, 'address', e.target.value)}
+                                      placeholder="Dirección, comuna..."
+                                      className="w-full bg-zinc-950 text-zinc-400 border border-zinc-800 rounded px-2 py-1 text-xs focus:border-red-500 focus:outline-none"
+                                    />
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuoteThisClient(client)}
+                                        className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2.5 py-1 rounded text-[11px] font-bold border border-red-500/40 transition flex items-center gap-1 shadow-sm"
+                                        title="Llevar datos de este cliente al Cotizador"
+                                      >
+                                        <Icon name="plus" className="w-3 h-3" />
+                                        <span>Cotizar</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteClientFromMaster(client.id)}
+                                        className="p-1 text-zinc-600 hover:text-red-400 rounded transition"
+                                        title="Eliminar de la Maestra"
+                                      >
+                                        <Icon name="trash" className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* MODAL: AGREGAR NUEVO CLIENTE */}
+                    {showAddClientModal && (
+                      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl">
+                          <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                            <h3 className="font-heading font-bold text-white text-base flex items-center gap-2">
+                              <Icon name="users" className="w-4 h-4 text-red-500" />
+                              <span>Agregar Nuevo Cliente a la Maestra</span>
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddClientModal(false)}
+                              className="text-zinc-500 hover:text-white"
+                            >
+                              <Icon name="x" className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          <form onSubmit={handleAddNewClientToMaster} className="space-y-3 text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-zinc-400 font-bold mb-1">RUT Empresa / Cliente *</label>
+                                <input
+                                  type="text"
+                                  value={newClientForm.rut}
+                                  onChange={(e) => setNewClientForm(p => ({ ...p, rut: e.target.value }))}
+                                  placeholder="Ej: 76.123.456-7"
+                                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white font-mono focus:border-red-600 focus:outline-none"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-zinc-400 font-bold mb-1">Razón Social / Nombre *</label>
+                                <input
+                                  type="text"
+                                  value={newClientForm.name}
+                                  onChange={(e) => setNewClientForm(p => ({ ...p, name: e.target.value }))}
+                                  placeholder="Ej: Transportes del Sur SpA"
+                                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-red-600 focus:outline-none"
+                                  required
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-zinc-400 font-bold mb-1">Persona de Contacto</label>
+                                <input
+                                  type="text"
+                                  value={newClientForm.contactPerson}
+                                  onChange={(e) => setNewClientForm(p => ({ ...p, contactPerson: e.target.value }))}
+                                  placeholder="Ej: Carlos Silva"
+                                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-red-600 focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-zinc-400 font-bold mb-1">Teléfono / WhatsApp</label>
+                                <input
+                                  type="text"
+                                  value={newClientForm.phone}
+                                  onChange={(e) => setNewClientForm(p => ({ ...p, phone: e.target.value }))}
+                                  placeholder="Ej: +56 9 8765 4321"
+                                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-red-600 focus:outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-zinc-400 font-bold mb-1">Correo Electrónico</label>
+                              <input
+                                type="email"
+                                value={newClientForm.email}
+                                onChange={(e) => setNewClientForm(p => ({ ...p, email: e.target.value }))}
+                                placeholder="Ej: adquisiciones@empresa.cl"
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-red-600 focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-zinc-400 font-bold mb-1">Dirección de Entrega / Instalación</label>
+                              <input
+                                type="text"
+                                value={newClientForm.address}
+                                onChange={(e) => setNewClientForm(p => ({ ...p, address: e.target.value }))}
+                                placeholder="Ej: Av. San Martín 450, Olivar"
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-white focus:border-red-600 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-zinc-900">
+                              <button
+                                type="button"
+                                onClick={() => setShowAddClientModal(false)}
+                                className="px-4 py-2 rounded-xl text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="submit"
+                                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20"
+                              >
+                                Guardar Cliente
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )}
+
               </div>
             </main>
           )}
@@ -4156,6 +4879,18 @@
                         <div className="flex justify-between py-0.5 text-red-600">
                           <span>Descuento Especial:</span>
                           <span className="font-mono">-{formatCLP(currentQuoteToPrint.totals.discountAmount)}</span>
+                        </div>
+                      )}
+                      {currentQuoteToPrint.totals.installationFee > 0 && (
+                        <div className="flex justify-between py-0.5 text-zinc-700">
+                          <span>Instalación en Terreno:</span>
+                          <span className="font-mono font-semibold">+{formatCLP(currentQuoteToPrint.totals.installationFee)}</span>
+                        </div>
+                      )}
+                      {currentQuoteToPrint.totals.freightFee > 0 && (
+                        <div className="flex justify-between py-0.5 text-zinc-700">
+                          <span>Flete / Traslado:</span>
+                          <span className="font-mono font-semibold">+{formatCLP(currentQuoteToPrint.totals.freightFee)}</span>
                         </div>
                       )}
                       {currentQuoteToPrint.totals.taxAmount > 0 && (
