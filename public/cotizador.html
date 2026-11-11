@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotizador Oficial - Letreros Olivar SpA</title>
+    <!-- Favicons e Íconos Oficiales -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="shortcut icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <meta name="theme-color" content="#121212" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap');
+        
+        :root {
+            --primary-red: #E50914;
+            --dark-bg: #121212;
+            --card-bg: #1E1E1E;
+            --input-bg: #2A2A2A;
+            --text-light: #F5F5F5;
+            --text-muted: #AAAAAA;
+            --border-color: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-light);
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 960px;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+        }
+
+        /* MEMBRETE */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--primary-red);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brand-logo-img {
+            height: 60px;
+            width: auto;
+        }
+
+        .brand-title {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #FFFFFF;
+            line-height: 1.1;
+        }
+
+        .brand-title span {
+            color: var(--primary-red);
+        }
+
+        .doc-info {
+            text-align: right;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .doc-info strong {
+            color: var(--text-light);
+        }
+
+        .quote-number-box {
+            display: inline-block;
+            background: var(--input-bg);
+            color: var(--primary-red);
+            font-weight: 900;
+            font-size: 18px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--primary-red);
+            letter-spacing: 1px;
+            margin-left: 5px;
+        }
+
+        /* SECCIONES Y GRILLAS */
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--primary-red);
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary-red);
+            padding-left: 8px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 650px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card-box {
+            background-color: var(--input-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .card-box strong {
+            color: #FFF;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            background: #181818;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #FFF;
+            font-size: 13px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-red);
+        }
+
+        /* TABLA DE COTIZACIÓN */
+        .table-responsive {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            background-color: #181818;
+            color: var(--primary-red);
+            text-align: left;
+            padding: 12px 10px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid var(--primary-red);
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .btn-remove {
+            background: #D32F2F;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-add {
+            background: #2E7D32;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 25px;
+        }
+
+        /* RESUMEN Y TOTALES */
+        .totals-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .bank-details {
+            flex: 1;
+            min-width: 280px;
+            background: #181818;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .totals-box {
+            width: 280px;
+            background: #181818;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .row-total {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 13px;
+        }
+
+        .row-total.final {
+            border-top: 2px solid var(--primary-red);
+            margin-top: 8px;
+            padding-top: 10px;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--primary-red);
+        }
+
+        .btn-print {
+            width: 100%;
+            background: var(--primary-red);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            margin-top: 25px;
+            box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+            transition: background 0.2s;
+        }
+
+        .btn-print:hover {
+            background: #B80710;
+        }
+
+        .nav-back-bar {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .nav-back-link:hover {
+            color: var(--primary-red);
+        }
+
+        /* CONTROLES DE CORRELATIVO */
+        .folio-controls {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .btn-reset-folio {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid #444;
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .btn-reset-folio:hover {
+            border-color: var(--primary-red);
+            color: #FFF;
+        }
+
+        /* IMPRESIÓN Y EXPORTACIÓN PDF */
+        @media print {
+            body {
+                background: white;
+                color: black;
+                padding: 0;
+            }
+            .nav-back-bar {
+                display: none !important;
+            }
+            .container {
+                box-shadow: none;
+                border: none;
+                max-width: 100%;
+                width: 100%;
+                background: white;
+                color: black;
+                padding: 10px;
+            }
+            .brand-title {
+                color: black;
+            }
+            .brand-title span {
+                color: #E50914;
+            }
+            .section-title {
+                color: #E50914;
+            }
+            .card-box, .bank-details, .totals-box, input, select, textarea {
+                background: #F9F9F9 !important;
+                color: black !important;
+                border: 1px solid #CCC !important;
+            }
+            .quote-number-box {
+                background: #FFF !important;
+                border: 1px solid #E50914 !important;
+                color: #E50914 !important;
+            }
+            th {
+                background: #EEE !important;
+                color: #E50914 !important;
+            }
+            td {
+                border-bottom: 1px solid #EEE;
+            }
+            .btn-add, .btn-remove, .btn-print, .folio-controls {
+                display: none !important;
+            }
+            input, select, textarea {
+                border: none !important;
+                background: transparent !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="nav-back-bar">
+        <a href="/" class="nav-back-link">← Volver al Sitio Web Principal</a>
+        <div style="display: flex; align-items: center; gap: 12px; font-size: 11px;">
+            <a href="https://wa.me/56951585884" target="_blank" style="color: #4ade80; text-decoration: none; font-weight: 600;">WhatsApp: +56 9 5158 5884</a>
+            <span style="color: #444;">|</span>
+            <a href="https://www.instagram.com/letreros_olivar/" target="_blank" style="color: #f472b6; text-decoration: none;">@letreros_olivar</a>
+            <span style="color: #444;">|</span>
+            <a href="https://www.facebook.com/profile.php?id=100044724316759" target="_blank" style="color: #60a5fa; text-decoration: none;">Facebook</a>
+        </div>
+    </div>
+
+    <!-- MEMBRETE CON LOGO VECTORIAL Y CORRELATIVO AUTOMÁTICO -->
+    <div class="header">
+        <div class="brand-container">
+            <img src="logo-white.svg" alt="Letreros Olivar SpA" class="brand-logo-img" onerror="this.src='logo.png'">
+            <div class="brand-title">
+                LETREROS<br>
+                <span>OLIVAR</span>
+            </div>
+        </div>
+        <div class="doc-info">
+            <h2 style="font-size: 16px; color: var(--primary-red); margin-bottom: 5px;">COTIZACIÓN DE SERVICIOS</h2>
+            <div><strong>N° Cotización:</strong> <span class="quote-number-box" id="quoteNumberDisplay">0001</span></div>
+            <div style="margin-top: 4px;"><strong>Fecha:</strong> <input type="date" id="docDate" style="width: 130px; display: inline-block;"></div>
+            <div class="folio-controls">
+                <button class="btn-reset-folio" onclick="resetFolioPrompt()">Ajustar N° Folio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DATOS DE EMPRESA Y CLIENTE -->
+    <div class="grid-2">
+        <div class="card-box">
+            <div class="section-title">PROVEEDOR</div>
+            <strong>Letreros Olivar SpA</strong><br>
+            RUT: 77.880.952-4<br>
+            Giro: Gráfica Publicitaria / Impresión<br>
+            Dirección: Camino Público S/N, Olivar, VI Región<br>
+            Teléfono: +56 9 5158 5884<br>
+            Email: letrerosolivar@gmail.com / contacto@letrerosolivar.com
+        </div>
+
+        <div class="card-box">
+            <div class="section-title">CLIENTE / COMPRADOR</div>
+            <div class="form-group">
+                <label>Empresa / Cliente:</label>
+                <input type="text" id="clientName" placeholder="Ej: TRANSAP S.A.">
+            </div>
+            <div class="form-group">
+                <label>RUT Cliente:</label>
+                <input type="text" id="clientRut" placeholder="Ej: 96.913.600-7">
+            </div>
+            <div class="form-group">
+                <label>Atención / Comprador:</label>
+                <input type="text" id="clientContact" placeholder="Ej: Javier Polanco">
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGÍSTICA Y ENTREGAS -->
+    <div class="grid-2">
+        <div class="form-group">
+            <label>Fecha Estimada de Entrega:</label>
+            <input type="text" id="deliveryTime" placeholder="Ej: 3 a 5 días hábiles" value="3 a 5 días hábiles">
+        </div>
+        <div class="form-group">
+            <label>Términos de Entrega / Despacho:</label>
+            <input type="text" id="deliveryTerms" placeholder="Ej: Retiro en Taller / Despacho a Domicilio" value="Retiro en Taller / Instalación en Terreno">
+        </div>
+    </div>
+
+    <!-- TABLA DE ÍTEMS Y MATERIALES -->
+    <div class="section-title">DETALLE DE TRABAJOS Y MATERIALES</div>
+    <div class="table-responsive">
+        <table id="quoteTable">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Material / Servicio</th>
+                    <th style="width: 25%;">Descripción / Detalle</th>
+                    <th style="width: 10%;">Ancho (m)</th>
+                    <th style="width: 10%;">Alto (m)</th>
+                    <th style="width: 8%;">Cant.</th>
+                    <th style="width: 12%;">P. Unit ($)</th>
+                    <th style="width: 10%;">Total ($)</th>
+                    <th style="width: 5%;"></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Ítems dinámicos -->
+            </tbody>
+        </table>
+    </div>
+
+    <button class="btn-add" onclick="addRow()">+ Agregar Ítem</button>
+
+    <!-- DATOS BANCARIOS Y TOTALES CON IVA -->
+    <div class="totals-container">
+        <div class="bank-details">
+            <div class="section-title">DATOS DE TRANSFERENCIA</div>
+            <strong>Razón Social:</strong> Letreros Olivar SpA<br>
+            <strong>RUT:</strong> 77.880.952-4<br>
+            <strong>Banco:</strong> BCI / MACH<br>
+            <strong>Tipo de Cuenta:</strong> Cuenta Corriente<br>
+            <strong>N° Cuenta:</strong> 95069607<br>
+            <strong>Correo Comprobantes:</strong> letrerosolivar@gmail.com
+        </div>
+
+        <div class="totals-box">
+            <div class="row-total">
+                <span>Subtotal Neto:</span>
+                <span id="subtotalNeto">$0</span>
+            </div>
+            <div class="row-total">
+                <span>IVA (19%):</span>
+                <span id="ivaVal">$0</span>
+            </div>
+            <div class="row-total final">
+                <span>TOTAL BRUTO:</span>
+                <span id="totalBruto">$0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMENTARIOS Y BOTÓN IMPRIMIR -->
+    <div style="margin-top: 20px;">
+        <div class="form-group">
+            <label>Comentarios Especiales / Condiciones Comerciales:</label>
+            <textarea rows="2" id="commentsText" placeholder="Ej: Cotización válida por 15 días. Forma de pago: 50% abono inicial y 50% contra entrega.">Cotización válida por 15 días. Forma de pago: 50% abono inicial y 50% contra entrega.</textarea>
+        </div>
+    </div>
+
+    <button class="btn-print" onclick="handlePrint()">Descargar PDF / Imprimir Cotización</button>
+</div>
+
+<script>
+    // SISTEMA DE CORRELATIVO AUTOMÁTICO (localStorage sincronizado)
+    const FOLIO_KEY = 'letreros_olivar_folio_num';
+
+    function getFormatedFolio(num) {
+        return String(num).padStart(4, '0');
+    }
+
+    function loadFolio() {
+        let currentFolio = localStorage.getItem(FOLIO_KEY) || localStorage.getItem('olivar_correlative') || 1;
+        document.getElementById('quoteNumberDisplay').innerText = getFormatedFolio(currentFolio);
+    }
+
+    function incrementFolio() {
+        let currentFolio = parseInt(localStorage.getItem(FOLIO_KEY) || localStorage.getItem('olivar_correlative') || 1, 10);
+        let nextFolio = currentFolio + 1;
+        localStorage.setItem(FOLIO_KEY, nextFolio);
+        localStorage.setItem('olivar_correlative', nextFolio);
+        document.getElementById('quoteNumberDisplay').innerText = getFormatedFolio(nextFolio);
+    }
+
+    function resetFolioPrompt() {
+        let currentFolio = localStorage.getItem(FOLIO_KEY) || localStorage.getItem('olivar_correlative') || 1;
+        let newFolio = prompt("Modificar número correlativo actual (solo para ajustar o reiniciar):", currentFolio);
+        if (newFolio !== null && !isNaN(newFolio) && newFolio.trim() !== "") {
+            let num = parseInt(newFolio.trim(), 10);
+            if (num < 1) num = 1;
+            localStorage.setItem(FOLIO_KEY, num);
+            localStorage.setItem('olivar_correlative', num);
+            document.getElementById('quoteNumberDisplay').innerText = getFormatedFolio(num);
+        }
+    }
+
+    function handlePrint() {
+        window.print();
+        setTimeout(() => {
+            incrementFolio();
+        }, 1000);
+    }
+
+    // Fecha actual por defecto
+    document.getElementById('docDate').valueAsDate = new Date();
+
+    // Materiales oficiales de taller
+    const materials = [
+        { name: 'Gráfica Corporativa / Placa Acrílico', price: 95000 },
+        { name: 'Señética Vial / Faena en Fierro', price: 38000 },
+        { name: 'Gigantografía Lona 13oz con Ojetillos', price: 19500 },
+        { name: 'Letrero Comercial Bastidor + Placa', price: 65000 },
+        { name: 'Cajón Luminoso / Caja de Luz Backlight', price: 78000 },
+        { name: 'Corte y Grabado Láser en Acrílico', price: 45000 },
+        { name: 'Cortes CNC en Aluminio Compuesto (ACM)', price: 68000 },
+        { name: 'Impresión Gran Formato / Vinilo + UV', price: 22000 },
+        { name: 'Paloma Publicitaria Metálica Plegable', price: 45000 },
+        { name: 'Estructuras y Letreros Especiales a Medida', price: 80000 }
+    ];
+        { name: 'Adhesivo Monomérico Brillo', price: 8500 },
+        { name: 'Adhesivo Monomérico Mate', price: 8500 },
+        { name: 'Adhesivo Vehicular High Tack', price: 14000 },
+        { name: 'Banner PVC 13oz', price: 7500 },
+        { name: 'Placa Foam 5mm', price: 16000 },
+        { name: 'Placa Trovicel / PVC 3mm', price: 18000 },
+        { name: 'Servicio de Instalación en Terreno', price: 45000 },
+        { name: 'Todo en Publicidad / Proyecto a Medida', price: 80000 },
+        { name: 'Diseño Gráfico / Remaster', price: 0 },
+        { name: 'Personalizado', price: 0 }
+    ];
+
+    function createMaterialOptions() {
+        return materials.map(m => `<option value="${m.price}">${m.name}</option>`).join('');
+    }
+
+    function addRow(detalle = '', ancho = 1, alto = 1, cant = 1, punit = 8500) {
+        const tbody = document.getElementById('tableBody');
+        const tr = document.createElement('tr');
+        
+        tr.innerHTML = `
+            <td>
+                <select class="mat-select" onchange="updateRowPrice(this)">
+                    ${createMaterialOptions()}
+                </select>
+            </td>
+            <td><input type="text" class="det-input" value="${detalle}" placeholder="Ej: Adhesivo logo corrosivo"></td>
+            <td><input type="number" step="0.01" class="ancho-input" value="${ancho}" oninput="calculateTotals()"></td>
+            <td><input type="number" step="0.01" class="alto-input" value="${alto}" oninput="calculateTotals()"></td>
+            <td><input type="number" class="cant-input" value="${cant}" oninput="calculateTotals()"></td>
+            <td><input type="number" class="unit-input" value="${punit}" oninput="calculateTotals()"></td>
+            <td style="font-weight: bold;" class="item-total">$0</td>
+            <td><button class="btn-remove" onclick="removeRow(this)">X</button></td>
+        `;
+        
+        tbody.appendChild(tr);
+        calculateTotals();
+    }
+
+    function updateRowPrice(selectEl) {
+        const tr = selectEl.closest('tr');
+        const priceInput = tr.querySelector('.unit-input');
+        const selectedPrice = parseFloat(selectEl.value);
+        if (selectedPrice > 0) {
+            priceInput.value = selectedPrice;
+        }
+        calculateTotals();
+    }
+
+    function removeRow(btn) {
+        const tr = btn.closest('tr');
+        tr.remove();
+        calculateTotals();
+    }
+
+    function formatCLP(val) {
+        return '$' + Math.round(val).toLocaleString('es-CL');
+    }
+
+    function calculateTotals() {
+        const rows = document.querySelectorAll('#tableBody tr');
+        let subtotal = 0;
+
+        rows.forEach(row => {
+            const ancho = parseFloat(row.querySelector('.ancho-input').value) || 0;
+            const alto = parseFloat(row.querySelector('.alto-input').value) || 0;
+            const cant = parseFloat(row.querySelector('.cant-input').value) || 0;
+            const unit = parseFloat(row.querySelector('.unit-input').value) || 0;
+
+            let itemTotal = 0;
+            if (ancho > 0 && alto > 0) {
+                const m2 = ancho * alto;
+                itemTotal = m2 * cant * unit;
+            } else {
+                itemTotal = cant * unit;
+            }
+
+            row.querySelector('.item-total').innerText = formatCLP(itemTotal);
+            subtotal += itemTotal;
+        });
+
+        const iva = subtotal * 0.19;
+        const total = subtotal + iva;
+
+        document.getElementById('subtotalNeto').innerText = formatCLP(subtotal);
+        document.getElementById('ivaVal').innerText = formatCLP(iva);
+        document.getElementById('totalBruto').innerText = formatCLP(total);
+    }
+
+    // Inicialización
+    loadFolio();
+    addRow('Adhesivo logo corrosivo', 0.30, 0.30, 16, 10000);
+</script>
+
+</body>
+</html>

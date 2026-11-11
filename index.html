@@ -910,6 +910,53 @@
         showToast(`📋 Datos de ${oldQuote.client.name} cargados para nueva cotización (${currentCorrelativeCode})`);
       };
 
+      // --- INICIAR NUEVA COTIZACIÓN EN LIMPIO ---
+      const handleStartNewQuote = (skipConfirm = false) => {
+        if (!skipConfirm && quoteItems.length > 0) {
+          if (!window.confirm('¿Deseas iniciar una nueva cotización en blanco? Se limpiará el formulario actual.')) {
+            return;
+          }
+        }
+        setIntranetClientData({
+          name: '',
+          contactPerson: '',
+          documentId: '',
+          phone: '',
+          email: '',
+          deliveryAddress: '',
+          deliveryMethod: 'instalacion',
+          validDays: 15,
+          paymentTerms: 'Crédito 30 días',
+          manufacturingDays: '5 a 7 días hábiles'
+        });
+        setQuoteItems([]);
+        setItemDesc('');
+        setItemWidth('');
+        setItemHeight('');
+        setItemQty(1);
+        setItemPrice(0);
+        setItemNotes('');
+        setSandwichLayers({
+          adhesivo: { enabled: false, price: 14500, label: 'Adhesivo Vinilo Impreso 1440 DPI' },
+          laminado: { enabled: false, price: 9500, label: 'Termolaminado UV (Mate/Brillante)' },
+          cintaDoble: { enabled: false, price: 6500, label: 'Cinta Doble Contacto Alta Resistencia' },
+          placaAdicional: { enabled: false, price: 12000, label: 'Placa / Respaldo Adicional' }
+        });
+        setFinishingOptions({
+          termosellado: { enabled: false, price: 4500 },
+          bolsilloCano: { enabled: false, price: 8500 },
+          bastidorMadera: { enabled: false, price: 18500 },
+          bastidorFierro: { enabled: false, price: 28500 },
+          instalacion: { enabled: false, price: 35000 },
+          espaciadores: { enabled: false, price: 12500 },
+          iluminacionLed: { enabled: false, price: 45000 }
+        });
+        setDiscountAmount(0);
+        setTaxRate(19);
+        setIntranetTab('cotizador');
+        showToast(`✨ Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
+      };
+
       // --- ACCIONES DE INTRANET (AGREGAR ÍTEM, EMITIR Y WHATSAPP) ---
       const handleAddItem = (e) => {
         e.preventDefault();
@@ -2368,20 +2415,27 @@
                   </div>
 
                   {/* Selector de Pestañas de Intranet */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => setIntranetTab('cotizador')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                        intranetTab === 'cotizador' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                      onClick={() => {
+                        if (intranetTab !== 'cotizador') {
+                          setIntranetTab('cotizador');
+                        } else {
+                          handleStartNewQuote();
+                        }
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-sm ${
+                        intranetTab === 'cotizador' ? 'bg-red-600 text-white shadow-red-900/40 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
                       }`}
+                      title="Iniciar o ir a una Nueva Cotización"
                     >
-                      <Icon name="file-text" className="w-4 h-4" />
-                      <span>Cotizador Correlativo</span>
+                      <Icon name="plus" className="w-4 h-4" />
+                      <span>Nueva Cotización</span>
                     </button>
 
                     <button
                       onClick={() => setIntranetTab('solicitudes')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                         intranetTab === 'solicitudes' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
                       }`}
                     >
@@ -2391,7 +2445,7 @@
 
                     <button
                       onClick={() => setIntranetTab('historial')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                         intranetTab === 'historial' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
                       }`}
                     >
@@ -2401,7 +2455,7 @@
 
                     <button
                       onClick={() => setIntranetTab('precios')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                         intranetTab === 'precios' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
                       }`}
                     >
@@ -2409,16 +2463,28 @@
                       <span>Tarifario & Materiales (Excel)</span>
                     </button>
 
-                    <a
-                      href="cotizador.html"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white border border-red-500/40"
-                      title="Abrir el formato clásico de taller en pantalla completa"
-                    >
-                      <Icon name="printer" className="w-4 h-4" />
-                      <span>Formato Taller (cotizador.html) ↗</span>
-                    </a>
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <a
+                        href="cotizador.html"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 shadow-sm"
+                        title="Abrir el formato clásico de taller en una pestaña nueva"
+                      >
+                        <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
+                        <span>Formato Taller ↗</span>
+                      </a>
+
+                      <a
+                        href="cotizador.html"
+                        download="Cotizador_Taller_Letreros_Olivar.html"
+                        className="px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/40 shadow-sm"
+                        title="Descargar archivo HTML del cotizador para usar en tu computador SIN INTERNET"
+                      >
+                        <Icon name="download" className="w-3.5 h-3.5" />
+                        <span>Descargar para usar Offline 💾</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
 
@@ -2437,9 +2503,20 @@
                           <span className="text-2xl font-mono font-black text-red-500">{currentCorrelativeCode}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-400 font-mono">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <span>Secuencia automática protegida (No modificable)</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleStartNewQuote()}
+                          className="px-3.5 py-2 rounded-xl text-xs font-black bg-zinc-900 hover:bg-red-600 text-zinc-300 hover:text-white border border-zinc-700 hover:border-red-500 flex items-center gap-2 transition"
+                          title="Limpiar campos y preparar una cotización en blanco"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5" />
+                          <span>Limpiar Formulario / Nueva Cotización</span>
+                        </button>
+                        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-400 font-mono">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <span>Secuencia automática protegida</span>
+                        </div>
                       </div>
                     </div>
 
@@ -3465,11 +3542,20 @@
                 {/* SUB-PESTAÑA 3: HISTORIAL DE COTIZACIONES EMITIDAS */}
                 {intranetTab === 'historial' && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-lg font-bold text-white font-heading">
-                        Historial de Cotizaciones Emitidas ({quoteHistory.length})
-                      </h2>
-                      <p className="text-xs text-zinc-400">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-black border border-zinc-800">
+                      <div>
+                        <h2 className="text-lg font-bold text-white font-heading">
+                          Historial de Cotizaciones Emitidas ({quoteHistory.length})
+                        </h2>
+                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
+                      </div>
+                      <button
+                        onClick={() => handleStartNewQuote()}
+                        className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                      >
+                        <Icon name="plus" className="w-4 h-4" />
+                        <span>➕ Crear Nueva Cotización</span>
+                      </button>
                     </div>
 
                     {quoteHistory.length === 0 ? (
