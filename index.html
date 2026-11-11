@@ -1488,6 +1488,12 @@
         }
         if (q.totals.taxAmount > 0) message += `\n*🏛️ IVA (19%):* ${formatCLP(q.totals.taxAmount)}`;
         message += `\n*💰 TOTAL FINAL: ${formatCLP(q.totals.total)} CLP*\n`;
+        message += `\n*🏦 DATOS PARA TRANSFERENCIA:*`;
+        message += `\n• *Razón Social:* ${companyInfo.bank.titular}`;
+        message += `\n• *RUT:* ${companyInfo.bank.rut}`;
+        message += `\n• *Banco:* ${companyInfo.bank.banco}`;
+        message += `\n• *Cuenta:* ${companyInfo.bank.tipo} N° ${companyInfo.bank.cuenta}`;
+        message += `\n• *Envío de Comprobantes:* ${companyInfo.bank.email}\n`;
         message += `\n*📍 Taller:* ${companyInfo.address}`;
         message += `\n*✅ Validez de Oferta:* ${q.client.validDays || 15} días.\n`;
         message += `\n_Cotización formal emitida por Letreros Olivar SpA._`;
