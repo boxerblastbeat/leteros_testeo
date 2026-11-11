@@ -124,7 +124,7 @@
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
-      .no-print {
+      .no-print, .print-hide-sqm {
         display: none !important;
       }
       table {
@@ -1446,8 +1446,14 @@
         if (q.client.contactPerson) message += `*🤝 Atención / Contacto:* ${q.client.contactPerson}\n`;
         if (q.client.documentId) message += `*📄 RUT:* ${q.client.documentId}\n`;
         message += `*📅 Fecha:* ${q.date || new Date().toLocaleDateString('es-CL')}\n`;
-        message += `*🚚 Modalidad:* ${q.client.deliveryMethod === 'instalacion' ? 'Instalación en Terreno' : 'Retiro en Taller (Olivar)'}\n`;
-        if (q.client.deliveryAddress) message += `*📍 Destino / Lugar:* ${q.client.deliveryAddress}\n`;
+        let deliveryLabel = 'Retiro en Taller (Olivar)';
+        if (q.client.deliveryMethod === 'instalacion') deliveryLabel = 'Instalación en Terreno / Obra';
+        else if (q.client.deliveryMethod === 'entrega') deliveryLabel = 'Entrega en Instalaciones del Cliente';
+        message += `*🚚 Modalidad:* ${deliveryLabel}\n`;
+        if (q.client.deliveryAddress) {
+          const destTitle = q.client.deliveryMethod === 'instalacion' ? 'Lugar de Instalación' : 'Dirección de Entrega';
+          message += `*📍 ${destTitle}:* ${q.client.deliveryAddress}\n`;
+        }
         message += `*💳 Condición de Pago:* ${q.client.paymentTerms || 'Contado'}\n`;
         message += `*⏱️ Plazo de Fabricación:* ${q.client.manufacturingDays || '5 a 7 días hábiles'}\n\n`;
         message += `*📦 DETALLE DE TRABAJOS:*\n`;
@@ -1455,8 +1461,7 @@
         q.items.forEach((item, index) => {
           let spec = '';
           if (item.calcType === 'sqm') {
-            const area = (item.width * item.height * item.quantity).toFixed(2);
-            spec = `(${item.quantity} ud de ${item.width}m x ${item.height}m = ${area} m²)`;
+            spec = `(${item.quantity} ud de ${item.width}m × ${item.height}m)`;
           } else {
             spec = `(${item.quantity} ${item.unitLabel})`;
           }
@@ -2459,8 +2464,8 @@
                         3. Modalidad de Entrega
                       </h3>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3.5 ${clientRequest.deliveryMethod === 'instalacion' ? 'bg-red-600/10 border-red-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <label className={`p-3.5 rounded-xl border cursor-pointer transition flex items-start gap-3 ${clientRequest.deliveryMethod === 'instalacion' ? 'bg-red-600/10 border-red-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
                           <input
                             type="radio"
                             name="deliveryMethod"
@@ -2470,15 +2475,33 @@
                             className="mt-1 text-red-600 focus:ring-0"
                           />
                           <div>
-                            <div className="flex items-center gap-2 font-bold text-sm text-white font-heading">
+                            <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-white font-heading">
                               <Icon name="truck" className="w-4 h-4 text-red-500" />
-                              <span>Instalación en Terreno / Obra</span>
+                              <span>Instalación en Terreno</span>
                             </div>
-                            <p className="text-xs text-zinc-400 mt-1">Montaje profesional en altura, fachada o local comercial con cuadrilla capacitada.</p>
+                            <p className="text-[11px] text-zinc-400 mt-1">Montaje profesional en fachada, altura o local.</p>
                           </div>
                         </label>
 
-                        <label className={`p-4 rounded-xl border cursor-pointer transition flex items-start gap-3.5 ${clientRequest.deliveryMethod === 'retiro' ? 'bg-red-600/10 border-red-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
+                        <label className={`p-3.5 rounded-xl border cursor-pointer transition flex items-start gap-3 ${clientRequest.deliveryMethod === 'entrega' ? 'bg-red-600/10 border-red-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
+                          <input
+                            type="radio"
+                            name="deliveryMethod"
+                            value="entrega"
+                            checked={clientRequest.deliveryMethod === 'entrega'}
+                            onChange={(e) => setClientRequest({ ...clientRequest, deliveryMethod: e.target.value })}
+                            className="mt-1 text-red-600 focus:ring-0"
+                          />
+                          <div>
+                            <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-white font-heading">
+                              <Icon name="truck" className="w-4 h-4 text-blue-400" />
+                              <span>Entrega en Cliente</span>
+                            </div>
+                            <p className="text-[11px] text-zinc-400 mt-1">Flete / traslado directo a tu empresa o domicilio (sin instalación).</p>
+                          </div>
+                        </label>
+
+                        <label className={`p-3.5 rounded-xl border cursor-pointer transition flex items-start gap-3 ${clientRequest.deliveryMethod === 'retiro' ? 'bg-red-600/10 border-red-600 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'}`}>
                           <input
                             type="radio"
                             name="deliveryMethod"
@@ -2488,21 +2511,23 @@
                             className="mt-1 text-red-600 focus:ring-0"
                           />
                           <div>
-                            <div className="flex items-center gap-2 font-bold text-sm text-white font-heading">
+                            <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-white font-heading">
                               <Icon name="store" className="w-4 h-4 text-white" />
-                              <span>Retiro en Taller (Olivar)</span>
+                              <span>Retiro en Taller</span>
                             </div>
-                            <p className="text-xs text-zinc-400 mt-1">Retiras directamente en nuestro taller matriz en Ruta H-40, Olivar, sin costo de instalación.</p>
+                            <p className="text-[11px] text-zinc-400 mt-1">Retiras directamente en taller matriz Olivar (Ruta H-40).</p>
                           </div>
                         </label>
                       </div>
 
-                      {clientRequest.deliveryMethod === 'instalacion' && (
+                      {(clientRequest.deliveryMethod === 'instalacion' || clientRequest.deliveryMethod === 'entrega') && (
                         <div className="pt-2 text-xs">
-                          <label className="block text-zinc-300 font-semibold mb-1">Dirección o Comuna de Instalación *</label>
+                          <label className="block text-zinc-300 font-semibold mb-1">
+                            {clientRequest.deliveryMethod === 'instalacion' ? 'Dirección o Comuna de Instalación *' : 'Dirección o Comuna de Entrega / Despacho *'}
+                          </label>
                           <input
                             type="text"
-                            placeholder="Ej: Local en Rancagua Centro / Av. Einstein #320"
+                            placeholder={clientRequest.deliveryMethod === 'instalacion' ? "Ej: Local en Rancagua Centro / Av. Einstein #320" : "Ej: Dirección de tu empresa o faena para despacho"}
                             value={clientRequest.deliveryAddress}
                             onChange={(e) => setClientRequest({ ...clientRequest, deliveryAddress: e.target.value })}
                             className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
@@ -2935,18 +2960,21 @@
                               <select
                                 value={intranetClientData.deliveryMethod}
                                 onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
-                                className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs"
+                                className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
                               >
                                 <option value="instalacion">🚚 Instalación en Terreno / Obra</option>
+                                <option value="entrega">📦 Entrega en Instalaciones del Cliente (Flete / Despacho)</option>
                                 <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
                               </select>
                             </div>
-                            {intranetClientData.deliveryMethod === 'instalacion' && (
+                            {(intranetClientData.deliveryMethod === 'instalacion' || intranetClientData.deliveryMethod === 'entrega') && (
                               <div>
-                                <label className="block text-zinc-300 font-semibold mb-1">Lugar de Instalación</label>
+                                <label className="block text-zinc-300 font-semibold mb-1">
+                                  {intranetClientData.deliveryMethod === 'instalacion' ? 'Lugar / Dirección de Instalación *' : 'Dirección de Entrega / Despacho *'}
+                                </label>
                                 <input
                                   type="text"
-                                  placeholder="Dirección donde se instalará"
+                                  placeholder={intranetClientData.deliveryMethod === 'instalacion' ? "Dirección donde se realizará la instalación" : "Dirección donde se entregará el pedido (cliente)"}
                                   value={intranetClientData.deliveryAddress}
                                   onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryAddress: e.target.value })}
                                   className="w-full bg-zinc-950 text-white px-3.5 py-2 rounded-xl border border-zinc-800"
@@ -3876,8 +3904,18 @@
                                   {req.status}
                                 </span>
                               </div>
-                              <span className={`text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1.5 ${req.deliveryMethod === 'instalacion' ? 'bg-red-600/10 text-red-500 border border-red-600/30' : 'bg-zinc-800 text-white'}`}>
-                                {req.deliveryMethod === 'instalacion' ? '🚚 Requiere Instalación' : '🏬 Retiro en Taller (Olivar)'}
+                              <span className={`text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1.5 ${
+                                req.deliveryMethod === 'instalacion'
+                                  ? 'bg-red-600/10 text-red-500 border border-red-600/30'
+                                  : req.deliveryMethod === 'entrega'
+                                    ? 'bg-blue-600/10 text-blue-400 border border-blue-600/30'
+                                    : 'bg-zinc-800 text-white'
+                              }`}>
+                                {req.deliveryMethod === 'instalacion'
+                                  ? '🚚 Requiere Instalación'
+                                  : req.deliveryMethod === 'entrega'
+                                    ? '📦 Entrega en Cliente'
+                                    : '🏬 Retiro en Taller (Olivar)'}
                               </span>
                             </div>
 
@@ -3903,6 +3941,8 @@
                                 <span className="text-[10px] text-zinc-500 uppercase font-bold block">Entrega & Notas:</span>
                                 {req.deliveryMethod === 'instalacion' ? (
                                   <p className="text-red-400 font-medium">Instalación en: {req.deliveryAddress || 'Por definir'}</p>
+                                ) : req.deliveryMethod === 'entrega' ? (
+                                  <p className="text-blue-400 font-medium">Entrega en: {req.deliveryAddress || 'Por definir'}</p>
                                 ) : (
                                   <p className="text-zinc-300">Retiro en taller matriz (Olivar)</p>
                                 )}
@@ -3973,7 +4013,7 @@
                               </div>
                               <div className="font-bold text-white text-sm mt-1">{q.client.name}</div>
                               <div className="text-xs text-zinc-400 mt-0.5">
-                                {q.items.length} trabajos • Modalidad: <strong className="text-zinc-200">{q.client.deliveryMethod === 'instalacion' ? 'Instalación' : 'Retiro en Taller'}</strong> • Total: <strong className="text-white font-mono">{formatCLP(q.totals.total)}</strong>
+                                {q.items.length} trabajos • Modalidad: <strong className="text-zinc-200">{q.client.deliveryMethod === 'instalacion' ? 'Instalación' : q.client.deliveryMethod === 'entrega' ? 'Entrega en Cliente' : 'Retiro en Taller'}</strong> • Total: <strong className="text-white font-mono">{formatCLP(q.totals.total)}</strong>
                               </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -4742,6 +4782,9 @@
                     <span className="hidden md:inline-block text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">
                       📁 Guardar PDF como: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
                     </span>
+                    <span className="hidden lg:inline-flex text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono items-center gap-1">
+                      <span>🔒 Valores m² ocultos en impresión</span>
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -4795,9 +4838,19 @@
                       )}
                       {currentQuoteToPrint.client.documentId && <p className="text-zinc-700 font-mono">RUT: {currentQuoteToPrint.client.documentId}</p>}
                       <p className="text-zinc-700 mt-0.5">
-                        Modalidad: <strong>{currentQuoteToPrint.client.deliveryMethod === 'instalacion' ? 'Instalación en Terreno' : 'Retiro en Taller (Olivar)'}</strong>
+                        Modalidad: <strong>
+                          {currentQuoteToPrint.client.deliveryMethod === 'instalacion'
+                            ? 'Instalación en Terreno / Obra'
+                            : currentQuoteToPrint.client.deliveryMethod === 'entrega'
+                              ? 'Entrega en Instalaciones del Cliente'
+                              : 'Retiro en Taller (Olivar)'}
+                        </strong>
                       </p>
-                      {currentQuoteToPrint.client.deliveryAddress && <p className="text-zinc-700">Destino: {currentQuoteToPrint.client.deliveryAddress}</p>}
+                      {currentQuoteToPrint.client.deliveryAddress && (
+                        <p className="text-zinc-700">
+                          {currentQuoteToPrint.client.deliveryMethod === 'instalacion' ? 'Lugar Instalación' : 'Dirección Entrega'}: {currentQuoteToPrint.client.deliveryAddress}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <span className="text-[9px] uppercase font-bold text-zinc-600 tracking-wider block">CONDICIONES COMERCIALES:</span>
@@ -4826,7 +4879,10 @@
                             <td className="py-2 px-2.5 font-mono text-zinc-800">
                               <span className="font-bold text-black block">{item.quantity} ud</span>
                               {item.calcType === 'sqm' ? (
-                                <span className="text-[10px] text-zinc-600 block">{item.width}m × {item.height}m ({(item.width * item.height * item.quantity).toFixed(2)} m²)</span>
+                                <span className="text-[10px] text-zinc-600 block">
+                                  <span>{item.width}m × {item.height}m</span>
+                                  <span className="no-print print-hide-sqm text-zinc-400"> ({(item.width * item.height * item.quantity).toFixed(2)} m²)</span>
+                                </span>
                               ) : (
                                 <span className="text-[10px] text-zinc-600 block">{item.unitLabel}</span>
                               )}
@@ -4847,7 +4903,9 @@
                             <td className="py-2 px-2.5 text-right font-mono">
                               <div className="font-bold text-black text-xs">{formatCLP(unitPricePiece)} c/u</div>
                               {item.calcType === 'sqm' && (
-                                <span className="text-[9px] text-zinc-500 block">({formatCLP(item.unitPrice)}/m²)</span>
+                                <span className="text-[9px] text-zinc-500 block no-print print-hide-sqm" title="Valor interno de taller ($/m²). Oculto automáticamente en la impresión / PDF del cliente.">
+                                  ({formatCLP(item.unitPrice)}/m²)
+                                </span>
                               )}
                             </td>
                             <td className="py-2 px-2.5 text-right font-mono font-black text-black text-xs">
