@@ -692,6 +692,71 @@
         address: ''
       });
 
+      // Estados para Carga Masiva de Correos en Maestra de Clientes
+      const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
+      const [bulkEmailText, setBulkEmailText] = useState('');
+      const [bulkEmailParsed, setBulkEmailParsed] = useState([]);
+
+      // Estados para módulo Webmail In-App (Sin abrir pestañas externas)
+      const [webmailSubTab, setWebmailSubTab] = useState('inbox'); // 'inbox' | 'compose' | 'sync'
+      const [inboxEmails, setInboxEmails] = useState(() => {
+        const saved = localStorage.getItem('olivar_inbox_emails');
+        return saved ? JSON.parse(saved) : [
+          {
+            id: 'em-1',
+            fromName: 'Claudio Garrido (Plaza Olivar)',
+            fromEmail: 'contacto@plazolivar.cl',
+            rut: '76.136.210-0',
+            subject: 'Solicitud de Presupuesto: Letrero Corporativo en Alucobond',
+            date: 'Hoy, 09:15',
+            unread: true,
+            tag: 'Cotización',
+            body: 'Estimado Carlos y equipo de Letreros Olivar SpA,\n\nJunto con saludar, quisiéramos solicitar presupuesto para renovar la fachada de nuestro local comercial en Olivar.\n\nDetalles del requerimiento:\n• Medidas: 4.00 metros de ancho x 1.20 metros de alto.\n• Material deseado: Aluminio Compuesto (ACM 3mm) negro con letras acrílicas y luz LED.\n• Incluir retiro del letrero anterior e instalación en terreno.\n\nQuedamos atentos a su cotización formal.\n\nSaludos cordiales,\nClaudio Garrido\nAdministración Plaza Olivar'
+          },
+          {
+            id: 'em-2',
+            fromName: 'Banco BCI / MACH Notificaciones',
+            fromEmail: 'notificaciones@bci.cl',
+            rut: '97.006.000-6',
+            subject: 'Comprobante de Transferencia Electrónica Recibida ($450.000 CLP)',
+            date: 'Ayer, 17:40',
+            unread: false,
+            tag: 'Comprobante',
+            body: 'Estimado Letreros Olivar SpA (77.880.952-4),\n\nLe confirmamos que se ha recibido una transferencia en su Cuenta Corriente BCI N° 95069607:\n\n• Monto: $450.000 CLP\n• Ordenante: Agrícola El Olivo SpA\n• Detalle: Abono 50% Fabricación Letrero Caminero\n• N° Operación: 88471920\n• Fecha: 11/11/2026 17:38:12\n\nEste es un comprobante automático de confirmación bancaria.'
+          },
+          {
+            id: 'em-3',
+            fromName: 'Andrea Morales (Agrícola Rapallo)',
+            fromEmail: 'amorales@rapallo.cl',
+            rut: '76011140-6',
+            subject: 'Logotipo en alta resolución para letrero caminero',
+            date: '10 Nov, 14:20',
+            unread: false,
+            tag: 'Diseño',
+            body: 'Buenas tardes don Carlos,\n\nAdjunto enviamos el archivo vectorizado de nuestro logotipo institucional para el letrero caminero que nos cotizó la semana pasada.\n\nFavor confirmarnos si la calidad es adecuada para la impresión en lona PVC con filtro UV.\n\nAtentamente,\nAndrea Morales\nAgrícola e Inversiones Rapallo Ltda.'
+          },
+          {
+            id: 'em-4',
+            fromName: 'Sonepar Chile S.A.',
+            fromEmail: 'ventas.santiago@sonepar.cl',
+            rut: '96896480-1',
+            subject: 'Factura Electrónica N° 45892 - Materiales Eléctricos LED',
+            date: '08 Nov, 11:05',
+            unread: false,
+            tag: 'Proveedor',
+            body: 'Estimado cliente Letreros Olivar SpA,\n\nAdjuntamos la factura electrónica correspondiente a su compra de módulos LED IP67 y fuentes de poder de 12V 400W para taller.\n\nMuchas gracias por su preferencia.\nSonepar Chile S.A.'
+          }
+        ];
+      });
+
+      useEffect(() => {
+        localStorage.setItem('olivar_inbox_emails', JSON.stringify(inboxEmails));
+      }, [inboxEmails]);
+
+      const [selectedInboxEmailId, setSelectedInboxEmailId] = useState('em-1');
+      const [inboxFilter, setInboxFilter] = useState('all');
+      const [inboxSearch, setInboxSearch] = useState('');
+
       // Estados para módulo Webmail & Correo Rápido
       const [quickMailTo, setQuickMailTo] = useState('');
       const [quickMailSubject, setQuickMailSubject] = useState('Cotización Formal - Letreros Olivar SpA');
@@ -1006,6 +1071,195 @@
         }
         return list;
       }, [clientsMaster, clientsSearch, clientsFilterType]);
+
+      // --- HELPER FUNCTIONS CARGA MASIVA DE CORREOS ---
+      const handleParseBulkEmails = (rawText) => {
+        setBulkEmailText(rawText);
+        if (!rawText || !rawText.trim()) {
+          setBulkEmailParsed([]);
+          return;
+        }
+        const lines = rawText.split(/\r?\n/);
+        const parsed = [];
+        const cleanRut = (r) => (r || '').replace(/[\.\s]/g, '').trim().toUpperCase();
+
+        lines.forEach((line, lineIdx) => {
+          const trimmed = line.trim();
+          if (!trimmed) return;
+
+          // Buscar email en la línea
+          const emailMatch = trimmed.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+          if (!emailMatch) return;
+          const email = emailMatch[0].trim().toLowerCase();
+
+          // El resto de la línea contiene el RUT o el Nombre
+          let rest = trimmed.replace(email, '').replace(/^[,;\t|]+|[,;\t|]+$/g, '').trim();
+
+          // Buscar RUT en la línea
+          const rutMatch = trimmed.match(/(\d{1,2}\.?\d{3}\.?\d{3}-?[\dkK])/);
+          let detectedRut = rutMatch ? rutMatch[1] : '';
+          let clientMatch = null;
+
+          if (detectedRut) {
+            const clean = cleanRut(detectedRut);
+            clientMatch = clientsMaster.find(c => cleanRut(c.rut) === clean);
+          }
+
+          if (!clientMatch && rest) {
+            const cleanRest = rest.replace(/["',;]/g, '').toLowerCase().trim();
+            if (cleanRest.length >= 3) {
+              clientMatch = clientsMaster.find(c =>
+                c.name.toLowerCase().includes(cleanRest) ||
+                cleanRest.includes(c.name.toLowerCase())
+              );
+            }
+          }
+
+          parsed.push({
+            id: lineIdx,
+            originalLine: trimmed,
+            email,
+            identifier: detectedRut || rest || 'Sin identificar',
+            matchedClient: clientMatch || null,
+            status: clientMatch ? 'matched' : 'unmatched'
+          });
+        });
+
+        setBulkEmailParsed(parsed);
+      };
+
+      const handleApplyBulkEmails = (includeUnmatched = false) => {
+        if (!bulkEmailParsed || bulkEmailParsed.length === 0) {
+          showToast('⚠️ No hay correos válidos para importar');
+          return;
+        }
+
+        let updatedCount = 0;
+        let createdCount = 0;
+        let updatedMaster = [...clientsMaster];
+
+        bulkEmailParsed.forEach((item, idx) => {
+          if (item.matchedClient && item.email) {
+            const index = updatedMaster.findIndex(c => c.id === item.matchedClient.id);
+            if (index !== -1) {
+              updatedMaster[index] = { ...updatedMaster[index], email: item.email };
+              updatedCount++;
+            }
+          } else if (includeUnmatched && item.email) {
+            const isRut = item.identifier && item.identifier.includes('-');
+            const newClient = {
+              id: `cli-imp-${Date.now()}-${idx}`,
+              rut: isRut ? item.identifier : '',
+              name: !isRut && item.identifier !== 'Sin identificar' ? item.identifier : `Cliente ${item.email.split('@')[0]}`,
+              contactPerson: '',
+              phone: '',
+              email: item.email,
+              address: ''
+            };
+            updatedMaster.unshift(newClient);
+            createdCount++;
+          }
+        });
+
+        setClientsMaster(updatedMaster);
+        localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
+        setShowBulkEmailModal(false);
+        setBulkEmailText('');
+        setBulkEmailParsed([]);
+        showToast(`✅ Se actualizaron ${updatedCount} correos${createdCount > 0 ? ` y se agregaron ${createdCount} nuevos clientes` : ''}`);
+      };
+
+      const handleFileUploadForBulkEmail = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const content = event.target.result;
+          handleParseBulkEmails(content);
+        };
+        reader.readAsText(file);
+      };
+
+      const handleDownloadBulkEmailSample = () => {
+        const sampleRows = [
+          'RUT;Email',
+          '76.136.210-0;compras@subsole.cl',
+          '78044920-9;contacto@teknoriego.cl',
+          '93.772.000-9;adquisiciones@prodalam.cl',
+          '76011140-6;amorales@rapallo.cl'
+        ];
+        const csvContent = '\uFEFF' + sampleRows.join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'Plantilla_Ejemplo_Correos_Clientes.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('📥 Plantilla de ejemplo descargada');
+      };
+
+      const handleQuoteFromInboxEmail = (emailItem) => {
+        setIntranetClientData(prev => ({
+          ...prev,
+          name: emailItem.fromName || '',
+          documentId: emailItem.rut || '',
+          email: emailItem.fromEmail || '',
+          contactPerson: emailItem.fromName || ''
+        }));
+        setIntranetSection('taller');
+        setIntranetTab('cotizador');
+        showToast(`📋 Requerimiento de ${emailItem.fromName} cargado en el Cotizador`);
+      };
+
+      const handleSaveInboxEmailToMaster = (emailItem) => {
+        const cleanRut = (r) => (r || '').replace(/[\.\s]/g, '').trim().toUpperCase();
+        let updatedMaster = [...clientsMaster];
+        let found = false;
+
+        if (emailItem.rut) {
+          const idx = updatedMaster.findIndex(c => cleanRut(c.rut) === cleanRut(emailItem.rut));
+          if (idx !== -1) {
+            updatedMaster[idx] = { ...updatedMaster[idx], email: emailItem.fromEmail };
+            found = true;
+          }
+        }
+        if (!found) {
+          const idx = updatedMaster.findIndex(c => c.email && c.email.toLowerCase() === emailItem.fromEmail.toLowerCase());
+          if (idx !== -1) {
+            found = true;
+          }
+        }
+
+        if (found) {
+          setClientsMaster(updatedMaster);
+          localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
+          showToast(`✅ Correo ${emailItem.fromEmail} sincronizado en la Maestra`);
+        } else {
+          const newClient = {
+            id: `cli-${Date.now()}`,
+            rut: emailItem.rut || '',
+            name: emailItem.fromName || `Cliente ${emailItem.fromEmail.split('@')[0]}`,
+            contactPerson: emailItem.fromName || '',
+            phone: '',
+            email: emailItem.fromEmail,
+            address: ''
+          };
+          updatedMaster.unshift(newClient);
+          setClientsMaster(updatedMaster);
+          localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
+          showToast(`✅ Cliente ${newClient.name} agregado a la Maestra con correo ${newClient.email}`);
+        }
+      };
+
+      const handleReplyInboxEmail = (emailItem) => {
+        setQuickMailTo(emailItem.fromEmail);
+        setQuickMailSubject(`Re: ${emailItem.subject}`);
+        setQuickMailBody(`Estimado(a) ${emailItem.fromName},\n\nJunto con saludar, acusamos recibo de su mensaje.\n\nRespecto a su requerimiento:\n\nQuedamos a su entera disposición ante cualquier consulta.\n\nSaludos cordiales,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884\nhttps://letrerosolivar.com`);
+        setWebmailSubTab('compose');
+        showToast('✍️ Redactor preparado para responder');
+      };
 
       // --- HELPER FUNCTIONS MÓDULO WEBMAIL & CORREO ---
       const handleApplyEmailTemplate = (type) => {
@@ -4745,6 +4999,20 @@
 
                         <button
                           type="button"
+                          onClick={() => {
+                            setBulkEmailText('');
+                            setBulkEmailParsed([]);
+                            setShowBulkEmailModal(true);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg shadow-emerald-600/30"
+                          title="Cargar o actualizar correos masivamente pegando desde Excel o subiendo archivo"
+                        >
+                          <Icon name="mail" className="w-4 h-4 text-emerald-100" />
+                          <span>Carga Masiva de Correos</span>
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => setShowAddClientModal(true)}
                           className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs border border-zinc-700 transition flex items-center gap-1.5"
                         >
@@ -5035,6 +5303,160 @@
                       </div>
                     )}
 
+                    {/* MODAL: CARGA MASIVA DE CORREOS */}
+                    {showBulkEmailModal && (
+                      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+                          <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
+                                <Icon name="mail" className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h3 className="font-heading font-bold text-white text-base">Carga Masiva de Correos de Clientes</h3>
+                                <p className="text-[11px] text-zinc-400">Pega datos desde tu Excel o sube un archivo CSV</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowBulkEmailModal(false)}
+                              className="text-zinc-500 hover:text-white"
+                            >
+                              <Icon name="x" className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-300 space-y-2">
+                              <p className="font-semibold text-emerald-400 flex items-center gap-1.5">
+                                <Icon name="sparkles" className="w-3.5 h-3.5" />
+                                <span>¿Cómo funciona la sincronización inteligente?</span>
+                              </p>
+                              <p className="text-zinc-400 text-[11px] leading-relaxed">
+                                Puedes copiar columnas completas desde Excel (por ejemplo: <strong className="text-zinc-200">Columna RUT</strong> y <strong className="text-zinc-200">Columna Correo</strong>) y pegarlas directamente en la caja inferior. El sistema reconocerá automáticamente los correos y buscará los clientes en la Maestra por su RUT o Nombre.
+                              </p>
+                              <div className="flex items-center gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={handleDownloadBulkEmailSample}
+                                  className="text-[11px] text-emerald-400 hover:text-emerald-300 underline font-medium flex items-center gap-1"
+                                >
+                                  <Icon name="download" className="w-3 h-3" />
+                                  <span>Descargar planilla de ejemplo (.csv)</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs font-semibold text-zinc-300">
+                                  Pega tus líneas de Excel aquí (o escribe RUT y Correo):
+                                </label>
+                                <label className="text-[11px] bg-zinc-900 hover:bg-zinc-800 text-zinc-300 px-2.5 py-1 rounded-lg border border-zinc-700 cursor-pointer flex items-center gap-1 transition">
+                                  <Icon name="upload" className="w-3 h-3 text-emerald-400" />
+                                  <span>Subir archivo .CSV</span>
+                                  <input
+                                    type="file"
+                                    accept=".csv,.txt"
+                                    onChange={handleFileUploadForBulkEmail}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+                              <textarea
+                                rows={5}
+                                value={bulkEmailText}
+                                onChange={(e) => handleParseBulkEmails(e.target.value)}
+                                placeholder="Ejemplo:&#10;76.136.210-0    compras@subsole.cl&#10;78044920-9    contacto@teknoriego.cl&#10;PRODALAM S.A.    ventas@prodalam.cl"
+                                className="w-full bg-black text-white font-mono text-xs px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-emerald-500 focus:outline-none"
+                              />
+                            </div>
+
+                            {/* Resumen de coincidencias */}
+                            {bulkEmailParsed.length > 0 && (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="text-zinc-300 font-bold">
+                                    Vista Previa: <span className="text-emerald-400">{bulkEmailParsed.filter(p => p.status === 'matched').length} clientes encontrados en la Maestra</span>
+                                    {bulkEmailParsed.filter(p => p.status === 'unmatched').length > 0 && (
+                                      <span className="text-amber-400 ml-2 font-normal">
+                                        ({bulkEmailParsed.filter(p => p.status === 'unmatched').length} no encontrados)
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className="text-[11px] text-zinc-500 font-mono">
+                                    Total procesados: {bulkEmailParsed.length}
+                                  </span>
+                                </div>
+
+                                <div className="max-h-48 overflow-y-auto border border-zinc-800 rounded-xl bg-black divide-y divide-zinc-900 text-xs">
+                                  {bulkEmailParsed.map((item, idx) => (
+                                    <div key={idx} className="p-2.5 flex items-center justify-between gap-3">
+                                      <div className="min-w-0">
+                                        {item.matchedClient ? (
+                                          <div>
+                                            <span className="font-bold text-white block truncate">{item.matchedClient.name}</span>
+                                            <span className="text-[10px] font-mono text-zinc-400">RUT: {item.matchedClient.rut}</span>
+                                          </div>
+                                        ) : (
+                                          <div>
+                                            <span className="font-bold text-amber-400 block truncate">Nuevo / Sin coincidencia</span>
+                                            <span className="text-[10px] font-mono text-zinc-500">{item.identifier}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                        <span className="font-mono text-emerald-400 text-xs bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-800/40">
+                                          {item.email}
+                                        </span>
+                                        {item.status === 'matched' ? (
+                                          <span className="text-emerald-400 text-[10px] font-bold">✓ Coincide</span>
+                                        ) : (
+                                          <span className="text-amber-400 text-[10px]">Nuevo</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-3 border-t border-zinc-900">
+                              <button
+                                type="button"
+                                onClick={() => setShowBulkEmailModal(false)}
+                                className="px-4 py-2 rounded-xl text-zinc-400 hover:text-white bg-zinc-900 border border-zinc-800 text-xs font-bold"
+                              >
+                                Cancelar
+                              </button>
+
+                              {bulkEmailParsed.filter(p => p.status === 'matched').length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleApplyBulkEmails(false)}
+                                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5"
+                                >
+                                  <Icon name="check" className="w-3.5 h-3.5" />
+                                  <span>Actualizar {bulkEmailParsed.filter(p => p.status === 'matched').length} Correos en la Maestra</span>
+                                </button>
+                              )}
+
+                              {bulkEmailParsed.filter(p => p.status === 'unmatched').length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleApplyBulkEmails(true)}
+                                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs border border-zinc-700 flex items-center justify-center gap-1.5"
+                                  title="Actualiza los que coinciden y además agrega como clientes nuevos los que no estaban en la lista"
+                                >
+                                  <span>Actualizar e Incluir los {bulkEmailParsed.filter(p => p.status === 'unmatched').length} Nuevos</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 )}
                 </div>
@@ -5081,202 +5503,480 @@
                       </div>
                     </div>
 
-                    {/* Tarjetas de Estado y Accesos Rápidos Inteligentes */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Tarjeta 1: Cuenta y Servidores */}
-                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-md">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">CUENTA ACTIVA</span>
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        </div>
-                        <div>
-                          <div className="font-heading font-black text-white text-base">contacto@letrerosolivar.com</div>
-                          <span className="text-[11px] text-zinc-400">Google Workspace / Gmail</span>
-                        </div>
-                        <div className="pt-2 border-t border-zinc-900 text-[11px] text-zinc-400 space-y-1">
-                          <p><strong className="text-zinc-300">Entrante (IMAP):</strong> mail.letrerosolivar.com : 993</p>
-                          <p><strong className="text-zinc-300">Saliente (SMTP):</strong> mail.letrerosolivar.com : 465</p>
-                        </div>
+                    {/* Barra de Sub-Pestañas de Webmail */}
+                    <div className="p-3 rounded-xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setWebmailSubTab('inbox')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            webmailSubTab === 'inbox'
+                              ? 'bg-blue-600 text-white font-extrabold shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
+                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="mail" className="w-4 h-4 text-blue-200" />
+                          <span>📥 Bandeja de Entrada In-App ({inboxEmails.length})</span>
+                          {inboxEmails.filter(e => e.unread).length > 0 && (
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWebmailSubTab('compose')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            webmailSubTab === 'compose'
+                              ? 'bg-blue-600 text-white font-extrabold shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
+                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="file-text" className="w-4 h-4" />
+                          <span>✍️ Redactor de Correo</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setWebmailSubTab('sync')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            webmailSubTab === 'sync'
+                              ? 'bg-blue-600 text-white font-extrabold shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
+                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="sparkles" className="w-4 h-4 text-amber-400" />
+                          <span>⚙️ Vincular con Gmail / Ayuda</span>
+                        </button>
                       </div>
 
-                      {/* Tarjeta 2: Filtros Rápidos de Gmail */}
-                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-md">
-                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">BÚSQUEDAS EN GMAIL CON 1 CLIC</span>
-                        <div className="space-y-1.5 pt-1">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenGmailSearch('comprobante OR transferencia OR pago OR bci OR mach')}
-                            className="w-full text-left bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs border border-zinc-800 flex items-center justify-between transition"
-                          >
-                            <span>💰 Ver Comprobantes de Pago</span>
-                            <Icon name="external-link" className="w-3 h-3 text-emerald-400" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenGmailSearch('subject:Cotización')}
-                            className="w-full text-left bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs border border-zinc-800 flex items-center justify-between transition"
-                          >
-                            <span>📋 Ver Cotizaciones Enviadas</span>
-                            <Icon name="external-link" className="w-3 h-3 text-red-400" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenGmailSearch('subject:"Solicitud de Cotización"')}
-                            className="w-full text-left bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs border border-zinc-800 flex items-center justify-between transition"
-                          >
-                            <span>📩 Solicitudes Web Recibidas</span>
-                            <Icon name="external-link" className="w-3 h-3 text-blue-400" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Tarjeta 3: Instrucciones y Atajos */}
-                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-md">
-                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">FLUJO OPERATIVO UNIFICADO</span>
-                        <p className="text-xs text-zinc-400 leading-relaxed">
-                          Usa el <strong className="text-white">Redactor Rápido</strong> para enviar mensajes con plantillas predefinidas o haz clic en <strong className="text-white">Abrir Gmail</strong> para gestionar tu bandeja de entrada completa sin mezclar tus cuentas personales.
-                        </p>
-                        <div className="pt-2 border-t border-zinc-900 flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenGmailSearch('is:unread')}
-                            className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition"
-                          >
-                            <span>📬 Ver correos no leídos en Gmail →</span>
-                          </button>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-zinc-800 flex items-center gap-1.5 transition"
+                          title="Abrir en pestaña externa de Gmail"
+                        >
+                          <Icon name="external-link" className="w-3.5 h-3.5" />
+                          <span>Abrir Gmail Externo</span>
+                        </button>
                       </div>
                     </div>
 
-                    {/* REDACTOR RÁPIDO DE CORREO DESDE LA INTRANET */}
-                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-5 shadow-xl">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
-                        <div>
-                          <h3 className="text-base font-bold text-white font-heading flex items-center gap-2">
-                            <Icon name="mail" className="w-4 h-4 text-red-500" />
-                            <span>Redactor Rápido de Correos Corporativos</span>
+                    {/* VISTA 1: BANDEJA DE ENTRADA IN-APP (SIN PESTAÑAS EXTERNAS) */}
+                    {webmailSubTab === 'inbox' && (
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        {/* Columna Izquierda: Lista de Mensajes (5 cols) */}
+                        <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
+                          <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
+                            <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                              <span>Mensajes ({inboxEmails.length})</span>
+                            </span>
+                            <span className="text-[10px] text-zinc-500 font-mono">contacto@letrerosolivar.com</span>
+                          </div>
+
+                          {/* Búsqueda y Filtros */}
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <Icon name="search" className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
+                              <input
+                                type="text"
+                                placeholder="Buscar en correos..."
+                                value={inboxSearch}
+                                onChange={(e) => setInboxSearch(e.target.value)}
+                                className="w-full bg-zinc-950 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-zinc-800 focus:border-blue-500 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                              {[
+                                { id: 'all', label: 'Todos' },
+                                { id: 'Cotización', label: 'Cotizaciones' },
+                                { id: 'Comprobante', label: 'Comprobantes' },
+                                { id: 'unread', label: 'No leídos' }
+                              ].map(f => (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onClick={() => setInboxFilter(f.id)}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+                                    inboxFilter === f.id
+                                      ? 'bg-blue-600 text-white font-bold'
+                                      : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                  }`}
+                                >
+                                  {f.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Lista de Mensajes */}
+                          <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
+                            {inboxEmails
+                              .filter(e => {
+                                if (inboxFilter === 'unread') return e.unread;
+                                if (inboxFilter !== 'all') return e.tag === inboxFilter;
+                                return true;
+                              })
+                              .filter(e => {
+                                if (!inboxSearch.trim()) return true;
+                                const q = inboxSearch.toLowerCase();
+                                return (
+                                  e.fromName.toLowerCase().includes(q) ||
+                                  e.fromEmail.toLowerCase().includes(q) ||
+                                  e.subject.toLowerCase().includes(q) ||
+                                  e.body.toLowerCase().includes(q)
+                                );
+                              })
+                              .map(em => (
+                                <div
+                                  key={em.id}
+                                  onClick={() => {
+                                    setSelectedInboxEmailId(em.id);
+                                    if (em.unread) {
+                                      setInboxEmails(prev => prev.map(item => item.id === em.id ? { ...item, unread: false } : item));
+                                    }
+                                  }}
+                                  className={`p-3 rounded-xl border cursor-pointer transition text-left space-y-1.5 ${
+                                    selectedInboxEmailId === em.id
+                                      ? 'bg-zinc-900 border-blue-500 shadow-md ring-1 ring-blue-500/40'
+                                      : em.unread
+                                      ? 'bg-zinc-950 hover:bg-zinc-900/80 border-blue-900/40'
+                                      : 'bg-zinc-950/60 hover:bg-zinc-900/60 border-zinc-800/80 opacity-80 hover:opacity-100'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {em.unread && (
+                                        <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
+                                      )}
+                                      <span className={`text-xs truncate ${em.unread ? 'font-black text-white' : 'font-medium text-zinc-300'}`}>
+                                        {em.fromName}
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] text-zinc-500 font-mono flex-shrink-0">{em.date}</span>
+                                  </div>
+
+                                  <div className={`text-xs truncate ${em.unread ? 'font-bold text-zinc-200' : 'text-zinc-400'}`}>
+                                    {em.subject}
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[11px] pt-1">
+                                    <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                      em.tag === 'Cotización'
+                                        ? 'bg-red-600/20 text-red-400 border border-red-800/40'
+                                        : em.tag === 'Comprobante'
+                                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
+                                        : 'bg-zinc-800 text-zinc-400'
+                                    }`}>
+                                      {em.tag}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+
+                        {/* Columna Derecha: Panel de Lectura del Mensaje (7 cols) */}
+                        <div className="lg:col-span-7 bg-black border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
+                          {(() => {
+                            const currentEmail = inboxEmails.find(e => e.id === selectedInboxEmailId) || inboxEmails[0];
+                            if (!currentEmail) {
+                              return (
+                                <div className="text-center py-20 text-zinc-500 text-xs">
+                                  Selecciona un correo para leer su contenido
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="space-y-5">
+                                {/* Encabezado del Correo */}
+                                <div className="border-b border-zinc-800 pb-4 space-y-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
+                                      currentEmail.tag === 'Cotización'
+                                        ? 'bg-red-600/20 text-red-400 border border-red-800/40'
+                                        : currentEmail.tag === 'Comprobante'
+                                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
+                                        : 'bg-zinc-800 text-zinc-300'
+                                    }`}>
+                                      {currentEmail.tag}
+                                    </span>
+                                    <span className="text-xs font-mono text-zinc-500">{currentEmail.date}</span>
+                                  </div>
+
+                                  <h3 className="text-lg font-black text-white font-heading leading-tight">
+                                    {currentEmail.subject}
+                                  </h3>
+
+                                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
+                                    <div>
+                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">De:</span>
+                                      <strong className="text-white">{currentEmail.fromName}</strong>
+                                      <span className="text-zinc-400 font-mono ml-2">({currentEmail.fromEmail})</span>
+                                      {currentEmail.rut && (
+                                        <span className="ml-2 text-[10px] font-mono text-zinc-500">RUT: {currentEmail.rut}</span>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">Para:</span>
+                                      <span className="text-zinc-300 font-mono">contacto@letrerosolivar.com</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Acciones directas integradas con la Intranet */}
+                                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuoteFromInboxEmail(currentEmail)}
+                                      className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition flex items-center gap-1.5 shadow-md shadow-red-600/30"
+                                      title="Carga este cliente y requerimiento en una nueva cotización formal"
+                                    >
+                                      <Icon name="cotizacion" className="w-3.5 h-3.5" />
+                                      <span>💼 Cotizar a este Cliente</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveInboxEmailToMaster(currentEmail)}
+                                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
+                                      title="Guarda o actualiza el correo de este cliente en la Maestra"
+                                    >
+                                      <Icon name="users" className="w-3.5 h-3.5" />
+                                      <span>👥 Sincronizar en Maestra</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReplyInboxEmail(currentEmail)}
+                                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-blue-600/30"
+                                    >
+                                      <Icon name="file-text" className="w-3.5 h-3.5" />
+                                      <span>✍️ Responder</span>
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Cuerpo del Mensaje */}
+                                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[220px]">
+                                  {currentEmail.body}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* VISTA 2: REDACTOR DE CORREO */}
+                    {webmailSubTab === 'compose' && (
+                      <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-5 shadow-xl">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+                          <div>
+                            <h3 className="text-base font-bold text-white font-heading flex items-center gap-2">
+                              <Icon name="mail" className="w-4 h-4 text-red-500" />
+                              <span>Redactor Rápido de Correos Corporativos</span>
+                            </h3>
+                            <p className="text-xs text-zinc-400 mt-0.5">
+                              Redacta o utiliza una de las plantillas oficiales y envíalo con un clic vía Gmail Workspace.
+                            </p>
+                          </div>
+
+                          {/* Plantillas rápidas */}
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] text-zinc-500 uppercase font-bold mr-1">Plantillas:</span>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyEmailTemplate('cotizacion')}
+                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                            >
+                              📋 Cotización
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyEmailTemplate('comprobante')}
+                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                            >
+                              💰 Pago Recibido
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyEmailTemplate('terminado')}
+                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                            >
+                              ✅ Trabajo Listo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApplyEmailTemplate('instalacion')}
+                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                            >
+                              🚚 Instalación
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 text-xs">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-zinc-300 font-semibold">Destinatario (Para:)</label>
+                                {clientsMaster.length > 0 && (
+                                  <select
+                                    onChange={(e) => {
+                                      if (e.target.value) setQuickMailTo(e.target.value);
+                                    }}
+                                    defaultValue=""
+                                    className="text-[10px] bg-zinc-950 text-zinc-400 border border-zinc-800 rounded px-2 py-0.5 focus:border-red-600 focus:outline-none"
+                                  >
+                                    <option value="">-- Cargar de Maestra de Clientes --</option>
+                                    {clientsMaster.filter(c => c.email).map(c => (
+                                      <option key={c.id} value={c.email}>
+                                        {c.name} ({c.email})
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+                              </div>
+                              <input
+                                type="email"
+                                value={quickMailTo}
+                                onChange={(e) => setQuickMailTo(e.target.value)}
+                                placeholder="ej: adquisiciones@cliente.cl"
+                                className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-zinc-300 font-semibold mb-1">Asunto:</label>
+                              <input
+                                type="text"
+                                value={quickMailSubject}
+                                onChange={(e) => setQuickMailSubject(e.target.value)}
+                                placeholder="Asunto del correo corporativo..."
+                                className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-zinc-300 font-semibold mb-1">Mensaje / Cuerpo del Correo:</label>
+                            <textarea
+                              rows={8}
+                              value={quickMailBody}
+                              onChange={(e) => setQuickMailBody(e.target.value)}
+                              className="w-full bg-zinc-950 text-white p-3.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono text-xs leading-relaxed"
+                              placeholder="Escribe el cuerpo del correo aquí..."
+                            ></textarea>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                            <span className="text-[11px] text-zinc-500">
+                              Remitente: <strong className="text-zinc-300">contacto@letrerosolivar.com</strong> (Letreros Olivar SpA)
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`${quickMailSubject}\n\n${quickMailBody}`);
+                                  showToast('📋 Asunto y cuerpo copiados al portapapeles');
+                                }}
+                                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold border border-zinc-700 transition flex items-center gap-1.5"
+                                title="Copiar texto para pegar en cualquier correo o WhatsApp"
+                              >
+                                <Icon name="clipboard" className="w-3.5 h-3.5" />
+                                <span>Copiar Mensaje</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleOpenDefaultMailto}
+                                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold border border-zinc-700 transition flex items-center gap-1.5"
+                                title="Abrir en Outlook o cliente predeterminado del computador"
+                              >
+                                <Icon name="mail" className="w-3.5 h-3.5" />
+                                <span>Cliente Local</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleOpenGmailCompose}
+                                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-2 shadow-lg shadow-red-600/30"
+                              >
+                                <Icon name="external-link" className="w-4 h-4" />
+                                <span>Abrir en Gmail ➔</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* VISTA 3: GUÍA DE VINCULACIÓN GMAIL / GOOGLE WORKSPACE */}
+                    {webmailSubTab === 'sync' && (
+                      <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-6 shadow-xl text-xs">
+                        <div className="border-b border-zinc-800 pb-4">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">CONFIGURACIÓN TÉCNICA OFICIAL</span>
+                          <h3 className="text-xl font-black text-white font-heading mt-1">
+                            Cómo funciona tu cuenta contacto@letrerosolivar.com con Gmail
                           </h3>
-                          <p className="text-xs text-zinc-400 mt-0.5">
-                            Redacta o utiliza una de las plantillas oficiales y envíalo con un clic vía Gmail Workspace.
+                          <p className="text-zinc-400 mt-1 max-w-3xl leading-relaxed">
+                            Tu dominio <strong className="text-white">letrerosolivar.com</strong> ya está enlazado directamente a los servidores de Google Workspace (<span className="text-blue-400 font-mono">smtp.google.com</span>). No requieres configuraciones complejas de puertos POP3 ni IMAP.
                           </p>
                         </div>
 
-                        {/* Plantillas rápidas */}
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold mr-1">Plantillas:</span>
-                          <button
-                            type="button"
-                            onClick={() => handleApplyEmailTemplate('cotizacion')}
-                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                          >
-                            📋 Cotización
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleApplyEmailTemplate('comprobante')}
-                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                          >
-                            💰 Pago Recibido
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleApplyEmailTemplate('terminado')}
-                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                          >
-                            ✅ Trabajo Listo
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleApplyEmailTemplate('instalacion')}
-                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                          >
-                            🚚 Instalación
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4 text-xs">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-zinc-300 font-semibold">Destinatario (Para:)</label>
-                              {clientsMaster.length > 0 && (
-                                <select
-                                  onChange={(e) => {
-                                    if (e.target.value) setQuickMailTo(e.target.value);
-                                  }}
-                                  defaultValue=""
-                                  className="text-[10px] bg-zinc-950 text-zinc-400 border border-zinc-800 rounded px-2 py-0.5 focus:border-red-600 focus:outline-none"
-                                >
-                                  <option value="">-- Cargar de Maestra de Clientes --</option>
-                                  {clientsMaster.filter(c => c.email).map(c => (
-                                    <option key={c.id} value={c.email}>
-                                      {c.name} ({c.email})
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
-                            <input
-                              type="email"
-                              value={quickMailTo}
-                              onChange={(e) => setQuickMailTo(e.target.value)}
-                              placeholder="ej: adquisiciones@cliente.cl"
-                              className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
-                            />
+                          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                            <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">1</span>
+                              <span>Si quieres ver todo en tu Gmail personal</span>
+                            </h4>
+                            <p className="text-zinc-400 text-[11px] leading-relaxed">
+                              Si usas un Gmail personal (ej: carlos@gmail.com) y no quieres estar abriendo y cerrando sesiones:
+                            </p>
+                            <ol className="list-decimal list-inside text-zinc-300 text-[11px] space-y-1.5 pt-1 pl-1">
+                              <li>Entra a Gmail con la cuenta <strong className="text-white">contacto@letrerosolivar.com</strong>.</li>
+                              <li>Ve a <strong>Ajustes (⚙️) ➔ Ver todos los ajustes ➔ Reenvío y correo POP/IMAP</strong>.</li>
+                              <li>Añade tu correo personal como dirección de reenvío y confirma el código.</li>
+                              <li>¡Listo! Todo lo que llegue a <strong className="text-blue-400">contacto@letrerosolivar.com</strong> te llegará a tu teléfono o Gmail personal automáticamente.</li>
+                            </ol>
                           </div>
 
-                          <div>
-                            <label className="block text-zinc-300 font-semibold mb-1">Asunto:</label>
-                            <input
-                              type="text"
-                              value={quickMailSubject}
-                              onChange={(e) => setQuickMailSubject(e.target.value)}
-                              placeholder="Asunto del correo corporativo..."
-                              className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
-                            />
+                          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                            <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center font-bold text-xs">2</span>
+                              <span>Responder como contacto@letrerosolivar.com</span>
+                            </h4>
+                            <p className="text-zinc-400 text-[11px] leading-relaxed">
+                              Para poder enviar o responder presupuestos desde tu propio Gmail con el nombre formal de Letreros Olivar SpA:
+                            </p>
+                            <ol className="list-decimal list-inside text-zinc-300 text-[11px] space-y-1.5 pt-1 pl-1">
+                              <li>En tu Gmail personal, ve a <strong>Ajustes ➔ Cuentas e importación ➔ Enviar como</strong>.</li>
+                              <li>Haz clic en <strong>Añadir otra dirección de correo</strong>.</li>
+                              <li>Ingresa el nombre <strong className="text-white">Letreros Olivar SpA</strong> y el correo <strong className="text-white">contacto@letrerosolivar.com</strong>.</li>
+                              <li>Google te enviará un correo de confirmación de 1 clic para validar que eres el dueño del dominio.</li>
+                            </ol>
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-zinc-300 font-semibold mb-1">Mensaje / Cuerpo del Correo:</label>
-                          <textarea
-                            rows={8}
-                            value={quickMailBody}
-                            onChange={(e) => setQuickMailBody(e.target.value)}
-                            className="w-full bg-zinc-950 text-white p-3.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono text-xs leading-relaxed"
-                            placeholder="Escribe el cuerpo del correo aquí..."
-                          ></textarea>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                          <span className="text-[11px] text-zinc-500">
-                            Remitente: <strong className="text-zinc-300">contacto@letrerosolivar.com</strong> (Letreros Olivar SpA)
-                          </span>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleOpenDefaultMailto}
-                              className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold border border-zinc-700 transition flex items-center gap-1.5"
-                              title="Abrir en Outlook o cliente predeterminado del computador"
-                            >
-                              <Icon name="mail" className="w-3.5 h-3.5" />
-                              <span>Cliente Local / Mailto</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={handleOpenGmailCompose}
-                              className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-2 shadow-lg shadow-red-600/30"
-                            >
-                              <Icon name="external-link" className="w-4 h-4" />
-                              <span>Abrir y Enviar en Gmail ➔</span>
-                            </button>
+                        <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between gap-4">
+                          <div>
+                            <span className="text-white font-bold block">¿Necesitas soporte técnico de Google Workspace?</span>
+                            <span className="text-zinc-400 text-[11px]">Tu cuenta corporativa está 100% activa y lista para recibir mensajes.</span>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => setWebmailSubTab('inbox')}
+                            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 flex-shrink-0"
+                          >
+                            Ir a Bandeja de Entrada In-App ➔
+                          </button>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                   </div>
                 )}
