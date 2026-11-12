@@ -1696,9 +1696,43 @@
         showToast(`📋 Datos de ${req.clientName} cargados en el cotizador`);
       };
 
+      // Estado para saber si estamos editando una cotización existente del historial
+      const [editingCorrelative, setEditingCorrelative] = useState(null);
+
+      // --- EDITAR COTIZACIÓN EXISTENTE (Modifica la misma orden sin cambiar el correlativo) ---
+      const handleEditExistingQuote = (quoteToEdit) => {
+        if (!quoteToEdit) return;
+        setEditingCorrelative(quoteToEdit.correlative);
+        setIntranetClientData({
+          name: quoteToEdit.client.name || '',
+          contactPerson: quoteToEdit.client.contactPerson || '',
+          documentId: quoteToEdit.client.documentId || '',
+          phone: quoteToEdit.client.phone || '',
+          email: quoteToEdit.client.email || '',
+          deliveryAddress: quoteToEdit.client.deliveryAddress || '',
+          deliveryMethod: quoteToEdit.client.deliveryMethod || 'instalacion',
+          validDays: quoteToEdit.client.validDays || 15,
+          paymentTerms: quoteToEdit.client.paymentTerms || 'Crédito 30 días',
+          manufacturingDays: quoteToEdit.client.manufacturingDays || '5 a 7 días hábiles'
+        });
+
+        const clonedItems = (quoteToEdit.items || []).map((item, idx) => ({
+          ...item,
+          id: item.id || ('item-edit-' + Date.now() + '-' + idx)
+        }));
+        setQuoteItems(clonedItems);
+        setDiscountAmount(quoteToEdit.discountAmount || 0);
+        setTaxRate(quoteToEdit.taxRate ?? 19);
+
+        setIntranetSection('taller');
+        setIntranetTab('cotizador');
+        showToast(`✏️ Editando cotización oficial ${quoteToEdit.correlative}`);
+      };
+
       // --- REUTILIZAR / CLONAR COTIZACIÓN DEL HISTORIAL (Crea una NUEVA sin modificar la anterior) ---
       const handleReuseQuote = (oldQuote) => {
         if (!oldQuote) return;
+        setEditingCorrelative(null);
         // 1. Cargar datos del cliente
         setIntranetClientData({
           name: oldQuote.client.name || '',
@@ -1773,6 +1807,7 @@
         });
         setDiscountAmount(0);
         setTaxRate(19);
+        setEditingCorrelative(null);
         setIntranetSection('taller');
         setIntranetTab('cotizador');
         showToast(`✨ Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
@@ -1926,9 +1961,15 @@
           return;
         }
 
+        const isEditing = Boolean(editingCorrelative);
+        const targetCorrelative = isEditing ? editingCorrelative : currentCorrelativeCode;
+        const targetNumeric = isEditing
+          ? parseInt(editingCorrelative.replace(/\D/g, ''), 10) || correlativeNumber
+          : correlativeNumber;
+
         const quoteRecord = {
-          correlative: currentCorrelativeCode,
-          numericCorrelative: correlativeNumber,
+          correlative: targetCorrelative,
+          numericCorrelative: targetNumeric,
           date: new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }),
           timestamp: Date.now(),
           client: { ...intranetClientData },
@@ -1936,7 +1977,7 @@
           totals: { ...financialTotals },
           discountAmount,
           taxRate,
-          status: 'Emitida'
+          status: isEditing ? 'Actualizada' : 'Emitida'
         };
 
         if (intranetClientData.name || intranetClientData.documentId) {
@@ -1970,10 +2011,40 @@
           });
         }
 
-        setQuoteHistory([quoteRecord, ...quoteHistory]);
-        setCorrelativeNumber(prev => prev + 1);
+        setQuoteHistory(prev => {
+          let next;
+          if (isEditing) {
+            const exists = prev.some(q => q.correlative === targetCorrelative);
+            if (exists) {
+              next = prev.map(q => q.correlative === targetCorrelative ? quoteRecord : q);
+            } else {
+              next = [quoteRecord, ...prev];
+            }
+          } else {
+            next = [quoteRecord, ...prev.filter(q => q.correlative !== targetCorrelative)];
+          }
+          try {
+            localStorage.setItem('olivar_quotes_history', JSON.stringify(next));
+          } catch (e) {
+            console.error('Error guardando historial en localStorage:', e);
+          }
+          return next;
+        });
+
+        if (!isEditing) {
+          setCorrelativeNumber(prev => {
+            const nextNum = prev + 1;
+            try {
+              localStorage.setItem('olivar_correlative', nextNum.toString());
+              localStorage.setItem('letreros_olivar_folio_num', nextNum.toString());
+            } catch (e) {}
+            return nextNum;
+          });
+        }
+
+        setEditingCorrelative(null);
         handleOpenPrintModal(quoteRecord);
-        showToast(`🎉 Cotización ${quoteRecord.correlative} emitida con éxito.`);
+        showToast(isEditing ? `✏️ Cotización ${quoteRecord.correlative} actualizada y guardada con éxito.` : `🎉 Cotización ${quoteRecord.correlative} guardada y emitida con éxito.`);
       };
 
       const handleSendWhatsAppQuote = (quote) => {
@@ -3983,12 +4054,27 @@
                             </div>
                           </div>
                           <div className="space-y-2.5 pt-4">
+                            {editingCorrelative && (
+                              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
+                                <span className="text-amber-400 font-bold flex items-center gap-1.5">
+                                  <span>✏️ Editando:</span>
+                                  <strong className="text-white font-mono">{editingCorrelative}</strong>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartNewQuote(true)}
+                                  className="text-[11px] text-zinc-400 hover:text-white underline"
+                                >
+                                  Cancelar edición
+                                </button>
+                              </div>
+                            )}
                             <button
                               onClick={handleEmitQuote}
                               className="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 text-sm"
                             >
                               <Icon name="check" className="w-5 h-5" />
-                              <span>Emitir & Guardar Cotización</span>
+                              <span>{editingCorrelative ? `Guardar Cambios en ${editingCorrelative}` : 'Emitir & Guardar Cotización'}</span>
                             </button>
                             <button
                               onClick={() => handleSendWhatsAppQuote()}
@@ -4845,12 +4931,20 @@
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
                               <button
+                                onClick={() => handleEditExistingQuote(q)}
+                                className="bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                title="Editar esta cotización directamente conservando el mismo correlativo"
+                              >
+                                <Icon name="file-text" className="w-3.5 h-3.5" />
+                                <span>✏️ Editar Orden</span>
+                              </button>
+                              <button
                                 onClick={() => handleReuseQuote(q)}
                                 className="bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-500/40 flex items-center gap-1.5 transition shadow-sm"
                                 title="Cargar estos datos en el cotizador para emitir una NUEVA cotización sin alterar la original"
                               >
                                 <Icon name="refresh" className="w-3.5 h-3.5" />
-                                <span>Reutilizar / Nueva Cotización</span>
+                                <span>Reutilizar / Clonar</span>
                               </button>
                               <button
                                 onClick={() => handleOpenPrintModal(q)}
