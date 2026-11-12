@@ -30,14 +30,17 @@
     "@type": "LocalBusiness",
     "name": "Letreros Olivar SpA",
     "image": "https://letrerosolivar.com/logo.png",
+    "logo": "https://letrerosolivar.com/logo.png",
     "telephone": "+56951585884",
     "email": "contacto@letrerosolivar.com",
     "url": "https://letrerosolivar.com/",
+    "hasMap": "https://maps.app.goo.gl/CAhXECLhAJ12AzEC9",
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Ruta H-40",
+      "streetAddress": "Camino Público S/N, Olivar",
       "addressLocality": "Olivar",
       "addressRegion": "Región del Libertador General Bernardo O'Higgins",
+      "postalCode": "2910000",
       "addressCountry": "CL"
     },
     "geo": {
@@ -45,8 +48,32 @@
       "latitude": -34.2303158,
       "longitude": -70.8599445
     },
+    "areaServed": [
+      { "@type": "AdministrativeArea", "name": "Olivar" },
+      { "@type": "AdministrativeArea", "name": "Olivar Alto" },
+      { "@type": "AdministrativeArea", "name": "Olivar Bajo" },
+      { "@type": "AdministrativeArea", "name": "Gultro" },
+      { "@type": "AdministrativeArea", "name": "Rancagua" },
+      { "@type": "AdministrativeArea", "name": "Machalí" },
+      { "@type": "AdministrativeArea", "name": "Requínoa" },
+      { "@type": "AdministrativeArea", "name": "Rengo" },
+      { "@type": "AdministrativeArea", "name": "Graneros" },
+      { "@type": "AdministrativeArea", "name": "Mostazal" },
+      { "@type": "AdministrativeArea", "name": "Doñihue" },
+      { "@type": "AdministrativeArea", "name": "Coltauco" },
+      { "@type": "AdministrativeArea", "name": "Coinco" },
+      { "@type": "AdministrativeArea", "name": "San Vicente de Tagua Tagua" },
+      { "@type": "AdministrativeArea", "name": "Región del Libertador General Bernardo O'Higgins" }
+    ],
     "priceRange": "$$",
-    "openingHours": "Mo-Fr 08:30-18:30, Sa 09:00-14:00"
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+        "opens": "10:00",
+        "closes": "20:00"
+      }
+    ]
   }
   </script>
   
@@ -1415,7 +1442,7 @@
           showToast('💰 Plantilla de Comprobante cargada');
         } else if (type === 'terminado') {
           setQuickMailSubject('Trabajo Terminado y Listo para Entrega - Letreros Olivar SpA');
-          setQuickMailBody(`Estimado cliente,\n\nLe informamos con agrado que su trabajo publicitario se encuentra completamente terminado y revisado con nuestro estándar de control de calidad.\n\nHorario de taller para retiro:\n• Lunes a Viernes de 09:00 a 18:30 hrs.\n• Dirección: Camino Público S/N, Olivar, Región de O'Higgins.\n\nFavor coordinar su retiro o despacho respondiendo a este mensaje.\n\nAtentamente,\nProducción Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
+          setQuickMailBody(`Estimado cliente,\n\nLe informamos con agrado que su trabajo publicitario se encuentra completamente terminado y revisado con nuestro estándar de control de calidad.\n\nHorario de taller para retiro:\n• Lunes a Viernes de 10:00 a 20:00 hrs (Continuado).\n• Sábados, Domingos y Festivos: Cerrado.\n• Dirección: Camino Público S/N, Olivar, Región de O'Higgins.\n\nFavor coordinar su retiro o despacho respondiendo a este mensaje.\n\nAtentamente,\nProducción Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
           showToast('✅ Plantilla de Trabajo Terminado cargada');
         } else if (type === 'instalacion') {
           setQuickMailSubject('Coordinación de Cuadrilla de Instalación en Terreno - Letreros Olivar SpA');
@@ -3180,8 +3207,8 @@
                           <span>{companyInfo.address}</span>
                         </a>
                       </li>
-                      <li>Lun a Vie: 08:30 - 18:30</li>
-                      <li>Sábados: 09:00 - 13:30</li>
+                      <li className="text-zinc-300 font-medium">🕒 Lun a Vie: 10:00 - 20:00 hrs (Continuado)</li>
+                      <li className="text-zinc-500 text-xs">Sábados, Domingos y Festivos: Cerrado</li>
                       <li className="pt-1">
                         <a href={`tel:${companyInfo.phone}`} className="text-zinc-300 hover:text-white transition flex items-center gap-1.5 font-mono">
                           <span>📞 Tel: {companyInfo.phone}</span>
