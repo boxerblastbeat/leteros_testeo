@@ -561,7 +561,9 @@
       const [loginPassword, setLoginPassword] = useState('');
       const [loginError, setLoginError] = useState('');
 
-      // Sub-pestaña de la Intranet: 'cotizador' | 'solicitudes' | 'historial'
+      // Espacio Principal de la Intranet: 'portal' (menú dividido 2 lados), 'taller' (cotizaciones) o 'webmail' (correo)
+      const [intranetSection, setIntranetSection] = useState('portal');
+      // Sub-pestaña de la Intranet (área de cotizaciones): 'cotizador' | 'solicitudes' | 'historial' | 'precios' | 'clientes'
       const [intranetTab, setIntranetTab] = useState('cotizador');
 
       // -------------------------------------------------------------
@@ -940,6 +942,7 @@
           email: client.email || '',
           deliveryAddress: client.address || ''
         }));
+        setIntranetSection('taller');
         setIntranetTab('cotizador');
         showToast(`📋 Datos de ${client.name} cargados en el Cotizador`);
       };
@@ -1190,6 +1193,7 @@
         if (req.height) setItemHeight(parseFloat(req.height) || 1.2);
         if (req.quantity) setItemQty(parseInt(req.quantity, 10) || 1);
 
+        setIntranetSection('taller');
         setIntranetTab('cotizador');
         showToast(`📋 Datos de ${req.clientName} cargados en el cotizador`);
       };
@@ -1223,6 +1227,7 @@
         setTaxRate(oldQuote.taxRate ?? 19);
 
         // 4. Cambiar a la pestaña de cotizador para continuar o emitir
+        setIntranetSection('taller');
         setIntranetTab('cotizador');
         showToast(`📋 Datos de ${oldQuote.client.name} cargados para nueva cotización (${currentCorrelativeCode})`);
       };
@@ -1270,6 +1275,7 @@
         });
         setDiscountAmount(0);
         setTaxRate(19);
+        setIntranetSection('taller');
         setIntranetTab('cotizador');
         showToast(`✨ Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
       };
@@ -2784,97 +2790,77 @@
             <main className="flex-1 bg-zinc-950 py-8 px-4 sm:px-8">
               <div className="max-w-7xl mx-auto space-y-8">
                 
-                {/* Header de la Intranet */}
-                <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
-                  <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600 text-white text-xs font-bold mb-2">
-                      <Icon name="lock" className="w-3 h-3" />
-                      PANEL PRIVADO DE ADMINISTRACIÓN Y COTIZACIONES
+                {/* Barra Superior / Switcher de Espacios de la Intranet */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shadow-lg shadow-red-600/30">
+                      <Icon name="lock" className="w-5 h-5" />
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-white font-heading">
-                      Intranet Taller Letreros Olivar SpA
-                    </h1>
-                    <p className="text-zinc-400 text-xs mt-1">
-                      Gestiona solicitudes entrantes de la web, emite cotizaciones correlativas oficiales y descarga PDFs formales.
-                    </p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-red-500">INTRANET CORPORATIVA</span>
+                        <span className="text-zinc-600">•</span>
+                        <span className="text-[11px] text-zinc-400">Letreros Olivar SpA</span>
+                      </div>
+                      <h1 className="text-lg sm:text-xl font-black text-white font-heading">
+                        {intranetSection === 'portal' && 'Portal de Espacios de Trabajo'}
+                        {intranetSection === 'taller' && 'Espacio de Cotizaciones & Taller'}
+                        {intranetSection === 'webmail' && 'Espacio de Webmail & Correo Corporativo'}
+                      </h1>
+                    </div>
                   </div>
 
-                  {/* Selector de Pestañas de Intranet */}
                   <div className="flex flex-wrap items-center gap-2">
                     <button
+                      type="button"
+                      onClick={() => setIntranetSection('portal')}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                        intranetSection === 'portal'
+                          ? 'bg-zinc-100 text-black font-black shadow-md'
+                          : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                      }`}
+                      title="Volver a la vista dividida de dos espacios"
+                    >
+                      <span>🏠 Menú de Espacios</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => {
-                        if (intranetTab !== 'cotizador') {
-                          setIntranetTab('cotizador');
-                        } else {
-                          handleStartNewQuote();
-                        }
+                        setIntranetSection('taller');
+                        setIntranetTab('cotizador');
                       }}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-sm ${
-                        intranetTab === 'cotizador' ? 'bg-red-600 text-white shadow-red-900/40 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                        intranetSection === 'taller'
+                          ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 ring-2 ring-red-500/50'
+                          : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
                       }`}
-                      title="Iniciar o ir a una Nueva Cotización"
+                      title="Ir al área de cotizaciones y taller"
                     >
-                      <Icon name="plus" className="w-4 h-4" />
-                      <span>Nueva Cotización</span>
+                      <span>💼 Cotizaciones & Taller</span>
                     </button>
 
                     <button
-                      onClick={() => setIntranetTab('solicitudes')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                        intranetTab === 'solicitudes' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                      type="button"
+                      onClick={() => setIntranetSection('webmail')}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                        intranetSection === 'webmail'
+                          ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 ring-2 ring-red-500/50'
+                          : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
                       }`}
+                      title="Ir al área de correo y webmail corporativo"
                     >
-                      <Icon name="truck" className="w-4 h-4" />
-                      <span>Solicitudes Web ({receivedRequests.length})</span>
+                      <Icon name="mail" className="w-3.5 h-3.5 text-amber-400" />
+                      <span>✉️ Webmail & Correo</span>
                     </button>
 
-                    <button
-                      onClick={() => setIntranetTab('historial')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                        intranetTab === 'historial' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                      }`}
-                    >
-                      <Icon name="history" className="w-4 h-4" />
-                      <span>Historial Emitidas ({quoteHistory.length})</span>
-                    </button>
-
-                    <button
-                      onClick={() => setIntranetTab('precios')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                        intranetTab === 'precios' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                      }`}
-                    >
-                      <Icon name="table" className="w-4 h-4" />
-                      <span>Tarifario & Materiales (Excel)</span>
-                    </button>
-
-                    <button
-                      onClick={() => setIntranetTab('clientes')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                        intranetTab === 'clientes' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                      }`}
-                    >
-                      <Icon name="users" className="w-4 h-4" />
-                      <span>Maestra de Clientes ({clientsMaster.length})</span>
-                    </button>
-
-                    <button
-                      onClick={() => setIntranetTab('webmail')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                        intranetTab === 'webmail' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                      }`}
-                    >
-                      <Icon name="mail" className="w-4 h-4 text-amber-400" />
-                      <span>Webmail & Correo</span>
-                    </button>
-
-                    <div className="flex items-center gap-1.5 ml-auto">
+                    <div className="hidden sm:flex items-center gap-1.5 ml-auto border-l border-zinc-800 pl-3">
                       <a
                         href="cotizador.html"
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 shadow-sm"
-                        title="Abrir el formato clásico de taller en una pestaña nueva"
+                        className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800"
+                        title="Abrir cotizador independiente de taller"
                       >
                         <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
                         <span>Formato Taller ↗</span>
@@ -2883,15 +2869,292 @@
                       <a
                         href="cotizador.html"
                         download="Cotizador_Taller_Letreros_Olivar.html"
-                        className="px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/40 shadow-sm"
-                        title="Descargar archivo HTML del cotizador para usar en tu computador SIN INTERNET"
+                        className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/40"
+                        title="Descargar para usar Offline en el computador"
                       >
                         <Icon name="download" className="w-3.5 h-3.5" />
-                        <span>Descargar para usar Offline 💾</span>
+                        <span>Descargar Offline 💾</span>
                       </a>
                     </div>
                   </div>
                 </div>
+
+                {/* VISTA 1: PORTAL DE DOS ESPACIOS (LADO IZQUIERDO: COTIZACIONES / LADO DERECHO: WEBMAIL) */}
+                {intranetSection === 'portal' && (
+                  <div className="space-y-6">
+                    <div className="text-center max-w-2xl mx-auto pt-2 pb-4">
+                      <span className="text-xs font-bold uppercase tracking-widest text-red-500">¿A qué espacio deseas ingresar hoy?</span>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white font-heading mt-1">Selecciona tu Espacio de Trabajo</h2>
+                      <p className="text-xs sm:text-sm text-zinc-400 mt-2">
+                        La intranet está organizada en dos áreas independientes para que trabajes de forma ordenada: a la izquierda tus Cotizaciones y Taller, y a la derecha tu Correo Corporativo y Webmail.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+                      {/* LADO IZQUIERDO (50%): ESPACIO DE COTIZACIONES & TALLER */}
+                      <div className="relative group rounded-3xl bg-gradient-to-b from-zinc-900 via-zinc-950 to-black border-2 border-red-600/40 hover:border-red-500 p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 shadow-2xl hover:shadow-red-950/30">
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="px-3 py-1 rounded-full bg-red-600/20 border border-red-600/40 text-red-400 text-xs font-black uppercase tracking-wider">
+                              ESPACIO 1 (LADO IZQUIERDO)
+                            </span>
+                            <span className="text-[11px] font-mono text-zinc-500">5 Módulos Internos</span>
+                          </div>
+
+                          <div className="w-14 h-14 rounded-2xl bg-red-600 text-white flex items-center justify-center font-bold mb-4 shadow-lg shadow-red-600/40">
+                            <Icon name="clipboard" className="w-7 h-7" />
+                          </div>
+
+                          <h3 className="text-2xl font-black text-white font-heading">
+                            Cotizaciones & Taller
+                          </h3>
+                          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                            Cálculo de letreros, emisión formal de presupuestos con número correlativo oficial, recepción de solicitudes web, catálogo de precios por m² y maestra de clientes.
+                          </p>
+
+                          <div className="mt-6 space-y-2 border-t border-zinc-800/80 pt-4">
+                            <span className="text-[11px] uppercase tracking-wider font-bold text-zinc-400 block mb-2">Accesos directos:</span>
+                            
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                handleStartNewQuote();
+                              }}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>➕ Iniciar Nueva Cotización Formal</span>
+                              <span className="font-mono text-[10px] text-red-400">{currentCorrelativeCode}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('solicitudes');
+                              }}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>📥 Solicitudes Web de Clientes</span>
+                              <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">{receivedRequests.length}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('historial');
+                              }}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>📜 Historial de Cotizaciones Emitidas</span>
+                              <span className="text-[11px] text-zinc-500">{quoteHistory.length} emitidas</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('clientes');
+                              }}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>👥 Maestra de Clientes & Proveedores</span>
+                              <span className="text-[11px] text-zinc-500">{clientsMaster.length} registrados</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('precios');
+                              }}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>📊 Tarifario & Materiales (Planilla Excel)</span>
+                              <span className="text-[11px] text-emerald-400">42 materiales</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 pt-4 border-t border-zinc-800/80">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIntranetSection('taller');
+                              setIntranetTab('cotizador');
+                            }}
+                            className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-xl shadow-red-600/30 group-hover:scale-[1.01]"
+                          >
+                            <span>Entrar al Espacio de Cotizaciones & Taller ➔</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* LADO DERECHO (50%): ESPACIO DE WEBMAIL & CORREO */}
+                      <div className="relative group rounded-3xl bg-gradient-to-b from-zinc-900 via-zinc-950 to-black border-2 border-blue-600/40 hover:border-blue-500 p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 shadow-2xl hover:shadow-blue-950/30">
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="px-3 py-1 rounded-full bg-blue-600/20 border border-blue-600/40 text-blue-400 text-xs font-black uppercase tracking-wider">
+                              ESPACIO 2 (LADO DERECHO)
+                            </span>
+                            <span className="text-[11px] font-mono text-zinc-500">contacto@letrerosolivar.com</span>
+                          </div>
+
+                          <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold mb-4 shadow-lg shadow-blue-600/40">
+                            <Icon name="mail" className="w-7 h-7" />
+                          </div>
+
+                          <h3 className="text-2xl font-black text-white font-heading">
+                            Webmail & Correo Corporativo
+                          </h3>
+                          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                            Bandeja oficial Google Workspace / Gmail y hosting webmail para Letreros Olivar SpA. Enlace directo a comprobantes de transferencias y redactor de plantillas rápidas.
+                          </p>
+
+                          <div className="mt-6 space-y-2 border-t border-zinc-800/80 pt-4">
+                            <span className="text-[11px] uppercase tracking-wider font-bold text-zinc-400 block mb-2">Accesos directos:</span>
+
+                            <button
+                              type="button"
+                              onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>🚀 Abrir Gmail Corporativo (1 Clic directo)</span>
+                              <Icon name="external-link" className="w-3.5 h-3.5 text-blue-400" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenGmailSearch('comprobante OR transferencia OR pago OR bci OR mach')}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>💰 Buscar Comprobantes de Pago en Gmail</span>
+                              <Icon name="search" className="w-3.5 h-3.5 text-emerald-400" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('webmail');
+                                handleApplyEmailTemplate('cotizacion');
+                              }}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>📝 Redactar Correo con Plantilla de Cotización</span>
+                              <Icon name="file-text" className="w-3.5 h-3.5 text-amber-400" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('webmail');
+                                handleApplyEmailTemplate('comprobante');
+                              }}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>💸 Confirmar Recepción de Transferencia</span>
+                              <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-400" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => window.open('https://webmail.letrerosolivar.com', '_blank')}
+                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
+                            >
+                              <span>🌐 Webmail de Respaldo en Hosting</span>
+                              <Icon name="external-link" className="w-3.5 h-3.5 text-zinc-500" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 pt-4 border-t border-zinc-800/80">
+                          <button
+                            type="button"
+                            onClick={() => setIntranetSection('webmail')}
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-xl shadow-blue-600/30 group-hover:scale-[1.01]"
+                          >
+                            <span>Entrar al Espacio de Webmail & Correo ➔</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* VISTA 2: ESPACIO DE COTIZACIONES & TALLER (CON SUS 5 PESTAÑAS INTERNAS) */}
+                {intranetSection === 'taller' && (
+                  <div className="space-y-6">
+                    {/* Header secundario exclusivo de Cotizaciones */}
+                    <div className="p-4 rounded-xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (intranetTab !== 'cotizador') {
+                              setIntranetTab('cotizador');
+                            } else {
+                              handleStartNewQuote();
+                            }
+                          }}
+                          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 shadow-sm ${
+                            intranetTab === 'cotizador' ? 'bg-red-600 text-white shadow-red-900/40 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                          }`}
+                          title="Iniciar o ir a una Nueva Cotización"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>Nueva Cotización</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIntranetTab('solicitudes')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'solicitudes' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="truck" className="w-4 h-4" />
+                          <span>Solicitudes Web ({receivedRequests.length})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIntranetTab('historial')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'historial' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="history" className="w-4 h-4" />
+                          <span>Historial Emitidas ({quoteHistory.length})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIntranetTab('precios')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'precios' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="table" className="w-4 h-4" />
+                          <span>Tarifario & Materiales (Excel)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIntranetTab('clientes')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'clientes' ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="users" className="w-4 h-4" />
+                          <span>Maestra de Clientes ({clientsMaster.length})</span>
+                        </button>
+                      </div>
+
+                      <div className="text-xs text-zinc-500 font-mono">
+                        Espacio de Taller Activo
+                      </div>
+                    </div>
 
                 {/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO OFICIAL */}
                 {intranetTab === 'cotizador' && (
@@ -4764,9 +5027,11 @@
 
                   </div>
                 )}
+                </div>
+              )}
 
-                {/* SUB-PESTAÑA 6: MÓDULO WEBMAIL & CORREO CORPORATIVO GMAIL */}
-                {intranetTab === 'webmail' && (
+                {/* ESPACIO INDEPENDIENTE 2 (LADO DERECHO): MÓDULO WEBMAIL & CORREO CORPORATIVO GMAIL */}
+                {intranetSection === 'webmail' && (
                   <div className="space-y-6">
                     {/* Header y Acciones Principales */}
                     <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
