@@ -2804,7 +2804,7 @@
                       </div>
                       <h1 className="text-lg sm:text-xl font-black text-white font-heading">
                         {intranetSection === 'portal' && 'Portal de Espacios de Trabajo'}
-                        {intranetSection === 'taller' && 'Espacio de Cotizaciones & Taller'}
+                        {intranetSection === 'taller' && 'Espacio de Administración & Cotizaciones'}
                         {intranetSection === 'webmail' && 'Espacio de Webmail & Correo Corporativo'}
                       </h1>
                     </div>
@@ -2819,7 +2819,7 @@
                           ? 'bg-zinc-100 text-black font-black shadow-md'
                           : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
                       }`}
-                      title="Volver a la vista dividida de dos espacios"
+                      title="Volver a la vista de espacios"
                     >
                       <span>🏠 Menú de Espacios</span>
                     </button>
@@ -2835,9 +2835,10 @@
                           ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 ring-2 ring-red-500/50'
                           : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
                       }`}
-                      title="Ir al área de cotizaciones y taller"
+                      title="Ir al área de administración y cotizaciones"
                     >
-                      <span>💼 Cotizaciones & Taller</span>
+                      <Icon name="file-text" className="w-3.5 h-3.5" />
+                      <span>💼 Administración & Taller</span>
                     </button>
 
                     <button
@@ -2845,13 +2846,13 @@
                       onClick={() => setIntranetSection('webmail')}
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                         intranetSection === 'webmail'
-                          ? 'bg-red-600 text-white font-black shadow-lg shadow-red-600/30 ring-2 ring-red-500/50'
+                          ? 'bg-blue-600 text-white font-black shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
                           : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
                       }`}
                       title="Ir al área de correo y webmail corporativo"
                     >
                       <Icon name="mail" className="w-3.5 h-3.5 text-amber-400" />
-                      <span>✉️ Webmail & Correo</span>
+                      <span>✉️ Webmail</span>
                     </button>
 
                     <div className="hidden sm:flex items-center gap-1.5 ml-auto border-l border-zinc-800 pl-3">
@@ -2896,7 +2897,7 @@
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <span className="px-3 py-1 rounded-full bg-red-600/20 border border-red-600/40 text-red-400 text-xs font-black uppercase tracking-wider">
-                              ESPACIO 1 (LADO IZQUIERDO)
+                              ADMINISTRACIÓN
                             </span>
                             <span className="text-[11px] font-mono text-zinc-500">5 Módulos Internos</span>
                           </div>
@@ -2984,8 +2985,9 @@
                               setIntranetSection('taller');
                               setIntranetTab('cotizador');
                             }}
-                            className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-xl shadow-red-600/30 group-hover:scale-[1.01]"
+                            className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-red-600/30 group-hover:scale-[1.01]"
                           >
+                            <Icon name="file-text" className="w-5 h-5 text-white" />
                             <span>Entrar al Espacio de Cotizaciones & Taller ➔</span>
                           </button>
                         </div>
@@ -2996,7 +2998,7 @@
                         <div>
                           <div className="flex items-center justify-between mb-4">
                             <span className="px-3 py-1 rounded-full bg-blue-600/20 border border-blue-600/40 text-blue-400 text-xs font-black uppercase tracking-wider">
-                              ESPACIO 2 (LADO DERECHO)
+                              WEBMAIL
                             </span>
                             <span className="text-[11px] font-mono text-zinc-500">contacto@letrerosolivar.com</span>
                           </div>
@@ -3072,8 +3074,9 @@
                           <button
                             type="button"
                             onClick={() => setIntranetSection('webmail')}
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2 shadow-xl shadow-blue-600/30 group-hover:scale-[1.01]"
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-blue-600/30 group-hover:scale-[1.01]"
                           >
+                            <Icon name="mail" className="w-5 h-5 text-white" />
                             <span>Entrar al Espacio de Webmail & Correo ➔</span>
                           </button>
                         </div>
