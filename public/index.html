@@ -428,6 +428,10 @@
           return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
         case 'users':
           return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>;
+        case 'mail':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>;
+        case 'external-link':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>;
         default:
           return null;
       }
@@ -678,6 +682,11 @@
         email: '',
         address: ''
       });
+
+      // Estados para módulo Webmail & Correo Rápido
+      const [quickMailTo, setQuickMailTo] = useState('');
+      const [quickMailSubject, setQuickMailSubject] = useState('Cotización Formal - Letreros Olivar SpA');
+      const [quickMailBody, setQuickMailBody] = useState('Estimado cliente,\n\nJunto con saludar, enviamos la información solicitada respecto a su requerimiento de gráfica publicitaria / letreros comerciales.\n\nQuedamos a su entera disposición ante cualquier consulta.\n\nSaludos cordiales,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884\nhttps://letrerosolivar.com');
 
       // Estado de acabados e iluminación (100% PRECIOS EDITABLES POR EL USUARIO)
       const [finishesState, setFinishesState] = useState({
@@ -987,6 +996,44 @@
         }
         return list;
       }, [clientsMaster, clientsSearch, clientsFilterType]);
+
+      // --- HELPER FUNCTIONS MÓDULO WEBMAIL & CORREO ---
+      const handleApplyEmailTemplate = (type) => {
+        if (type === 'cotizacion') {
+          setQuickMailSubject('Cotización Formal - Letreros Olivar SpA');
+          setQuickMailBody(`Estimado cliente,\n\nJunto con saludar, adjuntamos la cotización formal detallada para su requerimiento con Letreros Olivar SpA.\n\nCaracterísticas incluidas:\n• Materiales y dimensiones según especificación técnica.\n• Valores netos más IVA según normativa vigente.\n• Plazo de fabricación estimado: 5 a 7 días hábiles.\n\nPara aprobar este presupuesto o coordinar detalles, puede responder directamente a este correo o escribirnos a nuestro WhatsApp (+56 9 5158 5884).\n\nAtentamente,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | https://letrerosolivar.com`);
+          showToast('📋 Plantilla de Cotización cargada');
+        } else if (type === 'comprobante') {
+          setQuickMailSubject('Confirmación de Recepción de Transferencia - Letreros Olivar SpA');
+          setQuickMailBody(`Estimado cliente,\n\nHemos recibido conforme el comprobante de transferencia bancaria por su trabajo en Letreros Olivar SpA.\n\nSu pedido ha pasado a la etapa de preparación y producción en taller. Le notificaremos oportunamente cuando esté listo para retiro / despacho.\n\nMuchas gracias por su preferencia.\n\nAtentamente,\nAdministración Letreros Olivar SpA\ncontacto@letrerosolivar.com`);
+          showToast('💰 Plantilla de Comprobante cargada');
+        } else if (type === 'terminado') {
+          setQuickMailSubject('Trabajo Terminado y Listo para Entrega - Letreros Olivar SpA');
+          setQuickMailBody(`Estimado cliente,\n\nLe informamos con agrado que su trabajo publicitario se encuentra completamente terminado y revisado con nuestro estándar de control de calidad.\n\nHorario de taller para retiro:\n• Lunes a Viernes de 09:00 a 18:30 hrs.\n• Dirección: Camino Público S/N, Olivar, Región de O'Higgins.\n\nFavor coordinar su retiro o despacho respondiendo a este mensaje.\n\nAtentamente,\nProducción Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
+          showToast('✅ Plantilla de Trabajo Terminado cargada');
+        } else if (type === 'instalacion') {
+          setQuickMailSubject('Coordinación de Cuadrilla de Instalación en Terreno - Letreros Olivar SpA');
+          setQuickMailBody(`Estimado cliente,\n\nNos comunicamos para coordinar los trabajos de montaje e instalación en terreno de su letrero publicitario.\n\nFavor confirmar disponibilidad de acceso al recinto y condiciones del lugar (puntos eléctricos, altura o permisos pertinentes) para la fecha acordada.\n\nQuedamos atentos a sus indicaciones.\n\nSaludos cordiales,\nOperaciones Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
+          showToast('🚚 Plantilla de Instalación cargada');
+        }
+      };
+
+      const handleOpenGmailCompose = () => {
+        const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com&view=cm&fs=1&to=${encodeURIComponent(quickMailTo)}&su=${encodeURIComponent(quickMailSubject)}&body=${encodeURIComponent(quickMailBody)}`;
+        window.open(url, '_blank');
+        showToast('🚀 Abriendo redactor en Gmail Workspace');
+      };
+
+      const handleOpenDefaultMailto = () => {
+        const url = `mailto:${encodeURIComponent(quickMailTo)}?subject=${encodeURIComponent(quickMailSubject)}&body=${encodeURIComponent(quickMailBody)}`;
+        window.location.href = url;
+      };
+
+      const handleOpenGmailSearch = (query) => {
+        const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com#search/${encodeURIComponent(query)}`;
+        window.open(url, '_blank');
+        showToast(`🔍 Buscando en Gmail: ${query}`);
+      };
 
       const selectedProductConfig = useMemo(() => {
         if (selectedCatalogId === 'custom') {
@@ -2809,6 +2856,16 @@
                     >
                       <Icon name="users" className="w-4 h-4" />
                       <span>Maestra de Clientes ({clientsMaster.length})</span>
+                    </button>
+
+                    <button
+                      onClick={() => setIntranetTab('webmail')}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                        intranetTab === 'webmail' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                      }`}
+                    >
+                      <Icon name="mail" className="w-4 h-4 text-amber-400" />
+                      <span>Webmail & Correo</span>
                     </button>
 
                     <div className="flex items-center gap-1.5 ml-auto">
@@ -4704,6 +4761,247 @@
                         </div>
                       </div>
                     )}
+
+                  </div>
+                )}
+
+                {/* SUB-PESTAÑA 6: MÓDULO WEBMAIL & CORREO CORPORATIVO GMAIL */}
+                {intranetTab === 'webmail' && (
+                  <div className="space-y-6">
+                    {/* Header y Acciones Principales */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                      <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 text-red-500 border border-red-500/30 text-xs font-bold mb-2">
+                          <Icon name="mail" className="w-3.5 h-3.5" />
+                          CENTRO DE COMUNICACIONES CORPORATIVAS
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
+                          Webmail & Correo Corporativo
+                        </h2>
+                        <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
+                          Gestiona los mensajes, cotizaciones y comprobantes de <strong className="text-white">contacto@letrerosolivar.com</strong> vinculado a tu Gmail Workspace sin salir de la Intranet.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
+                          className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 shadow-lg shadow-red-600/30"
+                          title="Abrir Gmail con la cuenta de Letreros Olivar ya seleccionada"
+                        >
+                          <Icon name="external-link" className="w-4 h-4" />
+                          <span>Abrir Gmail Corporativo (1 Clic)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => window.open('https://webmail.letrerosolivar.com', '_blank')}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-medium px-3.5 py-2.5 rounded-xl text-xs border border-zinc-700 transition flex items-center gap-1.5"
+                          title="Abrir el Webmail cPanel / Roundcube del servidor de hosting"
+                        >
+                          <Icon name="table" className="w-4 h-4 text-amber-400" />
+                          <span>Webmail Servidor</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tarjetas de Estado y Accesos Rápidos Inteligentes */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Tarjeta 1: Cuenta y Servidores */}
+                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">CUENTA ACTIVA</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        </div>
+                        <div>
+                          <div className="font-heading font-black text-white text-base">contacto@letrerosolivar.com</div>
+                          <span className="text-[11px] text-zinc-400">Google Workspace / Gmail</span>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-900 text-[11px] text-zinc-400 space-y-1">
+                          <p><strong className="text-zinc-300">Entrante (IMAP):</strong> mail.letrerosolivar.com : 993</p>
+                          <p><strong className="text-zinc-300">Saliente (SMTP):</strong> mail.letrerosolivar.com : 465</p>
+                        </div>
+                      </div>
+
+                      {/* Tarjeta 2: Filtros Rápidos de Gmail */}
+                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-md">
+                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">BÚSQUEDAS EN GMAIL CON 1 CLIC</span>
+                        <div className="space-y-1.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenGmailSearch('comprobante OR transferencia OR pago OR bci OR mach')}
+                            className="w-full text-left bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs border border-zinc-800 flex items-center justify-between transition"
+                          >
+                            <span>💰 Ver Comprobantes de Pago</span>
+                            <Icon name="external-link" className="w-3 h-3 text-emerald-400" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenGmailSearch('subject:Cotización')}
+                            className="w-full text-left bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs border border-zinc-800 flex items-center justify-between transition"
+                          >
+                            <span>📋 Ver Cotizaciones Enviadas</span>
+                            <Icon name="external-link" className="w-3 h-3 text-red-400" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenGmailSearch('subject:"Solicitud de Cotización"')}
+                            className="w-full text-left bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs border border-zinc-800 flex items-center justify-between transition"
+                          >
+                            <span>📩 Solicitudes Web Recibidas</span>
+                            <Icon name="external-link" className="w-3 h-3 text-blue-400" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tarjeta 3: Instrucciones y Atajos */}
+                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-md">
+                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">FLUJO OPERATIVO UNIFICADO</span>
+                        <p className="text-xs text-zinc-400 leading-relaxed">
+                          Usa el <strong className="text-white">Redactor Rápido</strong> para enviar mensajes con plantillas predefinidas o haz clic en <strong className="text-white">Abrir Gmail</strong> para gestionar tu bandeja de entrada completa sin mezclar tus cuentas personales.
+                        </p>
+                        <div className="pt-2 border-t border-zinc-900 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenGmailSearch('is:unread')}
+                            className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition"
+                          >
+                            <span>📬 Ver correos no leídos en Gmail →</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* REDACTOR RÁPIDO DE CORREO DESDE LA INTRANET */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-5 shadow-xl">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+                        <div>
+                          <h3 className="text-base font-bold text-white font-heading flex items-center gap-2">
+                            <Icon name="mail" className="w-4 h-4 text-red-500" />
+                            <span>Redactor Rápido de Correos Corporativos</span>
+                          </h3>
+                          <p className="text-xs text-zinc-400 mt-0.5">
+                            Redacta o utiliza una de las plantillas oficiales y envíalo con un clic vía Gmail Workspace.
+                          </p>
+                        </div>
+
+                        {/* Plantillas rápidas */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold mr-1">Plantillas:</span>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyEmailTemplate('cotizacion')}
+                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                          >
+                            📋 Cotización
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyEmailTemplate('comprobante')}
+                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                          >
+                            💰 Pago Recibido
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyEmailTemplate('terminado')}
+                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                          >
+                            ✅ Trabajo Listo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyEmailTemplate('instalacion')}
+                            className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
+                          >
+                            🚚 Instalación
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 text-xs">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-zinc-300 font-semibold">Destinatario (Para:)</label>
+                              {clientsMaster.length > 0 && (
+                                <select
+                                  onChange={(e) => {
+                                    if (e.target.value) setQuickMailTo(e.target.value);
+                                  }}
+                                  defaultValue=""
+                                  className="text-[10px] bg-zinc-950 text-zinc-400 border border-zinc-800 rounded px-2 py-0.5 focus:border-red-600 focus:outline-none"
+                                >
+                                  <option value="">-- Cargar de Maestra de Clientes --</option>
+                                  {clientsMaster.filter(c => c.email).map(c => (
+                                    <option key={c.id} value={c.email}>
+                                      {c.name} ({c.email})
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            <input
+                              type="email"
+                              value={quickMailTo}
+                              onChange={(e) => setQuickMailTo(e.target.value)}
+                              placeholder="ej: adquisiciones@cliente.cl"
+                              className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-zinc-300 font-semibold mb-1">Asunto:</label>
+                            <input
+                              type="text"
+                              value={quickMailSubject}
+                              onChange={(e) => setQuickMailSubject(e.target.value)}
+                              placeholder="Asunto del correo corporativo..."
+                              className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-zinc-300 font-semibold mb-1">Mensaje / Cuerpo del Correo:</label>
+                          <textarea
+                            rows={8}
+                            value={quickMailBody}
+                            onChange={(e) => setQuickMailBody(e.target.value)}
+                            className="w-full bg-zinc-950 text-white p-3.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono text-xs leading-relaxed"
+                            placeholder="Escribe el cuerpo del correo aquí..."
+                          ></textarea>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                          <span className="text-[11px] text-zinc-500">
+                            Remitente: <strong className="text-zinc-300">contacto@letrerosolivar.com</strong> (Letreros Olivar SpA)
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleOpenDefaultMailto}
+                              className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold border border-zinc-700 transition flex items-center gap-1.5"
+                              title="Abrir en Outlook o cliente predeterminado del computador"
+                            >
+                              <Icon name="mail" className="w-3.5 h-3.5" />
+                              <span>Cliente Local / Mailto</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={handleOpenGmailCompose}
+                              className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-2 shadow-lg shadow-red-600/30"
+                            >
+                              <Icon name="external-link" className="w-4 h-4" />
+                              <span>Abrir y Enviar en Gmail ➔</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                   </div>
                 )}
