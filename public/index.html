@@ -701,52 +701,168 @@
       const [webmailSubTab, setWebmailSubTab] = useState('inbox'); // 'inbox' | 'compose' | 'sync'
       const [inboxEmails, setInboxEmails] = useState(() => {
         const saved = localStorage.getItem('olivar_inbox_emails');
-        return saved ? JSON.parse(saved) : [
+        const realEmails = [
           {
-            id: 'em-1',
-            fromName: 'Claudio Garrido (Plaza Olivar)',
-            fromEmail: 'contacto@plazolivar.cl',
-            rut: '76.136.210-0',
-            subject: 'Solicitud de Presupuesto: Letrero Corporativo en Alucobond',
-            date: 'Hoy, 09:15',
+            id: 'em-real-1',
+            fromName: 'Carlos Urzúa',
+            fromEmail: 'contacto@letrerosolivar.com',
+            rut: '77.880.952-4',
+            subject: 'test',
+            date: 'Hoy, 02:24 a. m.',
             unread: true,
             tag: 'Cotización',
-            body: 'Estimado Carlos y equipo de Letreros Olivar SpA,\n\nJunto con saludar, quisiéramos solicitar presupuesto para renovar la fachada de nuestro local comercial en Olivar.\n\nDetalles del requerimiento:\n• Medidas: 4.00 metros de ancho x 1.20 metros de alto.\n• Material deseado: Aluminio Compuesto (ACM 3mm) negro con letras acrílicas y luz LED.\n• Incluir retiro del letrero anterior e instalación en terreno.\n\nQuedamos atentos a su cotización formal.\n\nSaludos cordiales,\nClaudio Garrido\nAdministración Plaza Olivar'
+            body: 'Correo de prueba de sincronización directa entre Gmail Workspace y la intranet de Letreros Olivar SpA.'
           },
           {
-            id: 'em-2',
-            fromName: 'Banco BCI / MACH Notificaciones',
-            fromEmail: 'notificaciones@bci.cl',
-            rut: '97.006.000-6',
-            subject: 'Comprobante de Transferencia Electrónica Recibida ($450.000 CLP)',
-            date: 'Ayer, 17:40',
+            id: 'em-real-2',
+            fromName: 'Javier Polanco',
+            fromEmail: 'jpolanco@egm.cl',
+            rut: '76.840.120-K',
+            subject: 'OC 75651 - Logos Corrosivos carros EGM - Letreros Olivar',
+            date: '11 Nov',
+            unread: true,
+            tag: 'Cotización',
+            body: 'Estimados, Adjunto la OC 75651 para la confección e instalación de logos corrosivos en carros EGM según cotización acordada. Favor confirmar recepción y fecha estimada de entrega.\n\nSaludos cordiales,\nJavier Polanco'
+          },
+          {
+            id: 'em-real-3',
+            fromName: 'Tania, Letreros (2)',
+            fromEmail: 'tania@letrerosolivar.com',
+            rut: '',
+            subject: 'COTIZACION LETREROS',
+            date: '11 Nov',
+            unread: true,
+            tag: 'Cotización',
+            body: 'Estimada, Junto con saludar, adjunto la cotización solicitada para la fabricación de letreros en acrílico y estructura metálica para sucursal. Quedamos a su disposición ante dudas.'
+          },
+          {
+            id: 'em-real-4',
+            fromName: 'César Cifuentes Rey. (2)',
+            fromEmail: 'ccifuentes@prevencion.cl',
+            rut: '',
+            subject: '(sin asunto) - Se Despide: César Cifuentes Reyes Prevención de Riesgos',
+            date: '10 Nov',
             unread: false,
-            tag: 'Comprobante',
-            body: 'Estimado Letreros Olivar SpA (77.880.952-4),\n\nLe confirmamos que se ha recibido una transferencia en su Cuenta Corriente BCI N° 95069607:\n\n• Monto: $450.000 CLP\n• Ordenante: Agrícola El Olivo SpA\n• Detalle: Abono 50% Fabricación Letrero Caminero\n• N° Operación: 88471920\n• Fecha: 11/11/2026 17:38:12\n\nEste es un comprobante automático de confirmación bancaria.'
+            tag: 'Cliente',
+            body: 'Estimado Carlos,\n\nContacto de Prevención de Riesgos +56997324359 El mar... Favor enviar fichas técnicas de los materiales a utilizar en el letrero.'
           },
           {
-            id: 'em-3',
-            fromName: 'Andrea Morales (Agrícola Rapallo)',
-            fromEmail: 'amorales@rapallo.cl',
-            rut: '76011140-6',
-            subject: 'Logotipo en alta resolución para letrero caminero',
-            date: '10 Nov, 14:20',
+            id: 'em-real-5',
+            fromName: 'Roberto Rodriguez',
+            fromEmail: 'rrodriguez@carniceria.cl',
+            rut: '',
+            subject: 'IMPRIMIR TELA - POR FAVOR IMPRIMIR TELA 120X95 1 UNIDAD CARNICERIA MODELO 120X95',
+            date: '10 Nov',
             unread: false,
-            tag: 'Diseño',
-            body: 'Buenas tardes don Carlos,\n\nAdjunto enviamos el archivo vectorizado de nuestro logotipo institucional para el letrero caminero que nos cotizó la semana pasada.\n\nFavor confirmarnos si la calidad es adecuada para la impresión en lona PVC con filtro UV.\n\nAtentamente,\nAndrea Morales\nAgrícola e Inversiones Rapallo Ltda.'
+            tag: 'Cotización',
+            body: 'POR FAVOR IMPRIMIR TELA 120X95 1 UNIDAD CARNICERIA MODELO 120X95.jpeg.\n\nFavor avisar cuando esté lista para retiro en taller.'
           },
           {
-            id: 'em-4',
-            fromName: 'Sonepar Chile S.A.',
-            fromEmail: 'ventas.santiago@sonepar.cl',
-            rut: '96896480-1',
-            subject: 'Factura Electrónica N° 45892 - Materiales Eléctricos LED',
-            date: '08 Nov, 11:05',
+            id: 'em-real-6',
+            fromName: 'Sergio, Letreros (2)',
+            fromEmail: 'sergio@letrerosolivar.com',
+            rut: '',
+            subject: 'Fw: OC 18434 Cotización letrero de trovicel',
+            date: '10 Nov',
+            unread: false,
+            tag: 'Cotización',
+            body: 'Estimado, Junto con saludar, adjunto la factura N°... y detalle de la cotización para el letrero de trovicel impreso con protección UV.'
+          },
+          {
+            id: 'em-real-7',
+            fromName: 'contacto .. Contact. (4)',
+            fromEmail: 'contacto@proveedordemaquinarias.cl',
+            rut: '',
+            subject: 'Ahora nuestra impresora de letreros 3D con financiamiento sin pie',
+            date: '9 Nov',
             unread: false,
             tag: 'Proveedor',
-            body: 'Estimado cliente Letreros Olivar SpA,\n\nAdjuntamos la factura electrónica correspondiente a su compra de módulos LED IP67 y fuentes de poder de 12V 400W para taller.\n\nMuchas gracias por su preferencia.\nSonepar Chile S.A.'
+            body: 'Hola, buenas tardes. Acá a... Presentamos nuestra nueva impresora 3D para letras volumétricas publicitarias con financiamiento directo.'
+          },
+          {
+            id: 'em-real-8',
+            fromName: 'Secretaria Los Nobl.',
+            fromEmail: 'secretaria@losnobles.cl',
+            rut: '76.442.890-5',
+            subject: 'RV: Aviso Publicacion Pago',
+            date: '9 Nov',
+            unread: false,
+            tag: 'Comprobante',
+            body: 'Buenos Días: Gusto en saludarle, le envió comprobante bancario de pago por concepto de fabricación de letrero institucional Los Nobles.'
+          },
+          {
+            id: 'em-real-9',
+            fromName: 'Carlos Urzúa',
+            fromEmail: 'contacto@letrerosolivar.com',
+            rut: '77.880.952-4',
+            subject: 'Intranet - olivar2026',
+            date: '8 Nov',
+            unread: false,
+            tag: 'Sistema',
+            body: 'Credenciales y accesos de administración del sistema intranet Letreros Olivar SpA.'
+          },
+          {
+            id: 'em-real-10',
+            fromName: 'Jaime Cardoza',
+            fromEmail: 'jcardoza@prevencion.cl',
+            rut: '',
+            subject: 'Fwd: logo - Asesor en Prevención de Riesgos',
+            date: '6 Nov',
+            unread: false,
+            tag: 'Diseño',
+            body: 'Atentamente, le saluda, Jaime Andrés Cardoza Padilla. Asesor en Prevención de Riesgos. Adjunto logotipo para señalética y letreros de seguridad.'
+          },
+          {
+            id: 'em-real-11',
+            fromName: 'Carlos Zapata',
+            fromEmail: 'czapata@olivar.cl',
+            rut: '',
+            subject: 'Invitación a colaborar con la Teletón 2026 – Comuna de Olivar',
+            date: '6 Nov',
+            unread: false,
+            tag: 'General',
+            body: 'Estimados representantes de Letreros Olivar SpA,\n\nLos invitamos cordialmente a participar y colaborar con la campaña comunal de Teletón 2026 con gráfica y lienzos publicitarios en la comuna de Olivar.'
+          },
+          {
+            id: 'em-real-12',
+            fromName: 'Letreros .. Paola (6)',
+            fromEmail: 'paola@letrerosolivar.com',
+            rut: '',
+            subject: 'cotizacion actualizada',
+            date: '6 Nov',
+            unread: false,
+            tag: 'Cotización',
+            body: 'Estimado Carlos: Adjunto deposito a Letreros Olivar por la suma de $350.000 y el desglose de la cotización actualizada con los nuevos metros cuadrados.'
+          },
+          {
+            id: 'em-real-13',
+            fromName: 'Jeanine Martinez',
+            fromEmail: 'jmartinez@magdacollection.cl',
+            rut: '',
+            subject: 'Fwd: Diseño Pendón Magda Collection',
+            date: '6 Nov',
+            unread: false,
+            tag: 'Diseño',
+            body: 'Enviado desde mi iPhone. Inicio del mensaje reenviado: Adjunto diseño en alta resolución para impresión de pendón roller.'
+          },
+          {
+            id: 'em-real-14',
+            fromName: 'Alexis Lizana Espin.',
+            fromEmail: 'alizana@diseno.cl',
+            rut: '',
+            subject: 'ROLLER - Alexis Lizana Espinoza Diseñador Gráfico',
+            date: '5 Nov',
+            unread: false,
+            tag: 'Cotización',
+            body: 'Estimado equipo Letreros Olivar, adjunto archivo para impresión y armado de 2 pendones roller 80x200cm.'
           }
         ];
+        // Si no hay guardado o si tenía los correos falsos antiguos, cargar la bandeja real
+        if (!saved || saved.includes('Claudio Garrido') || saved.includes('em-1')) {
+          localStorage.setItem('olivar_inbox_emails', JSON.stringify(realEmails));
+          return realEmails;
+        }
+        return JSON.parse(saved);
       });
 
       useEffect(() => {
