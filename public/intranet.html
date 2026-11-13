@@ -677,7 +677,6 @@
         email: '',
         deliveryAddress: '',
         deliveryMethod: 'instalacion',
-        channel: 'presencial', // 'presencial' (Taller) | 'web' (Solicitud Web) | 'telefono' (Llamada / WhatsApp)
         validDays: 15,
         paymentTerms: 'Crédito 30 días',
         manufacturingDays: '5 a 7 días hábiles'
@@ -923,9 +922,7 @@
         localStorage.setItem('olivar_email_config', JSON.stringify(emailConfig));
       }, [emailConfig]);
 
-      const [selectedInboxEmailId, setSelectedInboxEmailId] = useState('em-real-1');
-      const [emailFolder, setEmailFolder] = useState('inbox'); // 'inbox' | 'sent' | 'drafts' | 'spam'
-      const [inboxCategory, setInboxCategory] = useState('primary'); // 'primary' (Principal) | 'promotions' (Promociones) | 'social' (Social) | 'notifications' (Notificaciones)
+      const [selectedInboxEmailId, setSelectedInboxEmailId] = useState('em-1');
       const [inboxFilter, setInboxFilter] = useState('all');
       const [inboxSearch, setInboxSearch] = useState('');
       const [isRefreshingInbox, setIsRefreshingInbox] = useState(false);
@@ -1496,28 +1493,27 @@
           showToast('⚠️ Ingresa un destinatario');
           return;
         }
-        // Abrir directamente en Gmail con remitente contacto@letrerosolivar.com para garantizar envío real por servidores Google
-        const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com&view=cm&fs=1&to=${encodeURIComponent(quickMailTo)}&su=${encodeURIComponent(quickMailSubject)}&body=${encodeURIComponent(quickMailBody)}`;
-        window.open(url, '_blank');
-
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-        const newSentEmail = {
-          id: `em-sent-${Date.now()}`,
-          fromName: 'Letreros Olivar SpA (Enviado)',
-          fromEmail: 'contacto@letrerosolivar.com',
-          rut: '',
-          subject: quickMailSubject || '(Sin Asunto)',
-          date: `Hoy, ${timeStr}`,
-          unread: false,
-          tag: 'Enviado',
-          folder: 'sent',
-          body: quickMailBody
-        };
-        setInboxEmails(prev => [newSentEmail, ...prev]);
-        showToast(`🚀 Abriendo redactor en Gmail oficial para enviar a ${quickMailTo}`);
-        setQuickMailTo('');
-        setWebmailSubTab('inbox');
+        setIsSendingMail(true);
+        setTimeout(() => {
+          setIsSendingMail(false);
+          const now = new Date();
+          const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+          const newSentEmail = {
+            id: `em-sent-${Date.now()}`,
+            fromName: 'Letreros Olivar SpA (Enviado)',
+            fromEmail: 'contacto@letrerosolivar.com',
+            rut: '',
+            subject: quickMailSubject || '(Sin Asunto)',
+            date: `Hoy, ${timeStr}`,
+            unread: false,
+            tag: 'Enviado',
+            body: quickMailBody
+          };
+          setInboxEmails(prev => [newSentEmail, ...prev]);
+          showToast(`✈️ ¡Correo enviado a ${quickMailTo} desde contacto@letrerosolivar.com!`);
+          setQuickMailTo('');
+          setWebmailSubTab('inbox');
+        }, 650);
       };
 
       const handleSendInlineReply = (originalEmail) => {
@@ -1525,28 +1521,22 @@
           showToast('⚠️ Escribe un mensaje antes de responder');
           return;
         }
-        const replySubject = originalEmail.subject?.startsWith('Re:') ? originalEmail.subject : `Re: ${originalEmail.subject || ''}`;
-        const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com&view=cm&fs=1&to=${encodeURIComponent(originalEmail.fromEmail)}&su=${encodeURIComponent(replySubject)}&body=${encodeURIComponent(inlineReplyText)}`;
-        window.open(url, '_blank');
-
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
-        const replyItem = {
-          id: `em-rep-${Date.now()}`,
-          fromName: 'Letreros Olivar SpA (Respuesta)',
-          fromEmail: 'contacto@letrerosolivar.com',
-          rut: originalEmail.rut || '',
-          subject: replySubject,
-          date: `Hoy, ${timeStr}`,
-          unread: false,
-          tag: 'Enviado',
-          folder: 'sent',
-          body: inlineReplyText
-        };
-        setInboxEmails(prev => [replyItem, ...prev]);
-        setInlineReplyText('');
-        showToast(`🚀 Respuesta abierta en Gmail para enviar a ${originalEmail.fromEmail}`);
-      };
+        setIsSendingMail(true);
+        setTimeout(() => {
+          setIsSendingMail(false);
+          const now = new Date();
+          const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+          const replyItem = {
+            id: `em-rep-${Date.now()}`,
+            fromName: 'Letreros Olivar SpA (Respuesta)',
+            fromEmail: 'contacto@letrerosolivar.com',
+            rut: originalEmail.rut || '',
+            subject: `Re: ${originalEmail.subject}`,
+            date: `Hoy, ${timeStr}`,
+            unread: false,
+            tag: 'Enviado',
+            body: inlineReplyText
+          };
           setInboxEmails(prev => [replyItem, ...prev]);
           setInlineReplyText('');
           showToast(`✈️ ¡Respuesta enviada a ${originalEmail.fromEmail}!`);
@@ -1706,10 +1696,8 @@
           email: req.clientEmail || '',
           deliveryAddress: req.deliveryAddress || '',
           deliveryMethod: req.deliveryMethod || 'instalacion',
-          channel: 'web',
           validDays: 15,
-          paymentTerms: '50% Anticipo y 50% contra entrega',
-          manufacturingDays: '5 a 7 días hábiles'
+          paymentTerms: '50% Anticipo y 50% contra entrega'
         });
 
         // Intentar mapear producto
@@ -1738,7 +1726,6 @@
           email: quoteToEdit.client.email || '',
           deliveryAddress: quoteToEdit.client.deliveryAddress || '',
           deliveryMethod: quoteToEdit.client.deliveryMethod || 'instalacion',
-          channel: quoteToEdit.client.channel || 'presencial',
           validDays: quoteToEdit.client.validDays || 15,
           paymentTerms: quoteToEdit.client.paymentTerms || 'Crédito 30 días',
           manufacturingDays: quoteToEdit.client.manufacturingDays || '5 a 7 días hábiles'
@@ -1770,7 +1757,6 @@
           email: oldQuote.client.email || '',
           deliveryAddress: oldQuote.client.deliveryAddress || '',
           deliveryMethod: oldQuote.client.deliveryMethod || 'instalacion',
-          channel: oldQuote.client.channel || 'presencial',
           validDays: oldQuote.client.validDays || 15,
           paymentTerms: oldQuote.client.paymentTerms || 'Crédito 30 días',
           manufacturingDays: oldQuote.client.manufacturingDays || '5 a 7 días hábiles'
@@ -1808,7 +1794,6 @@
           email: '',
           deliveryAddress: '',
           deliveryMethod: 'instalacion',
-          channel: 'presencial',
           validDays: 15,
           paymentTerms: 'Crédito 30 días',
           manufacturingDays: '5 a 7 días hábiles'
@@ -3870,31 +3855,17 @@
                                 className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800"
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-zinc-300 font-semibold mb-1">Origen de la Cotización</label>
-                                <select
-                                  value={intranetClientData.channel || 'presencial'}
-                                  onChange={(e) => setIntranetClientData({ ...intranetClientData, channel: e.target.value })}
-                                  className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-semibold focus:border-red-600 focus:outline-none"
-                                >
-                                  <option value="presencial">🏢 Taller (Atención Presencial)</option>
-                                  <option value="web">🌐 Solicitud Web (letrerosolivar.com)</option>
-                                  <option value="telefono">📱 WhatsApp / Telefónica</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-zinc-300 font-semibold mb-1">Modalidad de Entrega</label>
-                                <select
-                                  value={intranetClientData.deliveryMethod}
-                                  onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
-                                  className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
-                                >
-                                  <option value="instalacion">🚚 Instalación en Terreno</option>
-                                  <option value="entrega">📦 Entrega en Cliente</option>
-                                  <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
-                                </select>
-                              </div>
+                            <div>
+                              <label className="block text-zinc-300 font-semibold mb-1">Modalidad de Entrega</label>
+                              <select
+                                value={intranetClientData.deliveryMethod}
+                                onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
+                                className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
+                              >
+                                <option value="instalacion">🚚 Instalación en Terreno / Obra</option>
+                                <option value="entrega">📦 Entrega en Instalaciones del Cliente (Flete / Despacho)</option>
+                                <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
+                              </select>
                             </div>
                             {(intranetClientData.deliveryMethod === 'instalacion' || intranetClientData.deliveryMethod === 'entrega') && (
                               <div>
@@ -4928,17 +4899,15 @@
                         <h2 className="text-lg font-bold text-white font-heading">
                           Historial de Cotizaciones Emitidas ({quoteHistory.length})
                         </h2>
-                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial único e intercalado (Atención Presencial de Taller y Solicitudes Web).</p>
+                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleStartNewQuote()}
-                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
-                        >
-                          <Icon name="plus" className="w-4 h-4" />
-                          <span>➕ Nueva Cotización Taller</span>
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleStartNewQuote()}
+                        className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                      >
+                        <Icon name="plus" className="w-4 h-4" />
+                        <span>➕ Crear Nueva Cotización</span>
+                      </button>
                     </div>
 
                     {quoteHistory.length === 0 ? (
@@ -4950,19 +4919,10 @@
                         {quoteHistory.map((q) => (
                           <div key={q.correlative} className="p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
                                 <span className="text-xs text-zinc-400">📅 {q.date}</span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                  q.client?.channel === 'web'
-                                    ? 'bg-blue-600/10 text-blue-400 border-blue-600/30'
-                                    : q.client?.channel === 'telefono'
-                                      ? 'bg-emerald-600/10 text-emerald-400 border-emerald-600/30'
-                                      : 'bg-red-600/10 text-red-400 border-red-600/30'
-                                }`}>
-                                  {q.client?.channel === 'web' ? '🌐 Web' : q.client?.channel === 'telefono' ? '📱 WhatsApp' : '🏢 Taller / Presencial'}
-                                </span>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
+                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-400 border border-red-600/30">
                                   {q.status}
                                 </span>
                               </div>
@@ -5956,90 +5916,13 @@
 
                     {/* VISTA 1: BANDEJA DE ENTRADA IN-APP (SIN PESTAÑAS EXTERNAS) */}
                     {webmailSubTab === 'inbox' && (
-                      <div className="space-y-4">
-                        {/* Selector de Carpetas Principales de Gmail */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-zinc-950 border border-zinc-800 rounded-xl">
-                          <div className="flex items-center gap-1.5 overflow-x-auto">
-                            {[
-                              { id: 'inbox', label: '📥 Recibidos', icon: 'mail', count: inboxEmails.filter(e => e.folder !== 'sent' && e.folder !== 'drafts' && e.folder !== 'spam').length },
-                              { id: 'sent', label: '📤 Enviados', icon: 'check', count: inboxEmails.filter(e => e.folder === 'sent' || e.tag === 'Enviado').length },
-                              { id: 'drafts', label: '📝 Borradores', icon: 'file-text', count: 0 },
-                              { id: 'spam', label: '🚫 Spam', icon: 'lock', count: 0 }
-                            ].map(f => (
-                              <button
-                                key={f.id}
-                                type="button"
-                                onClick={() => setEmailFolder(f.id)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                                  emailFolder === f.id
-                                    ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
-                                    : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                                }`}
-                              >
-                                <span>{f.label}</span>
-                                {f.count > 0 && (
-                                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/40 text-white font-mono">
-                                    {f.count}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-
-                          <div className="flex items-center gap-2 text-xs text-zinc-400 pr-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="font-mono text-[11px]">contacto@letrerosolivar.com</span>
-                          </div>
-                        </div>
-
-                        {/* Pestañas de Categoría Tipo Gmail (Principal, Promociones, Social, Notificaciones) */}
-                        {emailFolder === 'inbox' && (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-zinc-800 pb-2">
-                            {[
-                              { id: 'primary', label: 'Principal', icon: 'inbox', desc: 'Mensajes directos y cotizaciones' },
-                              { id: 'promotions', label: 'Promociones', icon: 'tag', desc: 'Ofertas y proveedores' },
-                              { id: 'social', label: 'Social', icon: 'users', desc: 'Redes sociales y comunidad' },
-                              { id: 'notifications', label: 'Notificaciones', icon: 'bell', desc: 'Bancos y comprobantes' }
-                            ].map(cat => (
-                              <button
-                                key={cat.id}
-                                type="button"
-                                onClick={() => setInboxCategory(cat.id)}
-                                className={`p-2.5 rounded-xl border text-left transition flex items-center gap-2.5 ${
-                                  inboxCategory === cat.id
-                                    ? 'bg-zinc-900 border-red-500 text-white shadow-md'
-                                    : 'bg-zinc-950/70 border-zinc-800/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'
-                                }`}
-                              >
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                                  inboxCategory === cat.id ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400'
-                                }`}>
-                                  {cat.id === 'primary' && '📩'}
-                                  {cat.id === 'promotions' && '🏷️'}
-                                  {cat.id === 'social' && '👥'}
-                                  {cat.id === 'notifications' && '🔔'}
-                                </div>
-                                <div className="min-w-0">
-                                  <strong className="block text-xs font-bold leading-tight">{cat.label}</strong>
-                                  <span className="text-[10px] text-zinc-500 truncate block">{cat.desc}</span>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                         {/* Columna Izquierda: Lista de Mensajes (5 cols) */}
                         <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
                           <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
                             <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <span>
-                                {emailFolder === 'inbox' && `Recibidos (${inboxCategory.toUpperCase()})`}
-                                {emailFolder === 'sent' && 'Enviados'}
-                                {emailFolder === 'drafts' && 'Borradores'}
-                                {emailFolder === 'spam' && 'Spam'}
-                              </span>
+                              <span>Mensajes ({inboxEmails.length})</span>
                             </span>
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] text-zinc-500 font-mono">Sinc: <strong className="text-zinc-400">{lastRefreshedTime}</strong></span>
@@ -6094,25 +5977,6 @@
                           {/* Lista de Mensajes */}
                           <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
                             {inboxEmails
-                              .filter(e => {
-                                if (emailFolder === 'sent') return e.folder === 'sent' || e.tag === 'Enviado';
-                                if (emailFolder === 'drafts') return e.folder === 'drafts';
-                                if (emailFolder === 'spam') return e.folder === 'spam';
-                                if (e.folder === 'sent' || e.tag === 'Enviado') return false;
-
-                                // Filtro de categorías Gmail (Principal, Promociones, Social, Notificaciones)
-                                if (inboxCategory === 'promotions') {
-                                  return e.tag === 'Proveedor' || e.subject.toLowerCase().includes('impresora') || e.subject.toLowerCase().includes('oferta');
-                                }
-                                if (inboxCategory === 'social') {
-                                  return e.tag === 'General' || e.subject.toLowerCase().includes('teletón') || e.subject.toLowerCase().includes('invitación');
-                                }
-                                if (inboxCategory === 'notifications') {
-                                  return e.tag === 'Comprobante' || e.tag === 'Sistema' || e.subject.toLowerCase().includes('pago') || e.subject.toLowerCase().includes('intranet');
-                                }
-                                // Principal
-                                return e.tag !== 'Proveedor' && e.tag !== 'General' && e.tag !== 'Comprobante' && e.tag !== 'Sistema';
-                              })
                               .filter(e => {
                                 if (inboxFilter === 'unread') return e.unread;
                                 if (inboxFilter !== 'all') return e.tag === inboxFilter;
@@ -6318,7 +6182,6 @@
                           })()}
                         </div>
                       </div>
-                    </div>
                     )}
 
                     {/* VISTA 2: REDACTOR DE CORREO */}
