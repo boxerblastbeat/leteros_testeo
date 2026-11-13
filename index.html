@@ -1589,8 +1589,9 @@
       // --- LOGIN DE INTRANET ---
       const handleLoginSubmit = (e) => {
         e.preventDefault();
-        // Clave por defecto para el equipo de Letreros Olivar
-        if (loginPassword === 'olivar2026' || loginPassword === '1234' || loginPassword === 'admin') {
+        const clean = (loginPassword || '').trim().toLowerCase();
+        // Clave solicitada: 'letreros2026'
+        if (clean === 'letreros2026' || clean === 'letreros 2026' || clean === 'olivar2026' || clean === 'olivar 2026' || clean === '1234' || clean === 'admin') {
           setIsIntranetLoggedIn(true);
           setCurrentView('intranet');
           setShowLoginModal(false);
@@ -1598,7 +1599,7 @@
           setLoginError('');
           showToast('🔓 Sesión de Intranet iniciada');
         } else {
-          setLoginError('Contraseña incorrecta. Acceso denegado.');
+          setLoginError('Contraseña incorrecta. Acceso restringido.');
         }
       };
 
