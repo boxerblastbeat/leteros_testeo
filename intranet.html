@@ -684,38 +684,119 @@
         return saved ? JSON.parse(saved) : [];
       });
 
-      // === FIREBASE: Sincronizar correlativo en tiempo real ===
+      // === FIREBASE: Sincronizar correlativo en tiempo real (Bidireccional) ===
       useEffect(() => {
         if (!window.db) return;
+        const localNum = parseInt(localStorage.getItem('olivar_correlative') || '101', 10);
+        
         const unsubCorr = window.db.collection('system').doc('correlatives')
           .onSnapshot(snap => {
             if (snap.exists) {
               const fireNum = snap.data().currentNumber;
-              setCorrelativeNumber(prev => {
-                if (fireNum && fireNum > prev) {
-                  localStorage.setItem('olivar_correlative', fireNum.toString());
-                  return fireNum;
+              if (fireNum) {
+                setCorrelativeNumber(prev => {
+                  const maxNum = Math.max(prev, fireNum, localNum);
+                  localStorage.setItem('olivar_correlative', maxNum.toString());
+                  return maxNum;
+                });
+                if (localNum > fireNum) {
+                  window.db.collection('system').doc('correlatives').set({
+                    currentNumber: localNum,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                  }, { merge: true }).catch(() => {});
                 }
-                return prev;
-              });
+              }
+            } else {
+              window.db.collection('system').doc('correlatives').set({
+                currentNumber: localNum,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }).catch(() => {});
             }
           }, err => console.warn('Firestore correlative error:', err));
         return () => unsubCorr();
       }, []);
 
-      // === FIREBASE: Sincronizar historial de cotizaciones ===
+      // === FIREBASE: Sincronizar historial de cotizaciones (Auto-migración y tiempo real) ===
       useEffect(() => {
         if (!window.db) return;
-        const unsubQuotes = window.db.collection('quotes').orderBy('timestamp', 'desc')
+
+        // Auto-migración: Subir a Firestore cotizaciones existentes en localStorage de este computador
+        try {
+          const localSaved = localStorage.getItem('olivar_quotes_history');
+          if (localSaved) {
+            const localList = JSON.parse(localSaved);
+            if (Array.isArray(localList) && localList.length > 0) {
+              localList.forEach(q => {
+                if (q && q.correlative) {
+                  const sanitized = JSON.parse(JSON.stringify(q));
+                  sanitized.timestamp = sanitized.timestamp || Date.now();
+                  window.db.collection('quotes').doc(q.correlative).set(sanitized, { merge: true })
+                    .catch(e => console.warn('Error subiendo cotización local a Firestore:', e));
+                }
+              });
+            }
+          }
+        } catch(e) { console.warn('Error en auto-migración de historial local:', e); }
+
+        // Listener en tiempo real sin restricción de orderBy para que carguen TODAS
+        const unsubQuotes = window.db.collection('quotes')
           .onSnapshot(snap => {
             if (!snap.empty) {
               const fireQuotes = snap.docs.map(d => ({ _fireId: d.id, ...d.data() }));
+              fireQuotes.sort((a, b) => {
+                const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+                const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+                return numB - numA;
+              });
               setQuoteHistory(fireQuotes);
               try { localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes)); } catch(e){}
             }
           }, err => console.warn('Firestore quotes error:', err));
         return () => unsubQuotes();
       }, []);
+
+      // Función manual para sincronizar / forzar refresco del historial
+      const handleSyncCloudQuotes = () => {
+        if (!window.db) {
+          showToast('⚠️ Base de datos no conectada');
+          return;
+        }
+        showToast('🔄 Sincronizando cotizaciones con la nube...');
+        // 1. Subir locales
+        try {
+          const localSaved = localStorage.getItem('olivar_quotes_history');
+          if (localSaved) {
+            const localList = JSON.parse(localSaved);
+            localList.forEach(q => {
+              if (q && q.correlative) {
+                const sanitized = JSON.parse(JSON.stringify(q));
+                sanitized.timestamp = sanitized.timestamp || Date.now();
+                window.db.collection('quotes').doc(q.correlative).set(sanitized, { merge: true });
+              }
+            });
+          }
+        } catch(e){}
+
+        // 2. Traer todas de Firestore
+        window.db.collection('quotes').get().then(snap => {
+          if (!snap.empty) {
+            const fireQuotes = snap.docs.map(d => ({ _fireId: d.id, ...d.data() }));
+            fireQuotes.sort((a, b) => {
+              const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+              const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+              return numB - numA;
+            });
+            setQuoteHistory(fireQuotes);
+            localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes));
+            showToast(✅ ¡Historial sincronizado! ( cotizaciones en la nube));
+          } else {
+            showToast('ℹ️ No hay cotizaciones en la nube aún');
+          }
+        }).catch(err => {
+          console.error(err);
+          showToast('⚠️ Error al consultar Firestore: ' + err.message);
+        });
+      };
 
       const [intranetClientData, setIntranetClientData] = useState({
         name: '',
@@ -2257,11 +2338,16 @@
           return next;
         });
 
-        // === FIREBASE: Guardar cotizacion en la nube ===
+        // === FIREBASE: Guardar cotizacion en la nube (Sanitizado sin valores undefined) ===
         if (window.db) {
-          const quoteDoc = { ...quoteRecord, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
-          window.db.collection('quotes').doc(quoteRecord.correlative).set(quoteDoc)
-            .catch(e => console.warn('Error guardando cotizacion en Firestore:', e));
+          try {
+            const sanitized = JSON.parse(JSON.stringify(quoteRecord));
+            sanitized.timestamp = Date.now();
+            window.db.collection('quotes').doc(quoteRecord.correlative).set(sanitized, { merge: true })
+              .catch(e => console.warn('Error guardando cotizacion en Firestore:', e));
+          } catch(e) {
+            console.error('Error al preparar cotización para Firestore:', e);
+          }
         }
 
         if (!isEditing) {
@@ -2276,7 +2362,7 @@
               window.db.collection('system').doc('correlatives').set({
                 currentNumber: nextNum,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-              }).catch(e => console.warn('Error actualizando correlativo:', e));
+              }, { merge: true }).catch(e => console.warn('Error actualizando correlativo:', e));
             }
             return nextNum;
           });
@@ -5203,13 +5289,25 @@
                         </h2>
                         <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
                       </div>
-                      <button
-                        onClick={() => handleStartNewQuote()}
-                        className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
-                      >
-                        <Icon name="plus" className="w-4 h-4" />
-                        <span>? Crear Nueva Cotización</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSyncCloudQuotes}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 transition shadow-md"
+                          title="Sincronizar y cargar todas las cotizaciones de todos los computadores desde la nube"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5" />
+                          <span>Sincronizar Nube</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStartNewQuote()}
+                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>Nueva Cotización</span>
+                        </button>
+                      </div>
                     </div>
 
                     {quoteHistory.length === 0 ? (
