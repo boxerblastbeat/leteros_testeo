@@ -1277,7 +1277,7 @@
       const handleDeleteMaterial = (id, name) => {
         if (window.confirm(`¿Eliminar el material "${name}" del catálogo?`)) {
           setMaterialsCatalog(materialsCatalog.filter(m => m.id !== id));
-          showToast(`?? Material eliminado`);
+          showToast(`🗑️ Material eliminado`);
         }
       };
 
@@ -1318,7 +1318,7 @@
           email: found.email || prev.email,
           deliveryAddress: found.address || prev.deliveryAddress
         }));
-        showToast(`?? Cliente cargado: ${found.name}`);
+        showToast(`👤 Cliente cargado: ${found.name}`);
       };
 
       const handleSaveCurrentClientToMaster = () => {
@@ -1354,7 +1354,7 @@
             }, ...prev];
           }
         });
-        showToast(`?? Cliente guardado / actualizado en la Maestra`);
+        showToast(`✅ Cliente guardado / actualizado en la Maestra`);
       };
 
       const handleUpdateClientInMaster = (id, field, value) => {
@@ -1364,7 +1364,7 @@
       const handleDeleteClientFromMaster = (id) => {
         if (window.confirm('¿Seguro que deseas eliminar este cliente de la Maestra?')) {
           setClientsMaster(prev => prev.filter(c => c.id !== id));
-          showToast('??? Cliente eliminado de la Maestra');
+          showToast('🗑️ Cliente eliminado de la Maestra');
         }
       };
 
@@ -1401,19 +1401,19 @@
         }));
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`?? Datos de ${client.name} cargados en el Cotizador`);
+        showToast(`📋 Datos de ${client.name} cargados en el Cotizador`);
       };
 
       const handleResetClientsMaster = () => {
         if (window.confirm('¿Restablecer la Maestra de Clientes al listado original del SII (82 clientes)?')) {
           setClientsMaster(DEFAULT_CLIENTS_DIRECTORY);
           localStorage.setItem('olivar_clients_master', JSON.stringify(DEFAULT_CLIENTS_DIRECTORY));
-          showToast('?? Maestra de clientes restablecida con éxito');
+          showToast('🔄 Maestra de clientes restablecida con éxito');
         }
       };
 
       const handleExportClientsCSV = () => {
-        const headers = ['RUT', 'Razon Social', 'Contacto', 'Telefono', 'Email', 'Direccion'];
+        const headers = ['RUT', 'Razón Social', 'Contacto', 'Teléfono', 'Email', 'Dirección'];
         const rows = clientsMaster.map(c => [
           `"${(c.rut || '').replace(/"/g, '""')}"`,
           `"${(c.name || '').replace(/"/g, '""')}"`,
@@ -1431,7 +1431,7 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('?? Planilla Excel / CSV descargada');
+        showToast('📥 Planilla Excel / CSV descargada');
       };
 
       const filteredClients = useMemo(() => {
@@ -1515,7 +1515,7 @@
 
       const handleApplyBulkEmails = (includeUnmatched = false) => {
         if (!bulkEmailParsed || bulkEmailParsed.length === 0) {
-          showToast('?? No hay correos válidos para importar');
+          showToast('⚠️ No hay correos válidos para importar');
           return;
         }
 
@@ -1582,7 +1582,7 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('?? Plantilla de ejemplo descargada');
+        showToast('📄 Plantilla de ejemplo descargada');
       };
 
       const handleQuoteFromInboxEmail = (emailItem) => {
@@ -1595,7 +1595,7 @@
         }));
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`?? Requerimiento de ${emailItem.fromName} cargado en el Cotizador`);
+        showToast(`📥 Requerimiento de ${emailItem.fromName} cargado en el Cotizador`);
       };
 
       const handleSaveInboxEmailToMaster = (emailItem) => {
@@ -1643,7 +1643,7 @@
         setQuickMailSubject(`Re: ${emailItem.subject}`);
         setQuickMailBody(`Estimado(a) ${emailItem.fromName},\n\nJunto con saludar, acusamos recibo de su mensaje.\n\nRespecto a su requerimiento:\n\nQuedamos a su entera disposición ante cualquier consulta.\n\nSaludos cordiales,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884\nhttps://letrerosolivar.com`);
         setWebmailSubTab('compose');
-        showToast('?? Redactor preparado para responder');
+        showToast('✏️ Redactor preparado para responder');
       };
 
       // --- HELPER FUNCTIONS MÓDULO WEBMAIL & CORREO ---
@@ -1651,11 +1651,11 @@
         if (type === 'cotizacion') {
           setQuickMailSubject('Cotización Formal - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nJunto con saludar, adjuntamos la cotización formal detallada para su requerimiento con Letreros Olivar SpA.\n\nCaracterísticas incluidas:\n• Materiales y dimensiones según especificación técnica.\n• Valores netos más IVA según normativa vigente.\n• Plazo de fabricación estimado: 5 a 7 días hábiles.\n\nPara aprobar este presupuesto o coordinar detalles, puede responder directamente a este correo o escribirnos a nuestro WhatsApp (+56 9 5158 5884).\n\nAtentamente,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | https://letrerosolivar.com`);
-          showToast('?? Plantilla de Cotización cargada');
+          showToast('📋 Plantilla de Cotización cargada');
         } else if (type === 'comprobante') {
           setQuickMailSubject('Confirmación de Recepción de Transferencia - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nHemos recibido conforme el comprobante de transferencia bancaria por su trabajo en Letreros Olivar SpA.\n\nSu pedido ha pasado a la etapa de preparación y producción en taller. Le notificaremos oportunamente cuando esté listo para retiro / despacho.\n\nMuchas gracias por su preferencia.\n\nAtentamente,\nAdministración Letreros Olivar SpA\ncontacto@letrerosolivar.com`);
-          showToast('?? Plantilla de Comprobante cargada');
+          showToast('💰 Plantilla de Comprobante cargada');
         } else if (type === 'terminado') {
           setQuickMailSubject('Trabajo Terminado y Listo para Entrega - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nLe informamos con agrado que su trabajo publicitario se encuentra completamente terminado y revisado con nuestro estándar de control de calidad.\n\nHorario de taller para retiro:\n• Lunes a Viernes de 10:00 a 20:00 hrs (Continuado).\n• Sábados, Domingos y Festivos: Cerrado.\n• Dirección: Camino Público S/N, Olivar, Región de O'Higgins.\n\nFavor coordinar su retiro o despacho respondiendo a este mensaje.\n\nAtentamente,\nProducción Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
@@ -1663,14 +1663,14 @@
         } else if (type === 'instalacion') {
           setQuickMailSubject('Coordinación de Cuadrilla de Instalación en Terreno - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nNos comunicamos para coordinar los trabajos de montaje e instalación en terreno de su letrero publicitario.\n\nFavor confirmar disponibilidad de acceso al recinto y condiciones del lugar (puntos eléctricos, altura o permisos pertinentes) para la fecha acordada.\n\nQuedamos atentos a sus indicaciones.\n\nSaludos cordiales,\nOperaciones Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
-          showToast('?? Plantilla de Instalación cargada');
+          showToast('🏗️ Plantilla de Instalación cargada');
         }
       };
 
       const handleOpenGmailCompose = () => {
         const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com&view=cm&fs=1&to=${encodeURIComponent(quickMailTo)}&su=${encodeURIComponent(quickMailSubject)}&body=${encodeURIComponent(quickMailBody)}`;
         window.open(url, '_blank');
-        showToast('?? Abriendo redactor en Gmail Workspace');
+        showToast('🚀 Abriendo redactor en Gmail Workspace');
       };
 
       const handleOpenDefaultMailto = () => {
@@ -1681,7 +1681,7 @@
       const handleOpenGmailSearch = (query) => {
         const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com#search/${encodeURIComponent(query)}`;
         window.open(url, '_blank');
-        showToast(`?? Buscando en Gmail: ${query}`);
+        showToast(`🔍 Buscando en Gmail: ${query}`);
       };
 
       const handleRefreshInbox = () => {
@@ -1693,13 +1693,13 @@
           setLastRefreshedTime(`Hoy, ${timeStr}`);
           // Actualiza dinámicamente la hora del correo más reciente a la hora actual de refresco
           setInboxEmails(prev => prev.map((e, idx) => idx === 0 ? { ...e, date: `Hoy, ${timeStr}` } : e));
-          showToast(`?? Bandeja sincronizada con éxito (${timeStr})`);
+          showToast(`🔄 Bandeja sincronizada con éxito (${timeStr})`);
         }, 650);
       };
 
       const handleSendDirectMail = () => {
         if (!quickMailTo || !quickMailTo.trim()) {
-          showToast('?? Ingresa un destinatario');
+          showToast('⚠️ Ingresa un destinatario');
           return;
         }
         setIsSendingMail(true);
@@ -1719,7 +1719,7 @@
             body: quickMailBody
           };
           setInboxEmails(prev => [newSentEmail, ...prev]);
-          showToast(`?? ¡Correo enviado a ${quickMailTo} desde contacto@letrerosolivar.com!`);
+          showToast(`🎉 ¡Correo enviado a ${quickMailTo} desde contacto@letrerosolivar.com!`);
           setQuickMailTo('');
           setWebmailSubTab('inbox');
         }, 650);
@@ -1727,7 +1727,7 @@
 
       const handleSendInlineReply = (originalEmail) => {
         if (!inlineReplyText || !inlineReplyText.trim()) {
-          showToast('?? Escribe un mensaje antes de responder');
+          showToast('⚠️ Escribe un mensaje antes de responder');
           return;
         }
         setIsSendingMail(true);
@@ -1814,7 +1814,7 @@
           setLoginPassword('');
           setLoginError('');
           sessionStorage.setItem('olivar_intranet_auth', 'true');
-          showToast('?? Sesión de Intranet iniciada');
+          showToast('🔓 Sesión de Intranet iniciada');
         } else {
           setLoginError('Contraseña incorrecta. Acceso restringido.');
         }
@@ -1825,7 +1825,7 @@
         setShowLoginModal(true);
         sessionStorage.removeItem('olivar_intranet_auth');
         localStorage.removeItem('olivar_intranet_auth');
-        showToast('?? Sesión de Intranet cerrada');
+        showToast('🔒 Sesión de Intranet cerrada');
       };
 
       // --- ENVÍO DE SOLICITUD DEL CLIENTE DESDE LA WEB PÚBLICA ---
@@ -1853,18 +1853,18 @@
         setReceivedRequests([newReq, ...receivedRequests]);
 
         // Formatear mensaje para enviar al WhatsApp del taller
-        let msg = `*??? NUEVA SOLICITUD DE COTIZACIÓN (${newReq.id})*\n`;
-        msg += `*?? Cliente:* ${clientRequest.clientName} ${clientRequest.clientRUT ? `(RUT: ${clientRequest.clientRUT})` : ''}\n`;
-        msg += `*?? Teléfono:* ${clientRequest.clientPhone}\n`;
-        if (clientRequest.clientEmail) msg += `*?? Email:* ${clientRequest.clientEmail}\n`;
-        msg += `\n*?? DETALLES DEL PROYECTO:*\n`;
+        let msg = `*📋 NUEVA SOLICITUD DE COTIZACIÓN (${newReq.id})*\n`;
+        msg += `*👤 Cliente:* ${clientRequest.clientName} ${clientRequest.clientRUT ? `(RUT: ${clientRequest.clientRUT})` : ''}\n`;
+        msg += `*📞 Teléfono:* ${clientRequest.clientPhone}\n`;
+        if (clientRequest.clientEmail) msg += `*✉️ Email:* ${clientRequest.clientEmail}\n`;
+        msg += `\n*📐 DETALLES DEL PROYECTO:*\n`;
         msg += `• *Servicio:* ${clientRequest.serviceType}\n`;
         msg += `• *Material preferido:* ${clientRequest.material || 'A sugerir por taller'}\n`;
         if (clientRequest.width && clientRequest.height) {
           msg += `• *Dimensiones aprox:* ${clientRequest.width}m (Ancho) x ${clientRequest.height}m (Alto)\n`;
         }
         msg += `• *Cantidad:* ${clientRequest.quantity}\n`;
-        msg += `• *Modalidad:* ${clientRequest.deliveryMethod === 'instalacion' ? '?? Requiere Instalación en Terreno' : '?? Retiro en Taller (Olivar)'}\n`;
+        msg += `• *Modalidad:* ${clientRequest.deliveryMethod === 'instalacion' ? '🏗️ Requiere Instalación en Terreno' : '🏬 Retiro en Taller (Olivar)'}\n`;
         if (clientRequest.deliveryMethod === 'instalacion' && clientRequest.deliveryAddress) {
           msg += `• *Lugar de obra:* ${clientRequest.deliveryAddress}\n`;
         }
@@ -1919,7 +1919,7 @@
 
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`?? Datos de ${req.clientName} cargados en el cotizador`);
+        showToast(`📋 Datos de ${req.clientName} cargados en el cotizador`);
       };
 
       // Estado para saber si estamos editando una cotización existente del historial
@@ -1987,7 +1987,7 @@
         // 4. Cambiar a la pestaña de cotizador para continuar o emitir
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`?? Datos de ${oldQuote.client.name} cargados para nueva cotización (${currentCorrelativeCode})`);
+        showToast(`📋 Datos de ${oldQuote.client.name} cargados para nueva cotización (${currentCorrelativeCode})`);
       };
 
       // --- INICIAR NUEVA COTIZACIÓN EN LIMPIO ---
@@ -2036,7 +2036,7 @@
         setEditingCorrelative(null);
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`? Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
+        showToast(`✨ Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
       };
 
       // --- ACCIONES DE INTRANET (AGREGAR ÍTEM, EMITIR Y WHATSAPP) ---
@@ -2302,16 +2302,16 @@
           return;
         }
 
-        let message = `*?? COTIZACIÓN FORMAL ${q.correlative}*\n`;
-        message += `*?? Empresa Emisora:* ${companyInfo.name}\n`;
-        message += `*?? Cliente / Razón Social:* ${q.client.name || 'Cliente'}\n`;
-        if (q.client.contactPerson) message += `*?? Atención / Contacto:* ${q.client.contactPerson}\n`;
-        if (q.client.documentId) message += `*?? RUT:* ${q.client.documentId}\n`;
-        message += `*?? Fecha:* ${q.date || new Date().toLocaleDateString('es-CL')}\n`;
+        let message = `*📋 COTIZACIÓN FORMAL ${q.correlative}*\n`;
+        message += `*🏢 Empresa Emisora:* ${companyInfo.name}\n`;
+        message += `*👤 Cliente / Razón Social:* ${q.client.name || 'Cliente'}\n`;
+        if (q.client.contactPerson) message += `*🤝 Atención / Contacto:* ${q.client.contactPerson}\n`;
+        if (q.client.documentId) message += `*📄 RUT:* ${q.client.documentId}\n`;
+        message += `*📅 Fecha:* ${q.date || new Date().toLocaleDateString('es-CL')}\n`;
         let deliveryLabel = 'Retiro en Taller (Olivar)';
         if (q.client.deliveryMethod === 'instalacion') deliveryLabel = 'Instalación en Terreno / Obra';
         else if (q.client.deliveryMethod === 'entrega') deliveryLabel = 'Entrega en Instalaciones del Cliente';
-        message += `*?? Modalidad:* ${deliveryLabel}\n`;
+        message += `*🚚 Modalidad:* ${deliveryLabel}\n`;
         if (q.client.deliveryAddress) {
           const destTitle = q.client.deliveryMethod === 'instalacion' ? 'Lugar de Instalación' : 'Dirección de Entrega';
           message += `*?? ${destTitle}:* ${q.client.deliveryAddress}\n`;
@@ -3426,9 +3426,9 @@
                           <div>
                             <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-white font-heading">
                               <Icon name="truck" className="w-4 h-4 text-blue-400" />
-                              <span>Entrega en Cliente</span>
+                              <span>Despacho a Instalaciones del Cliente</span>
                             </div>
-                            <p className="text-[11px] text-zinc-400 mt-1">Flete / traslado directo a tu empresa o domicilio (sin instalación).</p>
+                            <p className="text-[11px] text-zinc-400 mt-1">Flete y traslado directo a tu empresa o domicilio (sin instalación).</p>
                           </div>
                         </label>
 
@@ -3693,7 +3693,7 @@
                       }`}
                       title="Volver a la vista de espacios"
                     >
-                      <span>?? Menú de Espacios</span>
+                      <span>📂 Menú de Espacios</span>
                     </button>
 
                     <button
@@ -3710,7 +3710,7 @@
                       title="Ir al área de administración y cotizaciones"
                     >
                       <Icon name="file-text" className="w-3.5 h-3.5" />
-                      <span>?? Administración</span>
+                      <span>📋 Administración</span>
                     </button>
 
                     <button
@@ -3724,7 +3724,7 @@
                       title="Ir al área de correo y webmail corporativo"
                     >
                       <Icon name="mail" className="w-3.5 h-3.5 text-amber-400" />
-                      <span>?? Webmail</span>
+                      <span>✉️ Webmail</span>
                     </button>
 
                     <div className="hidden sm:flex items-center gap-1.5 ml-auto border-l border-zinc-800 pl-3">
@@ -3736,7 +3736,7 @@
                         title="Abrir cotizador independiente de taller"
                       >
                         <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
-                        <span>Formato Imprimible ?</span>
+                        <span>Formato Imprimible ↗</span>
                       </a>
 
                       <a
@@ -3759,7 +3759,7 @@
                       <span className="text-xs font-bold uppercase tracking-widest text-red-500">¿A qué espacio deseas ingresar hoy?</span>
                       <h2 className="text-2xl sm:text-3xl font-black text-white font-heading mt-1">Selecciona tu Espacio de Trabajo</h2>
                       <p className="text-xs sm:text-sm text-zinc-400 mt-2">
-                        La intranet está organizada en dos áreas independientes para que trabajes de forma ordenada: a la izquierda tus Cotizaciones y Taller, y a la derecha tu Correo Corporativo y Webmail.
+                        La intranet está organizada en dos áreas independientes para que trabajes de forma ordenada: a la izquierda tu Administración y Cotizaciones, y a la derecha tu Correo Corporativo y Webmail.
                       </p>
                     </div>
 
@@ -3820,7 +3820,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>?? Historial de Cotizaciones Emitidas</span>
+                              <span>📊 Historial de Cotizaciones Emitidas</span>
                               <span className="text-[11px] text-zinc-500">{quoteHistory.length} emitidas</span>
                             </button>
 
@@ -3832,7 +3832,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>?? Maestra de Clientes & Proveedores</span>
+                              <span>👥 Maestra de Clientes & Proveedores</span>
                               <span className="text-[11px] text-zinc-500">{clientsMaster.length} registrados</span>
                             </button>
 
@@ -3860,7 +3860,7 @@
                             className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-red-600/30 group-hover:scale-[1.01]"
                           >
                             <Icon name="cotizacion" className="w-5 h-5 text-white" />
-                            <span>Entrar al Espacio de Cotizaciones & Taller ?</span>
+                            <span>Entrar a Administración ↗</span>
                           </button>
                         </div>
                       </div>
@@ -3936,7 +3936,7 @@
                               onClick={() => window.open('https://webmail.letrerosolivar.com', '_blank')}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>?? Webmail de Respaldo en Hosting</span>
+                              <span>✉️ Webmail de Respaldo en Hosting</span>
                               <Icon name="external-link" className="w-3.5 h-3.5 text-zinc-500" />
                             </button>
                           </div>
@@ -4026,8 +4026,9 @@
                         </button>
                       </div>
 
-                      <div className="text-xs text-zinc-500 font-mono">
-                        Espacio de Taller Activo
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Sincronizado en Nube Firestore</span>
                       </div>
                     </div>
 
@@ -4054,7 +4055,7 @@
                           title="Limpiar campos y preparar una cotización en blanco"
                         >
                           <Icon name="refresh" className="w-3.5 h-3.5" />
-                          <span>Limpiar Formulario / Nueva Cotización</span>
+                          <span>Limpiar Formulario</span>
                         </button>
                         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-400 font-mono">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -4163,9 +4164,9 @@
                                 onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
                                 className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
                               >
-                                <option value="instalacion">?? Instalación en Terreno / Obra</option>
-                                <option value="entrega">?? Entrega en Instalaciones del Cliente (Flete / Despacho)</option>
-                                <option value="retiro">?? Retiro en Taller (Olivar)</option>
+                                <option value="instalacion">🏗️ Instalación en Terreno / Obra</option>
+                                <option value="entrega">📦 Despacho a Instalaciones del Cliente (Flete)</option>
+                                <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
                               </select>
                             </div>
                             {(intranetClientData.deliveryMethod === 'instalacion' || intranetClientData.deliveryMethod === 'entrega') && (
@@ -5128,10 +5129,10 @@
                                     : 'bg-zinc-800 text-white'
                               }`}>
                                 {req.deliveryMethod === 'instalacion'
-                                  ? '?? Requiere Instalación'
+                                  ? '🏗️ Requiere Instalación'
                                   : req.deliveryMethod === 'entrega'
-                                    ? '?? Entrega en Cliente'
-                                    : '?? Retiro en Taller (Olivar)'}
+                                    ? '📦 Despacho a Instalaciones del Cliente'
+                                    : '🏬 Retiro en Taller (Olivar)'}
                               </span>
                             </div>
 
@@ -5229,7 +5230,7 @@
                               </div>
                               <div className="font-bold text-white text-sm mt-1">{q.client.name}</div>
                               <div className="text-xs text-zinc-400 mt-0.5">
-                                {q.items.length} trabajos • Modalidad: <strong className="text-zinc-200">{q.client.deliveryMethod === 'instalacion' ? 'Instalación' : q.client.deliveryMethod === 'entrega' ? 'Entrega en Cliente' : 'Retiro en Taller'}</strong> • Total: <strong className="text-white font-mono">{formatCLP(q.totals.total)}</strong>
+                                {q.items.length} trabajos • Modalidad: <strong className="text-zinc-200">{q.client.deliveryMethod === 'instalacion' ? 'Instalación' : q.client.deliveryMethod === 'entrega' ? 'Despacho a Cliente' : 'Retiro en Taller'}</strong> • Total: <strong className="text-white font-mono">{formatCLP(q.totals.total)}</strong>
                               </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -7196,7 +7197,7 @@
                       </p>
                       {currentQuoteToPrint.client.deliveryAddress && (
                         <p className="text-zinc-700">
-                          {currentQuoteToPrint.client.deliveryMethod === 'instalacion' ? 'Lugar Instalación' : 'Dirección Entrega'}: {currentQuoteToPrint.client.deliveryAddress}
+                          {currentQuoteToPrint.client.deliveryMethod === 'instalacion' ? 'Lugar de Instalación' : 'Dirección de Despacho'}: {currentQuoteToPrint.client.deliveryAddress}
                         </p>
                       )}
                     </div>
