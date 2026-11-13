@@ -677,6 +677,7 @@
         email: '',
         deliveryAddress: '',
         deliveryMethod: 'instalacion',
+        channel: 'presencial', // 'presencial' (Taller) | 'web' (Solicitud Web) | 'telefono' (Llamada / WhatsApp)
         validDays: 15,
         paymentTerms: 'Crédito 30 días',
         manufacturingDays: '5 a 7 días hábiles'
@@ -1696,8 +1697,10 @@
           email: req.clientEmail || '',
           deliveryAddress: req.deliveryAddress || '',
           deliveryMethod: req.deliveryMethod || 'instalacion',
+          channel: 'web',
           validDays: 15,
-          paymentTerms: '50% Anticipo y 50% contra entrega'
+          paymentTerms: '50% Anticipo y 50% contra entrega',
+          manufacturingDays: '5 a 7 días hábiles'
         });
 
         // Intentar mapear producto
@@ -1726,6 +1729,7 @@
           email: quoteToEdit.client.email || '',
           deliveryAddress: quoteToEdit.client.deliveryAddress || '',
           deliveryMethod: quoteToEdit.client.deliveryMethod || 'instalacion',
+          channel: quoteToEdit.client.channel || 'presencial',
           validDays: quoteToEdit.client.validDays || 15,
           paymentTerms: quoteToEdit.client.paymentTerms || 'Crédito 30 días',
           manufacturingDays: quoteToEdit.client.manufacturingDays || '5 a 7 días hábiles'
@@ -1757,6 +1761,7 @@
           email: oldQuote.client.email || '',
           deliveryAddress: oldQuote.client.deliveryAddress || '',
           deliveryMethod: oldQuote.client.deliveryMethod || 'instalacion',
+          channel: oldQuote.client.channel || 'presencial',
           validDays: oldQuote.client.validDays || 15,
           paymentTerms: oldQuote.client.paymentTerms || 'Crédito 30 días',
           manufacturingDays: oldQuote.client.manufacturingDays || '5 a 7 días hábiles'
@@ -1794,6 +1799,7 @@
           email: '',
           deliveryAddress: '',
           deliveryMethod: 'instalacion',
+          channel: 'presencial',
           validDays: 15,
           paymentTerms: 'Crédito 30 días',
           manufacturingDays: '5 a 7 días hábiles'
@@ -3855,17 +3861,31 @@
                                 className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800"
                               />
                             </div>
-                            <div>
-                              <label className="block text-zinc-300 font-semibold mb-1">Modalidad de Entrega</label>
-                              <select
-                                value={intranetClientData.deliveryMethod}
-                                onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
-                                className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
-                              >
-                                <option value="instalacion">🚚 Instalación en Terreno / Obra</option>
-                                <option value="entrega">📦 Entrega en Instalaciones del Cliente (Flete / Despacho)</option>
-                                <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
-                              </select>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-zinc-300 font-semibold mb-1">Origen de la Cotización</label>
+                                <select
+                                  value={intranetClientData.channel || 'presencial'}
+                                  onChange={(e) => setIntranetClientData({ ...intranetClientData, channel: e.target.value })}
+                                  className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-semibold focus:border-red-600 focus:outline-none"
+                                >
+                                  <option value="presencial">🏢 Taller (Atención Presencial)</option>
+                                  <option value="web">🌐 Solicitud Web (letrerosolivar.com)</option>
+                                  <option value="telefono">📱 WhatsApp / Telefónica</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-zinc-300 font-semibold mb-1">Modalidad de Entrega</label>
+                                <select
+                                  value={intranetClientData.deliveryMethod}
+                                  onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
+                                  className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
+                                >
+                                  <option value="instalacion">🚚 Instalación en Terreno</option>
+                                  <option value="entrega">📦 Entrega en Cliente</option>
+                                  <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
+                                </select>
+                              </div>
                             </div>
                             {(intranetClientData.deliveryMethod === 'instalacion' || intranetClientData.deliveryMethod === 'entrega') && (
                               <div>
@@ -4899,15 +4919,17 @@
                         <h2 className="text-lg font-bold text-white font-heading">
                           Historial de Cotizaciones Emitidas ({quoteHistory.length})
                         </h2>
-                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
+                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial único e intercalado (Atención Presencial de Taller y Solicitudes Web).</p>
                       </div>
-                      <button
-                        onClick={() => handleStartNewQuote()}
-                        className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
-                      >
-                        <Icon name="plus" className="w-4 h-4" />
-                        <span>➕ Crear Nueva Cotización</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleStartNewQuote()}
+                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>➕ Nueva Cotización Taller</span>
+                        </button>
+                      </div>
                     </div>
 
                     {quoteHistory.length === 0 ? (
@@ -4919,10 +4941,19 @@
                         {quoteHistory.map((q) => (
                           <div key={q.correlative} className="p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
                                 <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
                                 <span className="text-xs text-zinc-400">📅 {q.date}</span>
-                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-400 border border-red-600/30">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  q.client?.channel === 'web'
+                                    ? 'bg-blue-600/10 text-blue-400 border-blue-600/30'
+                                    : q.client?.channel === 'telefono'
+                                      ? 'bg-emerald-600/10 text-emerald-400 border-emerald-600/30'
+                                      : 'bg-red-600/10 text-red-400 border-red-600/30'
+                                }`}>
+                                  {q.client?.channel === 'web' ? '🌐 Web' : q.client?.channel === 'telefono' ? '📱 WhatsApp' : '🏢 Taller / Presencial'}
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300">
                                   {q.status}
                                 </span>
                               </div>
