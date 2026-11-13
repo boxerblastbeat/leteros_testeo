@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -111,6 +111,23 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase App + Firestore (CDN compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Inicializar Firebase - Letreros Olivar
+    const firebaseConfig = {
+      apiKey: "AIzaSyAhr06vE734LtX2ClAmVlAgZUrpPNbBCoc",
+      authDomain: "letreros-olivar.firebaseapp.com",
+      projectId: "letreros-olivar",
+      storageBucket: "letreros-olivar.firebasestorage.app",
+      messagingSenderId: "347836227863",
+      appId: "1:347836227863:web:4f107fde846416e32b5752"
+    };
+    firebase.initializeApp(firebaseConfig);
+    window.db = firebase.firestore();
+  </script>
 
   <style>
     body {
@@ -667,6 +684,39 @@
         return saved ? JSON.parse(saved) : [];
       });
 
+      // === FIREBASE: Sincronizar correlativo en tiempo real ===
+      useEffect(() => {
+        if (!window.db) return;
+        const unsubCorr = window.db.collection('system').doc('correlatives')
+          .onSnapshot(snap => {
+            if (snap.exists) {
+              const fireNum = snap.data().currentNumber;
+              setCorrelativeNumber(prev => {
+                if (fireNum && fireNum > prev) {
+                  localStorage.setItem('olivar_correlative', fireNum.toString());
+                  return fireNum;
+                }
+                return prev;
+              });
+            }
+          }, err => console.warn('Firestore correlative error:', err));
+        return () => unsubCorr();
+      }, []);
+
+      // === FIREBASE: Sincronizar historial de cotizaciones ===
+      useEffect(() => {
+        if (!window.db) return;
+        const unsubQuotes = window.db.collection('quotes').orderBy('timestamp', 'desc')
+          .onSnapshot(snap => {
+            if (!snap.empty) {
+              const fireQuotes = snap.docs.map(d => ({ _fireId: d.id, ...d.data() }));
+              setQuoteHistory(fireQuotes);
+              try { localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes)); } catch(e){}
+            }
+          }, err => console.warn('Firestore quotes error:', err));
+        return () => unsubQuotes();
+      }, []);
+
       const [intranetClientData, setIntranetClientData] = useState({
         name: '',
         contactPerson: '',
@@ -702,7 +752,7 @@
         localStorage.setItem('olivar_workshop_consumables', JSON.stringify(consumablesCatalog));
       }, [consumablesCatalog]);
 
-      // MAESTRA DE CLIENTES Y PROVEEDORES (Con persistencia en localStorage)
+      // MAESTRA DE CLIENTES Y PROVEEDORES (Firebase + localStorage fallback)
       const [clientsMaster, setClientsMaster] = useState(() => {
         const saved = localStorage.getItem('olivar_clients_master');
         return saved ? JSON.parse(saved) : DEFAULT_CLIENTS_DIRECTORY;
@@ -710,7 +760,29 @@
 
       useEffect(() => {
         localStorage.setItem('olivar_clients_master', JSON.stringify(clientsMaster));
+        if (window.db && clientsMaster.length > 0) {
+          window.db.collection('system').doc('clientsMaster').set({
+            data: clientsMaster,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(e => console.warn('Error guardando clientes en Firestore:', e));
+        }
       }, [clientsMaster]);
+
+      // === FIREBASE: Sincronizar maestra de clientes ===
+      useEffect(() => {
+        if (!window.db) return;
+        const unsubCli = window.db.collection('system').doc('clientsMaster')
+          .onSnapshot(snap => {
+            if (snap.exists && snap.data().data) {
+              const fc = snap.data().data;
+              if (fc.length > 0) {
+                setClientsMaster(fc);
+                try { localStorage.setItem('olivar_clients_master', JSON.stringify(fc)); } catch(e){}
+              }
+            }
+          }, err => console.warn('Firestore clients error:', err));
+        return () => unsubCli();
+      }, []);
 
       const [clientsSearch, setClientsSearch] = useState('');
       const [clientsFilterType, setClientsFilterType] = useState('all');
@@ -1171,14 +1243,14 @@
           setConsumablesCatalog(DEFAULT_WORKSHOP_CONSUMABLES);
           localStorage.removeItem('olivar_workshop_materials');
           localStorage.removeItem('olivar_workshop_consumables');
-          showToast('↺ Precios restablecidos a valores oficiales de Excel');
+          showToast('? Precios restablecidos a valores oficiales de Excel');
         }
       };
 
       const handleSaveAllWorkshopPrices = () => {
         localStorage.setItem('olivar_workshop_materials', JSON.stringify(materialsCatalog));
         localStorage.setItem('olivar_workshop_consumables', JSON.stringify(consumablesCatalog));
-        showToast('✅ Tarifario guardado y sincronizado con el Cotizador');
+        showToast('? Tarifario guardado y sincronizado con el Cotizador');
       };
 
       const handleCreateNewMaterial = (e) => {
@@ -1199,13 +1271,13 @@
         setMaterialsCatalog([newMat, ...materialsCatalog]);
         setShowAddMaterialModal(false);
         setNewMaterialForm({ name: '', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 0, pricePerSqm: 25000, unit: 'm²' });
-        showToast(`✅ Material "${newMat.name}" añadido al catálogo`);
+        showToast(`? Material "${newMat.name}" añadido al catálogo`);
       };
 
       const handleDeleteMaterial = (id, name) => {
         if (window.confirm(`¿Eliminar el material "${name}" del catálogo?`)) {
           setMaterialsCatalog(materialsCatalog.filter(m => m.id !== id));
-          showToast(`🗑 Material eliminado`);
+          showToast(`?? Material eliminado`);
         }
       };
 
@@ -1214,7 +1286,7 @@
         if (materialId === 'custom') {
           setItemDesc('Servicio / Trabajo a Medida');
           setItemPrice(0);
-          showToast('✨ Modo Personalizado: Ingresa libremente la descripción y valor');
+          showToast('? Modo Personalizado: Ingresa libremente la descripción y valor');
           return;
         }
         const mat = materialsCatalog.find(m => m.id === materialId);
@@ -1228,7 +1300,7 @@
             setItemWidth(1.0);
             setItemHeight(1.0);
           }
-          showToast(`📋 ${mat.name} ($${mat.pricePerSqm.toLocaleString('es-CL')} / ${mat.unit})`);
+          showToast(`?? ${mat.name} ($${mat.pricePerSqm.toLocaleString('es-CL')} / ${mat.unit})`);
         }
       };
 
@@ -1246,7 +1318,7 @@
           email: found.email || prev.email,
           deliveryAddress: found.address || prev.deliveryAddress
         }));
-        showToast(`🏢 Cliente cargado: ${found.name}`);
+        showToast(`?? Cliente cargado: ${found.name}`);
       };
 
       const handleSaveCurrentClientToMaster = () => {
@@ -1282,7 +1354,7 @@
             }, ...prev];
           }
         });
-        showToast(`💾 Cliente guardado / actualizado en la Maestra`);
+        showToast(`?? Cliente guardado / actualizado en la Maestra`);
       };
 
       const handleUpdateClientInMaster = (id, field, value) => {
@@ -1292,7 +1364,7 @@
       const handleDeleteClientFromMaster = (id) => {
         if (window.confirm('¿Seguro que deseas eliminar este cliente de la Maestra?')) {
           setClientsMaster(prev => prev.filter(c => c.id !== id));
-          showToast('🗑️ Cliente eliminado de la Maestra');
+          showToast('??? Cliente eliminado de la Maestra');
         }
       };
 
@@ -1314,7 +1386,7 @@
         setClientsMaster(prev => [newClient, ...prev]);
         setNewClientForm({ rut: '', name: '', contactPerson: '', phone: '', email: '', address: '' });
         setShowAddClientModal(false);
-        showToast(`✅ Nuevo cliente ${newClient.name} agregado`);
+        showToast(`? Nuevo cliente ${newClient.name} agregado`);
       };
 
       const handleQuoteThisClient = (client) => {
@@ -1329,14 +1401,14 @@
         }));
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`📋 Datos de ${client.name} cargados en el Cotizador`);
+        showToast(`?? Datos de ${client.name} cargados en el Cotizador`);
       };
 
       const handleResetClientsMaster = () => {
         if (window.confirm('¿Restablecer la Maestra de Clientes al listado original del SII (82 clientes)?')) {
           setClientsMaster(DEFAULT_CLIENTS_DIRECTORY);
           localStorage.setItem('olivar_clients_master', JSON.stringify(DEFAULT_CLIENTS_DIRECTORY));
-          showToast('🔄 Maestra de clientes restablecida con éxito');
+          showToast('?? Maestra de clientes restablecida con éxito');
         }
       };
 
@@ -1359,7 +1431,7 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('📥 Planilla Excel / CSV descargada');
+        showToast('?? Planilla Excel / CSV descargada');
       };
 
       const filteredClients = useMemo(() => {
@@ -1443,7 +1515,7 @@
 
       const handleApplyBulkEmails = (includeUnmatched = false) => {
         if (!bulkEmailParsed || bulkEmailParsed.length === 0) {
-          showToast('⚠️ No hay correos válidos para importar');
+          showToast('?? No hay correos válidos para importar');
           return;
         }
 
@@ -1479,7 +1551,7 @@
         setShowBulkEmailModal(false);
         setBulkEmailText('');
         setBulkEmailParsed([]);
-        showToast(`✅ Se actualizaron ${updatedCount} correos${createdCount > 0 ? ` y se agregaron ${createdCount} nuevos clientes` : ''}`);
+        showToast(`? Se actualizaron ${updatedCount} correos${createdCount > 0 ? ` y se agregaron ${createdCount} nuevos clientes` : ''}`);
       };
 
       const handleFileUploadForBulkEmail = (e) => {
@@ -1510,7 +1582,7 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('📥 Plantilla de ejemplo descargada');
+        showToast('?? Plantilla de ejemplo descargada');
       };
 
       const handleQuoteFromInboxEmail = (emailItem) => {
@@ -1523,7 +1595,7 @@
         }));
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`📋 Requerimiento de ${emailItem.fromName} cargado en el Cotizador`);
+        showToast(`?? Requerimiento de ${emailItem.fromName} cargado en el Cotizador`);
       };
 
       const handleSaveInboxEmailToMaster = (emailItem) => {
@@ -1548,7 +1620,7 @@
         if (found) {
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Correo ${emailItem.fromEmail} sincronizado en la Maestra`);
+          showToast(`? Correo ${emailItem.fromEmail} sincronizado en la Maestra`);
         } else {
           const newClient = {
             id: `cli-${Date.now()}`,
@@ -1562,7 +1634,7 @@
           updatedMaster.unshift(newClient);
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Cliente ${newClient.name} agregado a la Maestra con correo ${newClient.email}`);
+          showToast(`? Cliente ${newClient.name} agregado a la Maestra con correo ${newClient.email}`);
         }
       };
 
@@ -1571,7 +1643,7 @@
         setQuickMailSubject(`Re: ${emailItem.subject}`);
         setQuickMailBody(`Estimado(a) ${emailItem.fromName},\n\nJunto con saludar, acusamos recibo de su mensaje.\n\nRespecto a su requerimiento:\n\nQuedamos a su entera disposición ante cualquier consulta.\n\nSaludos cordiales,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884\nhttps://letrerosolivar.com`);
         setWebmailSubTab('compose');
-        showToast('✍️ Redactor preparado para responder');
+        showToast('?? Redactor preparado para responder');
       };
 
       // --- HELPER FUNCTIONS MÓDULO WEBMAIL & CORREO ---
@@ -1579,26 +1651,26 @@
         if (type === 'cotizacion') {
           setQuickMailSubject('Cotización Formal - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nJunto con saludar, adjuntamos la cotización formal detallada para su requerimiento con Letreros Olivar SpA.\n\nCaracterísticas incluidas:\n• Materiales y dimensiones según especificación técnica.\n• Valores netos más IVA según normativa vigente.\n• Plazo de fabricación estimado: 5 a 7 días hábiles.\n\nPara aprobar este presupuesto o coordinar detalles, puede responder directamente a este correo o escribirnos a nuestro WhatsApp (+56 9 5158 5884).\n\nAtentamente,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | https://letrerosolivar.com`);
-          showToast('📋 Plantilla de Cotización cargada');
+          showToast('?? Plantilla de Cotización cargada');
         } else if (type === 'comprobante') {
           setQuickMailSubject('Confirmación de Recepción de Transferencia - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nHemos recibido conforme el comprobante de transferencia bancaria por su trabajo en Letreros Olivar SpA.\n\nSu pedido ha pasado a la etapa de preparación y producción en taller. Le notificaremos oportunamente cuando esté listo para retiro / despacho.\n\nMuchas gracias por su preferencia.\n\nAtentamente,\nAdministración Letreros Olivar SpA\ncontacto@letrerosolivar.com`);
-          showToast('💰 Plantilla de Comprobante cargada');
+          showToast('?? Plantilla de Comprobante cargada');
         } else if (type === 'terminado') {
           setQuickMailSubject('Trabajo Terminado y Listo para Entrega - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nLe informamos con agrado que su trabajo publicitario se encuentra completamente terminado y revisado con nuestro estándar de control de calidad.\n\nHorario de taller para retiro:\n• Lunes a Viernes de 10:00 a 20:00 hrs (Continuado).\n• Sábados, Domingos y Festivos: Cerrado.\n• Dirección: Camino Público S/N, Olivar, Región de O'Higgins.\n\nFavor coordinar su retiro o despacho respondiendo a este mensaje.\n\nAtentamente,\nProducción Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
-          showToast('✅ Plantilla de Trabajo Terminado cargada');
+          showToast('? Plantilla de Trabajo Terminado cargada');
         } else if (type === 'instalacion') {
           setQuickMailSubject('Coordinación de Cuadrilla de Instalación en Terreno - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nNos comunicamos para coordinar los trabajos de montaje e instalación en terreno de su letrero publicitario.\n\nFavor confirmar disponibilidad de acceso al recinto y condiciones del lugar (puntos eléctricos, altura o permisos pertinentes) para la fecha acordada.\n\nQuedamos atentos a sus indicaciones.\n\nSaludos cordiales,\nOperaciones Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
-          showToast('🚚 Plantilla de Instalación cargada');
+          showToast('?? Plantilla de Instalación cargada');
         }
       };
 
       const handleOpenGmailCompose = () => {
         const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com&view=cm&fs=1&to=${encodeURIComponent(quickMailTo)}&su=${encodeURIComponent(quickMailSubject)}&body=${encodeURIComponent(quickMailBody)}`;
         window.open(url, '_blank');
-        showToast('🚀 Abriendo redactor en Gmail Workspace');
+        showToast('?? Abriendo redactor en Gmail Workspace');
       };
 
       const handleOpenDefaultMailto = () => {
@@ -1609,7 +1681,7 @@
       const handleOpenGmailSearch = (query) => {
         const url = `https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com#search/${encodeURIComponent(query)}`;
         window.open(url, '_blank');
-        showToast(`🔍 Buscando en Gmail: ${query}`);
+        showToast(`?? Buscando en Gmail: ${query}`);
       };
 
       const handleRefreshInbox = () => {
@@ -1621,13 +1693,13 @@
           setLastRefreshedTime(`Hoy, ${timeStr}`);
           // Actualiza dinámicamente la hora del correo más reciente a la hora actual de refresco
           setInboxEmails(prev => prev.map((e, idx) => idx === 0 ? { ...e, date: `Hoy, ${timeStr}` } : e));
-          showToast(`🔄 Bandeja sincronizada con éxito (${timeStr})`);
+          showToast(`?? Bandeja sincronizada con éxito (${timeStr})`);
         }, 650);
       };
 
       const handleSendDirectMail = () => {
         if (!quickMailTo || !quickMailTo.trim()) {
-          showToast('⚠️ Ingresa un destinatario');
+          showToast('?? Ingresa un destinatario');
           return;
         }
         setIsSendingMail(true);
@@ -1647,7 +1719,7 @@
             body: quickMailBody
           };
           setInboxEmails(prev => [newSentEmail, ...prev]);
-          showToast(`✈️ ¡Correo enviado a ${quickMailTo} desde contacto@letrerosolivar.com!`);
+          showToast(`?? ¡Correo enviado a ${quickMailTo} desde contacto@letrerosolivar.com!`);
           setQuickMailTo('');
           setWebmailSubTab('inbox');
         }, 650);
@@ -1655,7 +1727,7 @@
 
       const handleSendInlineReply = (originalEmail) => {
         if (!inlineReplyText || !inlineReplyText.trim()) {
-          showToast('⚠️ Escribe un mensaje antes de responder');
+          showToast('?? Escribe un mensaje antes de responder');
           return;
         }
         setIsSendingMail(true);
@@ -1676,7 +1748,7 @@
           };
           setInboxEmails(prev => [replyItem, ...prev]);
           setInlineReplyText('');
-          showToast(`✈️ ¡Respuesta enviada a ${originalEmail.fromEmail}!`);
+          showToast(`?? ¡Respuesta enviada a ${originalEmail.fromEmail}!`);
         }, 650);
       };
 
@@ -1742,7 +1814,7 @@
           setLoginPassword('');
           setLoginError('');
           sessionStorage.setItem('olivar_intranet_auth', 'true');
-          showToast('🔓 Sesión de Intranet iniciada');
+          showToast('?? Sesión de Intranet iniciada');
         } else {
           setLoginError('Contraseña incorrecta. Acceso restringido.');
         }
@@ -1753,7 +1825,7 @@
         setShowLoginModal(true);
         sessionStorage.removeItem('olivar_intranet_auth');
         localStorage.removeItem('olivar_intranet_auth');
-        showToast('🔒 Sesión de Intranet cerrada');
+        showToast('?? Sesión de Intranet cerrada');
       };
 
       // --- ENVÍO DE SOLICITUD DEL CLIENTE DESDE LA WEB PÚBLICA ---
@@ -1781,18 +1853,18 @@
         setReceivedRequests([newReq, ...receivedRequests]);
 
         // Formatear mensaje para enviar al WhatsApp del taller
-        let msg = `*🛠️ NUEVA SOLICITUD DE COTIZACIÓN (${newReq.id})*\n`;
-        msg += `*👤 Cliente:* ${clientRequest.clientName} ${clientRequest.clientRUT ? `(RUT: ${clientRequest.clientRUT})` : ''}\n`;
-        msg += `*📞 Teléfono:* ${clientRequest.clientPhone}\n`;
-        if (clientRequest.clientEmail) msg += `*✉️ Email:* ${clientRequest.clientEmail}\n`;
-        msg += `\n*📐 DETALLES DEL PROYECTO:*\n`;
+        let msg = `*??? NUEVA SOLICITUD DE COTIZACIÓN (${newReq.id})*\n`;
+        msg += `*?? Cliente:* ${clientRequest.clientName} ${clientRequest.clientRUT ? `(RUT: ${clientRequest.clientRUT})` : ''}\n`;
+        msg += `*?? Teléfono:* ${clientRequest.clientPhone}\n`;
+        if (clientRequest.clientEmail) msg += `*?? Email:* ${clientRequest.clientEmail}\n`;
+        msg += `\n*?? DETALLES DEL PROYECTO:*\n`;
         msg += `• *Servicio:* ${clientRequest.serviceType}\n`;
         msg += `• *Material preferido:* ${clientRequest.material || 'A sugerir por taller'}\n`;
         if (clientRequest.width && clientRequest.height) {
           msg += `• *Dimensiones aprox:* ${clientRequest.width}m (Ancho) x ${clientRequest.height}m (Alto)\n`;
         }
         msg += `• *Cantidad:* ${clientRequest.quantity}\n`;
-        msg += `• *Modalidad:* ${clientRequest.deliveryMethod === 'instalacion' ? '🚚 Requiere Instalación en Terreno' : '🏬 Retiro en Taller (Olivar)'}\n`;
+        msg += `• *Modalidad:* ${clientRequest.deliveryMethod === 'instalacion' ? '?? Requiere Instalación en Terreno' : '?? Retiro en Taller (Olivar)'}\n`;
         if (clientRequest.deliveryMethod === 'instalacion' && clientRequest.deliveryAddress) {
           msg += `• *Lugar de obra:* ${clientRequest.deliveryAddress}\n`;
         }
@@ -1803,7 +1875,7 @@
         msg += `\n_Solicitud enviada desde la web www.letrerosolivar.com_`;
 
         // Limpiar formulario y notificar
-        showToast(`🎉 Solicitud ${newReq.id} enviada con éxito`);
+        showToast(`?? Solicitud ${newReq.id} enviada con éxito`);
         
         // Abrir WhatsApp con la solicitud lista
         const encoded = encodeURIComponent(msg);
@@ -1847,7 +1919,7 @@
 
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`📋 Datos de ${req.clientName} cargados en el cotizador`);
+        showToast(`?? Datos de ${req.clientName} cargados en el cotizador`);
       };
 
       // Estado para saber si estamos editando una cotización existente del historial
@@ -1880,7 +1952,7 @@
 
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`✏️ Editando cotización oficial ${quoteToEdit.correlative}`);
+        showToast(`?? Editando cotización oficial ${quoteToEdit.correlative}`);
       };
 
       // --- REUTILIZAR / CLONAR COTIZACIÓN DEL HISTORIAL (Crea una NUEVA sin modificar la anterior) ---
@@ -1915,7 +1987,7 @@
         // 4. Cambiar a la pestaña de cotizador para continuar o emitir
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`📋 Datos de ${oldQuote.client.name} cargados para nueva cotización (${currentCorrelativeCode})`);
+        showToast(`?? Datos de ${oldQuote.client.name} cargados para nueva cotización (${currentCorrelativeCode})`);
       };
 
       // --- INICIAR NUEVA COTIZACIÓN EN LIMPIO ---
@@ -1964,7 +2036,7 @@
         setEditingCorrelative(null);
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`✨ Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
+        showToast(`? Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
       };
 
       // --- ACCIONES DE INTRANET (AGREGAR ÍTEM, EMITIR Y WHATSAPP) ---
@@ -2064,7 +2136,7 @@
           return reset;
         });
 
-        showToast('✅ Ítem añadido a la cotización');
+        showToast('? Ítem añadido a la cotización');
       };
 
       const handleRemoveItem = (itemId) => {
@@ -2185,6 +2257,13 @@
           return next;
         });
 
+        // === FIREBASE: Guardar cotizacion en la nube ===
+        if (window.db) {
+          const quoteDoc = { ...quoteRecord, timestamp: firebase.firestore.FieldValue.serverTimestamp() };
+          window.db.collection('quotes').doc(quoteRecord.correlative).set(quoteDoc)
+            .catch(e => console.warn('Error guardando cotizacion en Firestore:', e));
+        }
+
         if (!isEditing) {
           setCorrelativeNumber(prev => {
             const nextNum = prev + 1;
@@ -2192,13 +2271,20 @@
               localStorage.setItem('olivar_correlative', nextNum.toString());
               localStorage.setItem('letreros_olivar_folio_num', nextNum.toString());
             } catch (e) {}
+            // === FIREBASE: Actualizar correlativo global ===
+            if (window.db) {
+              window.db.collection('system').doc('correlatives').set({
+                currentNumber: nextNum,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }).catch(e => console.warn('Error actualizando correlativo:', e));
+            }
             return nextNum;
           });
         }
 
         setEditingCorrelative(null);
         handleOpenPrintModal(quoteRecord);
-        showToast(isEditing ? `✏️ Cotización ${quoteRecord.correlative} actualizada y guardada con éxito.` : `🎉 Cotización ${quoteRecord.correlative} guardada y emitida con éxito.`);
+        showToast(isEditing ? `?? Cotización ${quoteRecord.correlative} actualizada y guardada con éxito.` : `?? Cotización ${quoteRecord.correlative} guardada y emitida con éxito.`);
       };
 
       const handleSendWhatsAppQuote = (quote) => {
@@ -2216,23 +2302,23 @@
           return;
         }
 
-        let message = `*📋 COTIZACIÓN FORMAL ${q.correlative}*\n`;
-        message += `*🏢 Empresa Emisora:* ${companyInfo.name}\n`;
-        message += `*👤 Cliente / Razón Social:* ${q.client.name || 'Cliente'}\n`;
-        if (q.client.contactPerson) message += `*🤝 Atención / Contacto:* ${q.client.contactPerson}\n`;
-        if (q.client.documentId) message += `*📄 RUT:* ${q.client.documentId}\n`;
-        message += `*📅 Fecha:* ${q.date || new Date().toLocaleDateString('es-CL')}\n`;
+        let message = `*?? COTIZACIÓN FORMAL ${q.correlative}*\n`;
+        message += `*?? Empresa Emisora:* ${companyInfo.name}\n`;
+        message += `*?? Cliente / Razón Social:* ${q.client.name || 'Cliente'}\n`;
+        if (q.client.contactPerson) message += `*?? Atención / Contacto:* ${q.client.contactPerson}\n`;
+        if (q.client.documentId) message += `*?? RUT:* ${q.client.documentId}\n`;
+        message += `*?? Fecha:* ${q.date || new Date().toLocaleDateString('es-CL')}\n`;
         let deliveryLabel = 'Retiro en Taller (Olivar)';
         if (q.client.deliveryMethod === 'instalacion') deliveryLabel = 'Instalación en Terreno / Obra';
         else if (q.client.deliveryMethod === 'entrega') deliveryLabel = 'Entrega en Instalaciones del Cliente';
-        message += `*🚚 Modalidad:* ${deliveryLabel}\n`;
+        message += `*?? Modalidad:* ${deliveryLabel}\n`;
         if (q.client.deliveryAddress) {
           const destTitle = q.client.deliveryMethod === 'instalacion' ? 'Lugar de Instalación' : 'Dirección de Entrega';
-          message += `*📍 ${destTitle}:* ${q.client.deliveryAddress}\n`;
+          message += `*?? ${destTitle}:* ${q.client.deliveryAddress}\n`;
         }
-        message += `*💳 Condición de Pago:* ${q.client.paymentTerms || 'Contado'}\n`;
-        message += `*⏱️ Plazo de Fabricación:* ${q.client.manufacturingDays || '5 a 7 días hábiles'}\n\n`;
-        message += `*📦 DETALLE DE TRABAJOS:*\n`;
+        message += `*?? Condición de Pago:* ${q.client.paymentTerms || 'Contado'}\n`;
+        message += `*?? Plazo de Fabricación:* ${q.client.manufacturingDays || '5 a 7 días hábiles'}\n\n`;
+        message += `*?? DETALLE DE TRABAJOS:*\n`;
 
         q.items.forEach((item, index) => {
           let spec = '';
@@ -2243,35 +2329,35 @@
           }
           const unitPiece = item.unitPiecePrice || Math.round(item.subtotal / (item.quantity || 1));
           message += `${index + 1}. *${item.name}* ${spec}\n`;
-          message += `   ↳ *Valor Unitario:* ${formatCLP(unitPiece)} c/u  ➔  *Total:* ${formatCLP(item.subtotal)}\n`;
+          message += `   ? *Valor Unitario:* ${formatCLP(unitPiece)} c/u  ?  *Total:* ${formatCLP(item.subtotal)}\n`;
           if (item.detail) {
-            message += `   ↳ _Detalle: ${item.detail}_\n`;
+            message += `   ? _Detalle: ${item.detail}_\n`;
           }
           if (item.selectedOptions && item.selectedOptions.length > 0) {
-            message += `   ↳ _Acabados: ${item.selectedOptions.join(', ')}_\n`;
+            message += `   ? _Acabados: ${item.selectedOptions.join(', ')}_\n`;
           }
         });
 
-        message += `\n*💵 Subtotal Neto:* ${formatCLP(q.totals.subtotal)}`;
+        message += `\n*?? Subtotal Neto:* ${formatCLP(q.totals.subtotal)}`;
         if (q.totals.discountAmount > 0) {
-          message += `\n*🏷️ Descuento Especial:* -${formatCLP(q.totals.discountAmount)}`;
+          message += `\n*??? Descuento Especial:* -${formatCLP(q.totals.discountAmount)}`;
         }
         if (q.totals.installationFee > 0) {
-          message += `\n*🔧 Instalación en Terreno:* +${formatCLP(q.totals.installationFee)}`;
+          message += `\n*?? Instalación en Terreno:* +${formatCLP(q.totals.installationFee)}`;
         }
         if (q.totals.freightFee > 0) {
-          message += `\n*🚚 Flete / Traslado:* +${formatCLP(q.totals.freightFee)}`;
+          message += `\n*?? Flete / Traslado:* +${formatCLP(q.totals.freightFee)}`;
         }
-        if (q.totals.taxAmount > 0) message += `\n*🏛️ IVA (19%):* ${formatCLP(q.totals.taxAmount)}`;
-        message += `\n*💰 TOTAL FINAL: ${formatCLP(q.totals.total)} CLP*\n`;
-        message += `\n*🏦 DATOS PARA TRANSFERENCIA:*`;
+        if (q.totals.taxAmount > 0) message += `\n*??? IVA (19%):* ${formatCLP(q.totals.taxAmount)}`;
+        message += `\n*?? TOTAL FINAL: ${formatCLP(q.totals.total)} CLP*\n`;
+        message += `\n*?? DATOS PARA TRANSFERENCIA:*`;
         message += `\n• *Razón Social:* ${companyInfo.bank.titular}`;
         message += `\n• *RUT:* ${companyInfo.bank.rut}`;
         message += `\n• *Banco:* ${companyInfo.bank.banco}`;
         message += `\n• *Cuenta:* ${companyInfo.bank.tipo} N° ${companyInfo.bank.cuenta}`;
         message += `\n• *Envío de Comprobantes:* ${companyInfo.bank.email}\n`;
-        message += `\n*📍 Taller:* ${companyInfo.address}`;
-        message += `\n*✅ Validez de Oferta:* ${q.client.validDays || 15} días.\n`;
+        message += `\n*?? Taller:* ${companyInfo.address}`;
+        message += `\n*? Validez de Oferta:* ${q.client.validDays || 15} días.\n`;
         message += `\n_Cotización formal emitida por Letreros Olivar SpA._`;
 
         const phoneTarget = (q.client.phone || '').replace(/\D/g, '') || companyInfo.whatsapp;
@@ -2286,7 +2372,7 @@
         }));
         setSelectedProject(null);
         document.getElementById('solicitud-cotizacion')?.scrollIntoView({ behavior: 'smooth' });
-        showToast(`🎯 Servicio seleccionado: ${project.title}`);
+        showToast(`?? Servicio seleccionado: ${project.title}`);
       };
 
       const handleSelectService = (serviceName, defaultMaterial = '') => {
@@ -2296,7 +2382,7 @@
           material: defaultMaterial || prev.material
         }));
         document.getElementById('solicitud-cotizacion')?.scrollIntoView({ behavior: 'smooth' });
-        showToast(`🎯 Servicio seleccionado: ${serviceName}`);
+        showToast(`?? Servicio seleccionado: ${serviceName}`);
       };
 
       const filteredProjects = useMemo(() => {
@@ -2388,7 +2474,7 @@
               </span>
               <span className="hidden md:inline text-zinc-600">|</span>
               <a href={companyInfo.mapsUrl} target="_blank" rel="noreferrer" className="hidden md:inline text-zinc-300 hover:text-red-500 transition underline underline-offset-4 decoration-red-600/50">
-                📍 {companyInfo.address}
+                ?? {companyInfo.address}
               </a>
             </div>
             
@@ -2399,7 +2485,7 @@
                 <span className="md:hidden">Email</span>
               </a>
               <a href={`tel:${companyInfo.phone}`} className="hover:text-red-500 transition font-mono">
-                📞 {companyInfo.phone}
+                ?? {companyInfo.phone}
               </a>
               <a href={companyInfo.social.whatsapp} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 transition">
                 <Icon name="whatsapp" className="w-3.5 h-3.5" /> <span className="hidden sm:inline">WhatsApp</span>
@@ -2673,7 +2759,7 @@
                                 </p>
                               </div>
                               <span className="text-[11px] font-mono text-red-400 bg-red-950/40 px-3 py-1 rounded-full border border-red-800/40">
-                                🎬 Espacio Reservado • Gráfica Corporativa
+                                ?? Espacio Reservado • Gráfica Corporativa
                               </span>
                             </div>
                           </div>
@@ -3495,11 +3581,11 @@
                           <span>{companyInfo.address}</span>
                         </a>
                       </li>
-                      <li className="text-zinc-300 font-medium">🕒 Lun a Vie: 10:00 - 20:00 hrs (Continuado)</li>
+                      <li className="text-zinc-300 font-medium">?? Lun a Vie: 10:00 - 20:00 hrs (Continuado)</li>
                       <li className="text-zinc-500 text-xs">Sábados, Domingos y Festivos: Cerrado</li>
                       <li className="pt-1">
                         <a href={`tel:${companyInfo.phone}`} className="text-zinc-300 hover:text-white transition flex items-center gap-1.5 font-mono">
-                          <span>📞 Tel: {companyInfo.phone}</span>
+                          <span>?? Tel: {companyInfo.phone}</span>
                         </a>
                       </li>
                       <li className="pt-0.5">
@@ -3607,7 +3693,7 @@
                       }`}
                       title="Volver a la vista de espacios"
                     >
-                      <span>🏠 Menú de Espacios</span>
+                      <span>?? Menú de Espacios</span>
                     </button>
 
                     <button
@@ -3624,7 +3710,7 @@
                       title="Ir al área de administración y cotizaciones"
                     >
                       <Icon name="file-text" className="w-3.5 h-3.5" />
-                      <span>💼 Administración</span>
+                      <span>?? Administración</span>
                     </button>
 
                     <button
@@ -3638,7 +3724,7 @@
                       title="Ir al área de correo y webmail corporativo"
                     >
                       <Icon name="mail" className="w-3.5 h-3.5 text-amber-400" />
-                      <span>✉️ Webmail</span>
+                      <span>?? Webmail</span>
                     </button>
 
                     <div className="hidden sm:flex items-center gap-1.5 ml-auto border-l border-zinc-800 pl-3">
@@ -3650,7 +3736,7 @@
                         title="Abrir cotizador independiente de taller"
                       >
                         <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
-                        <span>Formato Imprimible ↗</span>
+                        <span>Formato Imprimible ?</span>
                       </a>
 
                       <a
@@ -3660,7 +3746,7 @@
                         title="Descargar para usar Offline en el computador"
                       >
                         <Icon name="download" className="w-3.5 h-3.5" />
-                        <span>Descargar Offline 💾</span>
+                        <span>Descargar Offline ??</span>
                       </a>
                     </div>
                   </div>
@@ -3710,7 +3796,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>➕ Iniciar Nueva Cotización Formal</span>
+                              <span>? Iniciar Nueva Cotización Formal</span>
                               <span className="font-mono text-[10px] text-red-400">{currentCorrelativeCode}</span>
                             </button>
 
@@ -3722,7 +3808,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📥 Solicitudes Web de Clientes</span>
+                              <span>?? Solicitudes Web de Clientes</span>
                               <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">{receivedRequests.length}</span>
                             </button>
 
@@ -3734,7 +3820,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📜 Historial de Cotizaciones Emitidas</span>
+                              <span>?? Historial de Cotizaciones Emitidas</span>
                               <span className="text-[11px] text-zinc-500">{quoteHistory.length} emitidas</span>
                             </button>
 
@@ -3746,7 +3832,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>👥 Maestra de Clientes & Proveedores</span>
+                              <span>?? Maestra de Clientes & Proveedores</span>
                               <span className="text-[11px] text-zinc-500">{clientsMaster.length} registrados</span>
                             </button>
 
@@ -3758,7 +3844,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📊 Tarifario & Materiales (Planilla Excel)</span>
+                              <span>?? Tarifario & Materiales (Planilla Excel)</span>
                               <span className="text-[11px] text-emerald-400">42 materiales</span>
                             </button>
                           </div>
@@ -3774,7 +3860,7 @@
                             className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-red-600/30 group-hover:scale-[1.01]"
                           >
                             <Icon name="cotizacion" className="w-5 h-5 text-white" />
-                            <span>Entrar al Espacio de Cotizaciones & Taller ➔</span>
+                            <span>Entrar al Espacio de Cotizaciones & Taller ?</span>
                           </button>
                         </div>
                       </div>
@@ -3808,7 +3894,7 @@
                               onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>🚀 Abrir Gmail Corporativo (1 Clic directo)</span>
+                              <span>?? Abrir Gmail Corporativo (1 Clic directo)</span>
                               <Icon name="external-link" className="w-3.5 h-3.5 text-blue-400" />
                             </button>
 
@@ -3817,7 +3903,7 @@
                               onClick={() => handleOpenGmailSearch('comprobante OR transferencia OR pago OR bci OR mach')}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>💰 Buscar Comprobantes de Pago en Gmail</span>
+                              <span>?? Buscar Comprobantes de Pago en Gmail</span>
                               <Icon name="search" className="w-3.5 h-3.5 text-emerald-400" />
                             </button>
 
@@ -3829,7 +3915,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📝 Redactar Correo con Plantilla de Cotización</span>
+                              <span>?? Redactar Correo con Plantilla de Cotización</span>
                               <Icon name="file-text" className="w-3.5 h-3.5 text-amber-400" />
                             </button>
 
@@ -3841,7 +3927,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>💸 Confirmar Recepción de Transferencia</span>
+                              <span>?? Confirmar Recepción de Transferencia</span>
                               <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-400" />
                             </button>
 
@@ -3850,7 +3936,7 @@
                               onClick={() => window.open('https://webmail.letrerosolivar.com', '_blank')}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>🌐 Webmail de Respaldo en Hosting</span>
+                              <span>?? Webmail de Respaldo en Hosting</span>
                               <Icon name="external-link" className="w-3.5 h-3.5 text-zinc-500" />
                             </button>
                           </div>
@@ -3863,7 +3949,7 @@
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-blue-600/30 group-hover:scale-[1.01]"
                           >
                             <Icon name="mail" className="w-5 h-5 text-white" />
-                            <span>Entrar al Espacio de Webmail & Correo ➔</span>
+                            <span>Entrar al Espacio de Webmail & Correo ?</span>
                           </button>
                         </div>
                       </div>
@@ -4077,9 +4163,9 @@
                                 onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
                                 className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
                               >
-                                <option value="instalacion">🚚 Instalación en Terreno / Obra</option>
-                                <option value="entrega">📦 Entrega en Instalaciones del Cliente (Flete / Despacho)</option>
-                                <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
+                                <option value="instalacion">?? Instalación en Terreno / Obra</option>
+                                <option value="entrega">?? Entrega en Instalaciones del Cliente (Flete / Despacho)</option>
+                                <option value="retiro">?? Retiro en Taller (Olivar)</option>
                               </select>
                             </div>
                             {(intranetClientData.deliveryMethod === 'instalacion' || intranetClientData.deliveryMethod === 'entrega') && (
@@ -4184,7 +4270,7 @@
                               title="Guardar estos datos del cliente en la Maestra permanente"
                             >
                               <Icon name="save" className="w-3.5 h-3.5 text-red-500" />
-                              <span>💾 Guardar / Actualizar en Maestra</span>
+                              <span>?? Guardar / Actualizar en Maestra</span>
                             </button>
                           </div>
                         </div>
@@ -4274,7 +4360,7 @@
                             {editingCorrelative && (
                               <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
                                 <span className="text-amber-400 font-bold flex items-center gap-1.5">
-                                  <span>✏️ Editando:</span>
+                                  <span>?? Editando:</span>
                                   <strong className="text-white font-mono">{editingCorrelative}</strong>
                                 </span>
                                 <button
@@ -4336,10 +4422,10 @@
                               className="w-full bg-zinc-950 text-white px-4 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none text-xs sm:text-sm font-medium"
                             >
                               <option value="custom" className="text-amber-400 font-bold bg-zinc-900">
-                                ✨ [PERSONALIZADO] Servicio o Trabajo a Medida (Ingreso Libre)
+                                ? [PERSONALIZADO] Servicio o Trabajo a Medida (Ingreso Libre)
                               </option>
                               {Array.from(new Set(materialsCatalog.map(m => m.category))).map(cat => (
-                                <optgroup key={cat} label={`── ${cat.toUpperCase()} ──`}>
+                                <optgroup key={cat} label={`-- ${cat.toUpperCase()} --`}>
                                   {materialsCatalog.filter(m => m.category === cat).map(mat => (
                                     <option key={mat.id} value={mat.id}>
                                       {mat.name} ({mat.format}) — ${mat.pricePerSqm.toLocaleString('es-CL')} / {mat.unit}
@@ -4365,7 +4451,7 @@
                                     : 'bg-zinc-900 hover:bg-amber-500/20 text-amber-400 border-amber-600/50'
                                 }`}
                               >
-                                ✨ + Personalizado
+                                ? + Personalizado
                               </button>
                               {[
                                 { label: 'Banner', id: 'mat-11' },
@@ -4921,7 +5007,7 @@
                                     {formatCLP(totalPreview)}
                                   </span>
                                   <div className="text-xs font-mono font-bold text-emerald-400 mt-0.5">
-                                    👉 Valor Unitario: {formatCLP(unitPiecePreview)} c/u ({qty} {qty === 1 ? 'unidad' : 'unidades'})
+                                    ?? Valor Unitario: {formatCLP(unitPiecePreview)} c/u ({qty} {qty === 1 ? 'unidad' : 'unidades'})
                                   </div>
                                   <span className="text-[10px] text-zinc-400 block mt-0.5">
                                     {isSqm ? `(${w}m × ${h}m = ${(w * h * qty).toFixed(2)} m² totales)` : `${qty} unidad(es)`}
@@ -4976,7 +5062,7 @@
                                         <div className="font-bold text-white text-sm">{item.name}</div>
                                         {item.detail && (
                                           <p className="text-[11px] text-zinc-400 italic mt-0.5">
-                                            ↳ Detalle: {item.detail}
+                                            ? Detalle: {item.detail}
                                           </p>
                                         )}
                                         {item.selectedOptions?.length > 0 && <div className="text-[10px] text-red-500 mt-0.5">+ {item.selectedOptions.join(', ')}</div>}
@@ -5029,7 +5115,7 @@
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-900 pb-3">
                               <div className="flex items-center gap-3">
                                 <span className="font-mono font-bold text-red-500 text-sm">{req.id}</span>
-                                <span className="text-xs text-zinc-500">📅 {req.date}</span>
+                                <span className="text-xs text-zinc-500">?? {req.date}</span>
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 font-bold">
                                   {req.status}
                                 </span>
@@ -5042,10 +5128,10 @@
                                     : 'bg-zinc-800 text-white'
                               }`}>
                                 {req.deliveryMethod === 'instalacion'
-                                  ? '🚚 Requiere Instalación'
+                                  ? '?? Requiere Instalación'
                                   : req.deliveryMethod === 'entrega'
-                                    ? '📦 Entrega en Cliente'
-                                    : '🏬 Retiro en Taller (Olivar)'}
+                                    ? '?? Entrega en Cliente'
+                                    : '?? Retiro en Taller (Olivar)'}
                               </span>
                             </div>
 
@@ -5121,7 +5207,7 @@
                         className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
                       >
                         <Icon name="plus" className="w-4 h-4" />
-                        <span>➕ Crear Nueva Cotización</span>
+                        <span>? Crear Nueva Cotización</span>
                       </button>
                     </div>
 
@@ -5136,7 +5222,7 @@
                             <div>
                               <div className="flex items-center gap-3">
                                 <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
-                                <span className="text-xs text-zinc-400">📅 {q.date}</span>
+                                <span className="text-xs text-zinc-400">?? {q.date}</span>
                                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-400 border border-red-600/30">
                                   {q.status}
                                 </span>
@@ -5153,7 +5239,7 @@
                                 title="Editar esta cotización directamente conservando el mismo correlativo"
                               >
                                 <Icon name="file-text" className="w-3.5 h-3.5" />
-                                <span>✏️ Editar Orden</span>
+                                <span>?? Editar Orden</span>
                               </button>
                               <button
                                 onClick={() => handleReuseQuote(q)}
@@ -5537,7 +5623,7 @@
                           type="button"
                           onClick={() => {
                             localStorage.setItem('olivar_clients_master', JSON.stringify(clientsMaster));
-                            showToast('💾 Todos los cambios guardados correctamente');
+                            showToast('?? Todos los cambios guardados correctamente');
                           }}
                           className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg shadow-red-600/20"
                         >
@@ -5958,7 +6044,7 @@
                                           {item.email}
                                         </span>
                                         {item.status === 'matched' ? (
-                                          <span className="text-emerald-400 text-[10px] font-bold">✓ Coincide</span>
+                                          <span className="text-emerald-400 text-[10px] font-bold">? Coincide</span>
                                         ) : (
                                           <span className="text-amber-400 text-[10px]">Nuevo</span>
                                         )}
@@ -6074,7 +6160,7 @@
                           }`}
                         >
                           <Icon name="mail" className="w-4 h-4 text-blue-200" />
-                          <span>📥 Bandeja de Entrada</span>
+                          <span>?? Bandeja de Entrada</span>
                           <span className="px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-200 text-[10px] font-mono">
                             {inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox').length}
                           </span>
@@ -6094,7 +6180,7 @@
                           }`}
                         >
                           <Icon name="check-circle" className="w-4 h-4 text-emerald-300" />
-                          <span>📤 Enviados</span>
+                          <span>?? Enviados</span>
                           <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono">
                             {inboxEmails.filter(e => e.folder === 'sent').length}
                           </span>
@@ -6111,7 +6197,7 @@
                           }`}
                         >
                           <Icon name="file-text" className="w-4 h-4 text-amber-300" />
-                          <span>📝 Borradores</span>
+                          <span>?? Borradores</span>
                           <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono">
                             {inboxEmails.filter(e => e.folder === 'drafts').length}
                           </span>
@@ -6128,7 +6214,7 @@
                           }`}
                         >
                           <Icon name="plus" className="w-4 h-4" />
-                          <span>✏️ Redactar</span>
+                          <span>?? Redactar</span>
                         </button>
 
                         {/* Pestaña: Conexión & Diagnóstico */}
@@ -6142,7 +6228,7 @@
                           }`}
                         >
                           <Icon name="sparkles" className="w-4 h-4 text-amber-400" />
-                          <span>⚙️ Diagnóstico & Ayuda</span>
+                          <span>?? Diagnóstico & Ayuda</span>
                         </button>
                       </div>
 
@@ -6154,7 +6240,7 @@
                           title="Sincronizar y actualizar correos de la bandeja ahora"
                         >
                           <Icon name="refresh" className={`w-3.5 h-3.5 ${isRefreshingInbox ? 'animate-spin text-white' : ''}`} />
-                          <span>{isRefreshingInbox ? 'Sincronizando...' : 'Actualizar 🔄'}</span>
+                          <span>{isRefreshingInbox ? 'Sincronizando...' : 'Actualizar ??'}</span>
                         </button>
 
                         <button
@@ -6401,7 +6487,7 @@
                                         title="Carga este cliente y requerimiento en una nueva cotización formal"
                                       >
                                         <Icon name="cotizacion" className="w-3.5 h-3.5" />
-                                        <span>💼 Cotizar a este Cliente</span>
+                                        <span>?? Cotizar a este Cliente</span>
                                       </button>
 
                                       <button
@@ -6411,7 +6497,7 @@
                                         title="Guarda o actualiza el correo de este cliente en la Maestra"
                                       >
                                         <Icon name="users" className="w-3.5 h-3.5" />
-                                        <span>👥 Sincronizar en Maestra</span>
+                                        <span>?? Sincronizar en Maestra</span>
                                       </button>
 
                                       <button
@@ -6420,7 +6506,7 @@
                                         className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-blue-600/30"
                                       >
                                         <Icon name="file-text" className="w-3.5 h-3.5" />
-                                        <span>✏️ Responder</span>
+                                        <span>?? Responder</span>
                                       </button>
                                     </div>
                                   </div>
@@ -6481,7 +6567,7 @@
                                           className="bg-red-600 hover:bg-red-500 text-white font-black px-5 py-2 rounded-xl text-xs transition flex items-center gap-2 shadow-lg shadow-red-600/30"
                                         >
                                           <Icon name="check" className={`w-3.5 h-3.5 ${isSendingMail ? 'animate-spin' : ''}`} />
-                                          <span>{isSendingMail ? 'Enviando...' : 'Enviar Respuesta ✈️'}</span>
+                                          <span>{isSendingMail ? 'Enviando...' : 'Enviar Respuesta ??'}</span>
                                         </button>
                                       </div>
                                     </div>
@@ -6545,7 +6631,7 @@
                                   <div className="flex items-center justify-between text-[11px] pt-1">
                                     <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
                                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-800/40">
-                                      Enviado ✓✓
+                                      Enviado ??
                                     </span>
                                   </div>
                                 </div>
@@ -6734,7 +6820,7 @@
                                     className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-2 shadow-lg shadow-red-600/30"
                                   >
                                     <Icon name="file-text" className="w-3.5 h-3.5" />
-                                    <span>Continuar Redactando ✏️</span>
+                                    <span>Continuar Redactando ??</span>
                                   </button>
                                 </div>
                               </div>
@@ -6766,28 +6852,28 @@
                               onClick={() => handleApplyEmailTemplate('cotizacion')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              📋 Cotización
+                              ?? Cotización
                             </button>
                             <button
                               type="button"
                               onClick={() => handleApplyEmailTemplate('comprobante')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              💰 Pago Recibido
+                              ?? Pago Recibido
                             </button>
                             <button
                               type="button"
                               onClick={() => handleApplyEmailTemplate('terminado')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              ✅ Trabajo Listo
+                              ? Trabajo Listo
                             </button>
                             <button
                               type="button"
                               onClick={() => handleApplyEmailTemplate('instalacion')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              🚚 Instalación
+                              ?? Instalación
                             </button>
                           </div>
                         </div>
@@ -6880,7 +6966,7 @@
                                 title="Abre Gmail con destinatario, asunto y mensaje ya listos para enviar por los servidores de Google"
                               >
                                 <Icon name="external-link" className="w-4 h-4" />
-                                <span>🚀 Despachar con Gmail (1 Clic)</span>
+                                <span>?? Despachar con Gmail (1 Clic)</span>
                               </button>
                             </div>
                           </div>
@@ -6913,7 +6999,7 @@
                             ¿Por qué los correos deben despacharse mediante la pasarela de Google?
                           </h3>
                           <p className="text-zinc-400 mt-1 max-w-3xl leading-relaxed">
-                            Los navegadores web bloquean las conexiones TCP directas a servidores de correo por motivos de seguridad. Para garantizar que ningún correo sea marcado como SPAM ni bloqueado por Hotmail, Gmail o Yahoo, la intranet incluye el botón <strong className="text-white">"🚀 Despachar con Gmail (1 Clic)"</strong>, el cual transfiere de forma instantánea el destinatario, asunto y mensaje a los servidores oficiales de Google para su entrega inmediata.
+                            Los navegadores web bloquean las conexiones TCP directas a servidores de correo por motivos de seguridad. Para garantizar que ningún correo sea marcado como SPAM ni bloqueado por Hotmail, Gmail o Yahoo, la intranet incluye el botón <strong className="text-white">"?? Despachar con Gmail (1 Clic)"</strong>, el cual transfiere de forma instantánea el destinatario, asunto y mensaje a los servidores oficiales de Google para su entrega inmediata.
                           </p>
                         </div>
 
@@ -6955,7 +7041,7 @@
                             onClick={() => setWebmailSubTab('inbox')}
                             className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 flex-shrink-0"
                           >
-                            Ir a Bandeja de Entrada ➔
+                            Ir a Bandeja de Entrada ?
                           </button>
                         </div>
                       </div>
@@ -7042,10 +7128,10 @@
                       Cotización Oficial Letreros Olivar ({currentQuoteToPrint.correlative})
                     </span>
                     <span className="hidden md:inline-block text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">
-                      📁 Guardar PDF como: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
+                      ?? Guardar PDF como: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
                     </span>
                     <span className="hidden lg:inline-flex text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono items-center gap-1">
-                      <span>🔒 Valores m² ocultos en impresión</span>
+                      <span>?? Valores m² ocultos en impresión</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
