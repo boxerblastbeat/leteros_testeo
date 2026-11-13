@@ -434,6 +434,8 @@
           return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
         case 'lock':
           return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>;
+        case 'calendar':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
         case 'truck':
           return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>;
         case 'store':
@@ -622,9 +624,100 @@
       const [loginError, setLoginError] = useState('');
 
       // Espacio Principal de la Intranet: 'portal' (menú dividido 2 lados), 'taller' (cotizaciones) o 'webmail' (correo)
-      const [intranetSection, setIntranetSection] = useState('portal');
+      const [intranetSection, setIntranetSection] = useState('taller');
       // Sub-pestaña de la Intranet (área de cotizaciones): 'cotizador' | 'solicitudes' | 'historial' | 'precios' | 'clientes'
       const [intranetTab, setIntranetTab] = useState('cotizador');
+
+      // === ESTADO Y SINCRONIZACIÓN DEL CALENDARIO DE TALLER & ENTREGAS ===
+      const [calendarDate, setCalendarDate] = useState(new Date());
+      const [selectedCalDay, setSelectedCalDay] = useState(() => {
+        const d = new Date();
+        return ${d.getFullYear()}--;
+      });
+      const [calendarEvents, setCalendarEvents] = useState(() => {
+        const saved = localStorage.getItem('olivar_calendar_events');
+        return saved ? JSON.parse(saved) : [
+          {
+            id: 'ev-init-1',
+            date: new Date().toISOString().split('T')[0],
+            time: '11:00 hrs',
+            title: 'Instalación Letrero Fachada',
+            client: 'Comercial Rancagua',
+            type: 'instalacion',
+            address: 'Av. Einstein #320, Rancagua',
+            notes: 'Llevar andamio y tornillos autoperforantes de 3 pulgadas.'
+          }
+        ];
+      });
+      const [showAddCalModal, setShowAddCalModal] = useState(false);
+      const [newCalEvent, setNewCalEvent] = useState({
+        date: new Date().toISOString().split('T')[0],
+        time: '10:00 hrs',
+        title: '',
+        client: '',
+        type: 'instalacion',
+        address: '',
+        notes: ''
+      });
+
+      // Firebase: Sincronizar calendario en tiempo real
+      useEffect(() => {
+        if (!window.db) return;
+        const unsubCal = window.db.collection('system').doc('calendar')
+          .onSnapshot(snap => {
+            if (snap.exists && snap.data().events) {
+              setCalendarEvents(snap.data().events);
+              try { localStorage.setItem('olivar_calendar_events', JSON.stringify(snap.data().events)); } catch(e){}
+            }
+          }, err => console.warn('Firestore calendar error:', err));
+        return () => unsubCal();
+      }, []);
+
+      const handleSaveCalEvent = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (!newCalEvent.title.trim()) {
+          showToast('⚠️ Ingresa un título o cliente para el trabajo');
+          return;
+        }
+        const created = {
+          id: 'ev-' + Date.now(),
+          ...newCalEvent
+        };
+        const updated = [created, ...calendarEvents];
+        setCalendarEvents(updated);
+        try { localStorage.setItem('olivar_calendar_events', JSON.stringify(updated)); } catch(e){}
+        if (window.db) {
+          window.db.collection('system').doc('calendar').set({
+            events: updated,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true }).catch(err => console.warn('Error guardando evento en Firestore:', err));
+        }
+        setShowAddCalModal(false);
+        setNewCalEvent({
+          date: new Date().toISOString().split('T')[0],
+          time: '10:00 hrs',
+          title: '',
+          client: '',
+          type: 'instalacion',
+          address: '',
+          notes: ''
+        });
+        showToast('📅 Trabajo agendado en el calendario');
+      };
+
+      const handleDeleteCalEvent = (id) => {
+        if (!window.confirm('¿Deseas eliminar este evento del calendario?')) return;
+        const updated = calendarEvents.filter(ev => ev.id !== id);
+        setCalendarEvents(updated);
+        try { localStorage.setItem('olivar_calendar_events', JSON.stringify(updated)); } catch(e){}
+        if (window.db) {
+          window.db.collection('system').doc('calendar').set({
+            events: updated,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true }).catch(err => console.warn('Error eliminando evento en Firestore:', err));
+        }
+        showToast('🗑️ Evento eliminado');
+      };
 
       // -------------------------------------------------------------
       // 1. ESTADO DEL FORMULARIO PÚBLICO DEL CLIENTE (SIN PRECIOS)
@@ -3842,211 +3935,6 @@
                   </div>
                 </div>
 
-                {/* VISTA 1: PORTAL DE DOS ESPACIOS (LADO IZQUIERDO: COTIZACIONES / LADO DERECHO: WEBMAIL) */}
-                {intranetSection === 'portal' && (
-                  <div className="space-y-6">
-                    <div className="text-center max-w-2xl mx-auto pt-2 pb-4">
-                      <span className="text-xs font-bold uppercase tracking-widest text-red-500">¿A qué espacio deseas ingresar hoy?</span>
-                      <h2 className="text-2xl sm:text-3xl font-black text-white font-heading mt-1">Selecciona tu Espacio de Trabajo</h2>
-                      <p className="text-xs sm:text-sm text-zinc-400 mt-2">
-                        La intranet está organizada en dos áreas independientes para que trabajes de forma ordenada: a la izquierda tu Administración y Cotizaciones, y a la derecha tu Correo Corporativo y Webmail.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-                      {/* LADO IZQUIERDO (50%): ESPACIO DE COTIZACIONES & TALLER */}
-                      <div className="relative group rounded-3xl bg-gradient-to-b from-zinc-900 via-zinc-950 to-black border-2 border-red-600/40 hover:border-red-500 p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 shadow-2xl hover:shadow-red-950/30">
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="px-3 py-1 rounded-full bg-red-600/20 border border-red-600/40 text-red-400 text-xs font-black uppercase tracking-wider">
-                              ADMINISTRACIÓN
-                            </span>
-                            <span className="text-[11px] font-mono text-zinc-500">5 Módulos Internos</span>
-                          </div>
-
-                          <div className="w-14 h-14 rounded-2xl bg-red-600 text-white flex items-center justify-center font-bold mb-4 shadow-lg shadow-red-600/40">
-                            <Icon name="cotizacion" className="w-7 h-7" />
-                          </div>
-
-                          <h3 className="text-2xl font-black text-white font-heading">
-                            Administración & Cotizaciones
-                          </h3>
-                          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-                            Cálculo de letreros, emisión formal de presupuestos con número correlativo oficial, recepción de solicitudes web, catálogo de precios por m² y maestra de clientes.
-                          </p>
-
-                          <div className="mt-6 space-y-2 border-t border-zinc-800/80 pt-4">
-                            <span className="text-[11px] uppercase tracking-wider font-bold text-zinc-400 block mb-2">Accesos directos:</span>
-                            
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIntranetSection('taller');
-                                handleStartNewQuote();
-                              }}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>? Iniciar Nueva Cotización Formal</span>
-                              <span className="font-mono text-[10px] text-red-400">{currentCorrelativeCode}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIntranetSection('taller');
-                                setIntranetTab('solicitudes');
-                              }}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>?? Solicitudes Web de Clientes</span>
-                              <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">{receivedRequests.length}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIntranetSection('taller');
-                                setIntranetTab('historial');
-                              }}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>📊 Historial de Cotizaciones Emitidas</span>
-                              <span className="text-[11px] text-zinc-500">{quoteHistory.length} emitidas</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIntranetSection('taller');
-                                setIntranetTab('clientes');
-                              }}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>👥 Maestra de Clientes & Proveedores</span>
-                              <span className="text-[11px] text-zinc-500">{clientsMaster.length} registrados</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIntranetSection('taller');
-                                setIntranetTab('precios');
-                              }}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>?? Tarifario & Materiales (Planilla Excel)</span>
-                              <span className="text-[11px] text-emerald-400">42 materiales</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-8 pt-4 border-t border-zinc-800/80">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIntranetSection('taller');
-                              setIntranetTab('cotizador');
-                            }}
-                            className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-red-600/30 group-hover:scale-[1.01]"
-                          >
-                            <Icon name="cotizacion" className="w-5 h-5 text-white" />
-                            <span>Entrar a Administración ↗</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* LADO DERECHO (50%): ESPACIO DE WEBMAIL & CORREO */}
-                      <div className="relative group rounded-3xl bg-gradient-to-b from-zinc-900 via-zinc-950 to-black border-2 border-blue-600/40 hover:border-blue-500 p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 shadow-2xl hover:shadow-blue-950/30">
-                        <div>
-                          <div className="flex items-center justify-between mb-4">
-                            <span className="px-3 py-1 rounded-full bg-blue-600/20 border border-blue-600/40 text-blue-400 text-xs font-black uppercase tracking-wider">
-                              WEBMAIL
-                            </span>
-                            <span className="text-[11px] font-mono text-zinc-500">contacto@letrerosolivar.com</span>
-                          </div>
-
-                          <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold mb-4 shadow-lg shadow-blue-600/40">
-                            <Icon name="mail" className="w-7 h-7" />
-                          </div>
-
-                          <h3 className="text-2xl font-black text-white font-heading">
-                            Webmail & Correo Corporativo
-                          </h3>
-                          <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-                            Bandeja oficial Google Workspace / Gmail y hosting webmail para Letreros Olivar SpA. Enlace directo a comprobantes de transferencias y redactor de plantillas rápidas.
-                          </p>
-
-                          <div className="mt-6 space-y-2 border-t border-zinc-800/80 pt-4">
-                            <span className="text-[11px] uppercase tracking-wider font-bold text-zinc-400 block mb-2">Accesos directos:</span>
-
-                            <button
-                              type="button"
-                              onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>?? Abrir Gmail Corporativo (1 Clic directo)</span>
-                              <Icon name="external-link" className="w-3.5 h-3.5 text-blue-400" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenGmailSearch('comprobante OR transferencia OR pago OR bci OR mach')}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>?? Buscar Comprobantes de Pago en Gmail</span>
-                              <Icon name="search" className="w-3.5 h-3.5 text-emerald-400" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIntranetSection('webmail');
-                                handleApplyEmailTemplate('cotizacion');
-                              }}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>?? Redactar Correo con Plantilla de Cotización</span>
-                              <Icon name="file-text" className="w-3.5 h-3.5 text-amber-400" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIntranetSection('webmail');
-                                handleApplyEmailTemplate('comprobante');
-                              }}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>?? Confirmar Recepción de Transferencia</span>
-                              <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-400" />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => window.open('https://webmail.letrerosolivar.com', '_blank')}
-                              className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
-                            >
-                              <span>✉️ Webmail de Respaldo en Hosting</span>
-                              <Icon name="external-link" className="w-3.5 h-3.5 text-zinc-500" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-8 pt-4 border-t border-zinc-800/80">
-                          <button
-                            type="button"
-                            onClick={() => setIntranetSection('webmail')}
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-blue-600/30 group-hover:scale-[1.01]"
-                          >
-                            <Icon name="mail" className="w-5 h-5 text-white" />
-                            <span>Entrar al Espacio de Webmail & Correo ?</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* VISTA 2: ESPACIO DE COTIZACIONES & TALLER (CON SUS 5 PESTAÑAS INTERNAS) */}
                 {intranetSection === 'taller' && (
                   <div className="space-y-6">
@@ -4091,6 +3979,17 @@
                         >
                           <Icon name="history" className="w-4 h-4" />
                           <span>Historial Emitidas ({quoteHistory.length})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIntranetTab('calendario')}
+                          className={px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'calendario' ? 'bg-red-600 text-white ring-2 ring-red-500/50 shadow-lg shadow-red-600/30' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }}
+                        >
+                          <Icon name="calendar" className="w-4 h-4 text-amber-400" />
+                          <span>Calendario & Entregas ({calendarEvents.length})</span>
                         </button>
 
                         <button
@@ -6194,971 +6093,290 @@
                       </div>
                     )}
 
+                  
+                {/* SUB-PESTAÑA 4: CALENDARIO DE TALLER, ENTREGAS E INSTALACIONES */}
+                {intranetTab === 'calendario' && (
+                  <div className="space-y-6">
+                    {/* Header del Calendario */}
+                    <div className="p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                      <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold mb-2">
+                          <Icon name="calendar" className="w-3.5 h-3.5 text-amber-400" />
+                          <span>CALENDARIO DE TALLER & PLANIFICACIÓN</span>
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
+                          Calendario de Entregas e Instalaciones
+                        </h2>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          Organiza las fechas de montaje en terreno, despachos a clientes y pedidos en producción.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Selector de Mes */}
+                        <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-xl p-1">
+                          <button
+                            type="button"
+                            onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))}
+                            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+                            title="Mes anterior"
+                          >
+                            <Icon name="arrow-right" className="w-4 h-4 rotate-180" />
+                          </button>
+                          <span className="px-3 text-xs font-bold text-white capitalize min-w-[120px] text-center font-heading">
+                            {calendarDate.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))}
+                            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+                            title="Mes siguiente"
+                          >
+                            <Icon name="arrow-right" className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setCalendarDate(new Date())}
+                          className="px-3 py-2 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition"
+                        >
+                          Hoy
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCalModal(true)}
+                          className="px-4 py-2 rounded-xl text-xs font-black bg-red-600 hover:bg-red-500 text-white flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>+ Agendar Trabajo</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Resumen de Métricas */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3.5 rounded-xl bg-black border border-zinc-800 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center font-bold">
+                          <Icon name="truck" className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Instalaciones</span>
+                          <strong className="text-base font-black text-white">{calendarEvents.filter(e => e.type === 'instalacion').length}</strong>
+                        </div>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-black border border-zinc-800 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold">
+                          <Icon name="store" className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Despachos</span>
+                          <strong className="text-base font-black text-white">{calendarEvents.filter(e => e.type === 'entrega').length}</strong>
+                        </div>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-black border border-zinc-800 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-amber-600/20 text-amber-400 flex items-center justify-center font-bold">
+                          <Icon name="layers" className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Producción</span>
+                          <strong className="text-base font-black text-white">{calendarEvents.filter(e => e.type === 'produccion').length}</strong>
+                        </div>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-black border border-zinc-800 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-purple-600/20 text-purple-400 flex items-center justify-center font-bold">
+                          <Icon name="map-pin" className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Mediciones</span>
+                          <strong className="text-base font-black text-white">{calendarEvents.filter(e => e.type === 'medicion').length}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Matriz del Calendario Mensual */}
+                    <div className="bg-black border border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-3">
+                      {/* Cabecera Días */}
+                      <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-xs font-bold text-zinc-400 uppercase tracking-wider pb-2 border-b border-zinc-800">
+                        <div>Lun</div>
+                        <div>Mar</div>
+                        <div>Mié</div>
+                        <div>Jue</div>
+                        <div>Vie</div>
+                        <div className="text-red-400">Sáb</div>
+                        <div className="text-red-400">Dom</div>
+                      </div>
+
+                      {/* Celdas */}
+                      {(() => {
+                        const year = calendarDate.getFullYear();
+                        const month = calendarDate.getMonth();
+                        const firstDay = new Date(year, month, 1).getDay();
+                        const offset = (firstDay + 6) % 7;
+                        const totalDays = new Date(year, month + 1, 0).getDate();
+                        const today = new Date();
+                        const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+                        const cells = [];
+                        for (let i = 0; i < offset; i++) {
+                          cells.push(<div key={`empty-${i}`} className="min-h-[85px] sm:min-h-[105px] p-1.5 rounded-xl bg-zinc-950/40 border border-zinc-900/50 opacity-30"></div>);
+                        }
+
+                        for (let day = 1; day <= totalDays; day++) {
+                          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                          const isToday = isCurrentMonth && today.getDate() === day;
+                          const isSelected = selectedCalDay === dateStr;
+                          const dayEvents = calendarEvents.filter(ev => ev.date === dateStr);
+
+                          cells.push(
+                            <div
+                              key={`day-${day}`}
+                              onClick={() => setSelectedCalDay(dateStr)}
+                              className={`min-h-[85px] sm:min-h-[105px] p-2 rounded-xl border transition cursor-pointer flex flex-col justify-between ${
+                                isSelected
+                                  ? 'bg-zinc-900 border-red-500 shadow-md ring-1 ring-red-500/50'
+                                  : isToday
+                                  ? 'bg-red-950/20 border-red-600/50'
+                                  : 'bg-zinc-950/80 border-zinc-800/80 hover:border-zinc-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className={`text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center font-mono ${
+                                  isToday ? 'bg-red-600 text-white font-black' : 'text-zinc-300'
+                                }`}>
+                                  {day}
+                                </span>
+                                {dayEvents.length > 0 && (
+                                  <span className="text-[10px] px-1.5 py-0.2 bg-zinc-800 text-zinc-300 rounded font-mono font-bold">
+                                    {dayEvents.length}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="space-y-1 mt-1 overflow-hidden">
+                                {dayEvents.slice(0, 2).map(ev => {
+                                  let badgeClass = 'bg-red-950/80 text-red-300 border-red-800/60';
+                                  let icon = '🏗️';
+                                  if (ev.type === 'entrega') { badgeClass = 'bg-blue-950/80 text-blue-300 border-blue-800/60'; icon = '📦'; }
+                                  else if (ev.type === 'produccion') { badgeClass = 'bg-amber-950/80 text-amber-300 border-amber-800/60'; icon = '🏭'; }
+                                  else if (ev.type === 'medicion') { badgeClass = 'bg-purple-950/80 text-purple-300 border-purple-800/60'; icon = '📐'; }
+                                  return (
+                                    <div key={ev.id} className={`text-[10px] px-1.5 py-0.5 rounded border truncate font-medium flex items-center gap-1 ${badgeClass}`}>
+                                      <span>{icon}</span>
+                                      <span className="truncate">{ev.time ? `${ev.time} ` : ''}{ev.title}</span>
+                                    </div>
+                                  );
+                                })}
+                                {dayEvents.length > 2 && (
+                                  <span className="text-[9px] text-zinc-500 block text-right font-mono">+{dayEvents.length - 2} más</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return <div className="grid grid-cols-7 gap-1.5 sm:gap-2">{cells}</div>;
+                      })()}
+                    </div>
+
+                    {/* Detalle del Día Seleccionado */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-4 shadow-xl">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+                        <div>
+                          <span className="text-xs text-zinc-500 font-mono">DÍA SELECCIONADO</span>
+                          <h3 className="text-base font-black text-white font-heading">
+                            {selectedCalDay ? new Date(selectedCalDay + 'T12:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Selecciona un día'}
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewCalEvent({ ...newCalEvent, date: selectedCalDay });
+                            setShowAddCalModal(true);
+                          }}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 flex items-center gap-2 transition"
+                        >
+                          <Icon name="plus" className="w-3.5 h-3.5 text-red-500" />
+                          <span>Agendar en esta fecha</span>
+                        </button>
+                      </div>
+
+                      {(() => {
+                        const eventsForDay = calendarEvents.filter(ev => ev.date === selectedCalDay);
+                        if (eventsForDay.length === 0) {
+                          return (
+                            <div className="text-center py-10 text-zinc-500 text-xs space-y-2">
+                              <Icon name="calendar" className="w-8 h-8 mx-auto text-zinc-700" />
+                              <p>No hay trabajos ni instalaciones programadas para este día.</p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewCalEvent({ ...newCalEvent, date: selectedCalDay });
+                                  setShowAddCalModal(true);
+                                }}
+                                className="text-red-500 hover:underline text-xs font-bold"
+                              >
+                                + Haz clic aquí para agendar el primer trabajo
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {eventsForDay.map(ev => {
+                              let typeLabel = 'Instalación en Terreno';
+                              let badgeColor = 'bg-red-600/20 text-red-400 border-red-500/30';
+                              if (ev.type === 'entrega') { typeLabel = 'Despacho a Cliente'; badgeColor = 'bg-blue-600/20 text-blue-400 border-blue-500/30'; }
+                              else if (ev.type === 'produccion') { typeLabel = 'Producción en Taller'; badgeColor = 'bg-amber-600/20 text-amber-400 border-amber-500/30'; }
+                              else if (ev.type === 'medicion') { typeLabel = 'Medición en Terreno'; badgeColor = 'bg-purple-600/20 text-purple-400 border-purple-500/30'; }
+
+                              return (
+                                <div key={ev.id} className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2.5 relative group">
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full border font-bold uppercase tracking-wider ${badgeColor}`}>
+                                      {typeLabel}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {ev.time && <span className="text-xs font-mono font-bold text-zinc-300">{ev.time}</span>}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteCalEvent(ev.id)}
+                                        className="text-zinc-600 hover:text-red-500 transition p-1"
+                                        title="Eliminar evento"
+                                      >
+                                        <Icon name="trash" className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <h4 className="text-sm font-bold text-white">{ev.title}</h4>
+                                    {ev.client && <p className="text-xs text-zinc-400">Cliente: <strong className="text-zinc-200">{ev.client}</strong></p>}
+                                    {ev.address && (
+                                      <p className="text-xs text-zinc-400 flex items-center gap-1 mt-1">
+                                        <Icon name="map-pin" className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                        <span className="truncate">{ev.address}</span>
+                                      </p>
+                                    )}
+                                    {ev.notes && <p className="text-xs text-zinc-400 bg-zinc-900/60 p-2 rounded-lg mt-2 border border-zinc-800/60 leading-relaxed">{ev.notes}</p>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
+                )}</div>
                 )}
                 </div>
               )}
 
-                {/* ESPACIO INDEPENDIENTE 2 (LADO DERECHO): MÓDULO WEBMAIL & CORREO CORPORATIVO GMAIL */}
-                {intranetSection === 'webmail' && (
-                  <div className="space-y-6">
-                    {/* Header y Acciones Principales */}
-                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-                      <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 text-red-500 border border-red-500/30 text-xs font-bold mb-2">
-                          <Icon name="mail" className="w-3.5 h-3.5" />
-                          CENTRO DE COMUNICACIONES CORPORATIVAS
-                        </div>
-                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
-                          Webmail & Correo Corporativo
-                        </h2>
-                        <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
-                          Gestiona los mensajes, cotizaciones y comprobantes de <strong className="text-white">contacto@letrerosolivar.com</strong> vinculado a tu Gmail Workspace sin salir de la Intranet.
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            Google Workspace Conectado (SMTP / IMAP Activo)
-                          </span>
-                          <span className="text-[11px] text-zinc-500 font-mono">
-                            Cuenta: <strong className="text-zinc-300">contacto@letrerosolivar.com</strong>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
-                          className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-2 shadow-lg shadow-red-600/30"
-                          title="Abrir Gmail con la cuenta de Letreros Olivar ya seleccionada"
-                        >
-                          <Icon name="external-link" className="w-4 h-4" />
-                          <span>Abrir Gmail Corporativo (1 Clic)</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => window.open('https://webmail.letrerosolivar.com', '_blank')}
-                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-medium px-3.5 py-2.5 rounded-xl text-xs border border-zinc-700 transition flex items-center gap-1.5"
-                          title="Abrir el Webmail cPanel / Roundcube del servidor de hosting"
-                        >
-                          <Icon name="table" className="w-4 h-4 text-amber-400" />
-                          <span>Webmail Servidor</span>
-                        </button>
-                      </div>
-                    </div>
-
-                                        {/* Barra de Sub-Pestañas / Carpetas de Webmail */}
-                    <div className="p-3 rounded-2xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* Pestaña: Bandeja de Entrada */}
-                        <button
-                          type="button"
-                          onClick={() => setWebmailSubTab('inbox')}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                            webmailSubTab === 'inbox'
-                              ? 'bg-blue-600 text-white font-extrabold shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
-                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
-                          }`}
-                        >
-                          <Icon name="mail" className="w-4 h-4 text-blue-200" />
-                          <span>?? Bandeja de Entrada</span>
-                          <span className="px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-200 text-[10px] font-mono">
-                            {inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox').length}
-                          </span>
-                          {inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.unread).length > 0 && (
-                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="Mensajes no leídos"></span>
-                          )}
-                        </button>
-
-                        {/* Pestaña: Enviados */}
-                        <button
-                          type="button"
-                          onClick={() => setWebmailSubTab('sent')}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                            webmailSubTab === 'sent'
-                              ? 'bg-emerald-600 text-white font-extrabold shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-500/50'
-                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
-                          }`}
-                        >
-                          <Icon name="check-circle" className="w-4 h-4 text-emerald-300" />
-                          <span>?? Enviados</span>
-                          <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono">
-                            {inboxEmails.filter(e => e.folder === 'sent').length}
-                          </span>
-                        </button>
-
-                        {/* Pestaña: Borradores */}
-                        <button
-                          type="button"
-                          onClick={() => setWebmailSubTab('drafts')}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                            webmailSubTab === 'drafts'
-                              ? 'bg-amber-600 text-white font-extrabold shadow-lg shadow-amber-600/30 ring-2 ring-amber-500/50'
-                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
-                          }`}
-                        >
-                          <Icon name="file-text" className="w-4 h-4 text-amber-300" />
-                          <span>?? Borradores</span>
-                          <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono">
-                            {inboxEmails.filter(e => e.folder === 'drafts').length}
-                          </span>
-                        </button>
-
-                        {/* Pestaña: Redactar Correo */}
-                        <button
-                          type="button"
-                          onClick={() => setWebmailSubTab('compose')}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                            webmailSubTab === 'compose'
-                              ? 'bg-red-600 text-white font-extrabold shadow-lg shadow-red-600/30 ring-2 ring-red-500/50'
-                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
-                          }`}
-                        >
-                          <Icon name="plus" className="w-4 h-4" />
-                          <span>?? Redactar</span>
-                        </button>
-
-                        {/* Pestaña: Conexión & Diagnóstico */}
-                        <button
-                          type="button"
-                          onClick={() => setWebmailSubTab('sync')}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                            webmailSubTab === 'sync'
-                              ? 'bg-zinc-100 text-black font-extrabold shadow-lg shadow-white/20'
-                              : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                          }`}
-                        >
-                          <Icon name="sparkles" className="w-4 h-4 text-amber-400" />
-                          <span>?? Diagnóstico & Ayuda</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleRefreshInbox}
-                          className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-blue-500/40 flex items-center gap-1.5 transition font-bold shadow-sm"
-                          title="Sincronizar y actualizar correos de la bandeja ahora"
-                        >
-                          <Icon name="refresh" className={`w-3.5 h-3.5 ${isRefreshingInbox ? 'animate-spin text-white' : ''}`} />
-                          <span>{isRefreshingInbox ? 'Sincronizando...' : 'Actualizar ??'}</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
-                          className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-red-500/40 flex items-center gap-1.5 transition font-bold"
-                          title="Abrir Gmail Corporativo en pestaña directa"
-                        >
-                          <Icon name="external-link" className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Gmail Corporativo</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* VISTA 1: BANDEJA DE ENTRADA CON SUS 4 PESTAÑAS OFICIALES DE GMAIL */}
-                    {webmailSubTab === 'inbox' && (
-                      <div className="space-y-4">
-                        {/* PESTAÑAS DE CATEGORÍA ESTILO GMAIL (PRINCIPAL, PROMOCIONES, SOCIAL, NOTIFICACIONES) */}
-                        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-2 flex flex-wrap items-center gap-2 shadow-inner">
-                          {[
-                            { id: 'primary', label: 'Principal', icon: 'mail', color: 'blue', desc: 'Clientes & Cotizaciones', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && (e.category === 'primary' || !e.category)).length },
-                            { id: 'promotions', label: 'Promociones', icon: 'sparkles', color: 'emerald', desc: 'Proveedores & Ofertas', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.category === 'promotions').length },
-                            { id: 'social', label: 'Social', icon: 'users', color: 'purple', desc: 'Comunidad & Redes', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.category === 'social').length },
-                            { id: 'notifications', label: 'Notificaciones', icon: 'bell', color: 'amber', desc: 'Pagos & Alertas', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.category === 'notifications').length },
-                            { id: 'all', label: 'Todos', icon: 'inbox', color: 'zinc', desc: 'Bandeja Completa', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox').length }
-                          ].map(cat => {
-                            const isActive = gmailCategory === cat.id;
-                            return (
-                              <button
-                                key={cat.id}
-                                type="button"
-                                onClick={() => setGmailCategory(cat.id)}
-                                className={`flex-1 min-w-[140px] px-3.5 py-2.5 rounded-xl text-left transition flex items-center justify-between border ${
-                                  isActive
-                                    ? 'bg-zinc-900 border-red-500 shadow-md ring-1 ring-red-500/40'
-                                    : 'bg-black/60 hover:bg-zinc-900/60 border-zinc-800/80 text-zinc-400 hover:text-white'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                                    isActive ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400'
-                                  }`}>
-                                    <Icon name={cat.icon} className="w-3.5 h-3.5" />
-                                  </div>
-                                  <div>
-                                    <span className={`text-xs font-bold block ${isActive ? 'text-white' : 'text-zinc-300'}`}>
-                                      {cat.label}
-                                    </span>
-                                    <span className="text-[10px] text-zinc-500 block">
-                                      {cat.desc}
-                                    </span>
-                                  </div>
-                                </div>
-                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                                  isActive ? 'bg-red-600/30 text-red-300 border border-red-500/40' : 'bg-zinc-900 text-zinc-500'
-                                }`}>
-                                  {cat.count}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Contenedor Principal: Lista y Lector de Mensajes */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                          {/* Columna Izquierda: Lista de Mensajes (5 cols) */}
-                          <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
-                            <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
-                              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                <span>
-                                  {gmailCategory === 'primary' && 'Principal'}
-                                  {gmailCategory === 'promotions' && 'Promociones'}
-                                  {gmailCategory === 'social' && 'Social'}
-                                  {gmailCategory === 'notifications' && 'Notificaciones'}
-                                  {gmailCategory === 'all' && 'Todos los Mensajes'}
-                                </span>
-                              </span>
-                              <span className="text-[10px] text-zinc-500 font-mono">Sinc: <strong className="text-zinc-400">{lastRefreshedTime}</strong></span>
-                            </div>
-
-                            {/* Búsqueda y Filtros */}
-                            <div className="space-y-2">
-                              <div className="relative">
-                                <Icon name="search" className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
-                                <input
-                                  type="text"
-                                  placeholder="Buscar en correos..."
-                                  value={inboxSearch}
-                                  onChange={(e) => setInboxSearch(e.target.value)}
-                                  className="w-full bg-zinc-950 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
-                                />
-                              </div>
-
-                              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                                {[
-                                  { id: 'all', label: 'Todos' },
-                                  { id: 'Cotización', label: 'Cotizaciones' },
-                                  { id: 'Comprobante', label: 'Comprobantes' },
-                                  { id: 'unread', label: 'No leídos' }
-                                ].map(f => (
-                                  <button
-                                    key={f.id}
-                                    type="button"
-                                    onClick={() => setInboxFilter(f.id)}
-                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
-                                      inboxFilter === f.id
-                                        ? 'bg-red-600 text-white font-bold'
-                                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                                    }`}
-                                  >
-                                    {f.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Lista de Mensajes */}
-                            <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
-                              {inboxEmails
-                                .filter(e => (e.folder || 'inbox') === 'inbox')
-                                .filter(e => {
-                                  if (gmailCategory === 'all') return true;
-                                  return (e.category || 'primary') === gmailCategory;
-                                })
-                                .filter(e => {
-                                  if (inboxFilter === 'unread') return e.unread;
-                                  if (inboxFilter !== 'all') return e.tag === inboxFilter;
-                                  return true;
-                                })
-                                .filter(e => {
-                                  if (!inboxSearch.trim()) return true;
-                                  const q = inboxSearch.toLowerCase();
-                                  return (
-                                    e.fromName.toLowerCase().includes(q) ||
-                                    e.fromEmail.toLowerCase().includes(q) ||
-                                    e.subject.toLowerCase().includes(q) ||
-                                    e.body.toLowerCase().includes(q)
-                                  );
-                                })
-                                .map(em => (
-                                  <div
-                                    key={em.id}
-                                    onClick={() => {
-                                      setSelectedInboxEmailId(em.id);
-                                      if (em.unread) {
-                                        setInboxEmails(prev => prev.map(item => item.id === em.id ? { ...item, unread: false } : item));
-                                      }
-                                    }}
-                                    className={`p-3 rounded-xl border cursor-pointer transition text-left space-y-1.5 ${
-                                      selectedInboxEmailId === em.id
-                                        ? 'bg-zinc-900 border-red-500 shadow-md ring-1 ring-red-500/40'
-                                        : em.unread
-                                        ? 'bg-zinc-950 hover:bg-zinc-900/80 border-red-900/40'
-                                        : 'bg-zinc-950/60 hover:bg-zinc-900/60 border-zinc-800/80 opacity-80 hover:opacity-100'
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-1.5 min-w-0">
-                                        {em.unread && (
-                                          <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                                        )}
-                                        <span className={`text-xs truncate ${em.unread ? 'font-black text-white' : 'font-medium text-zinc-300'}`}>
-                                          {em.fromName}
-                                        </span>
-                                      </div>
-                                      <span className="text-[10px] text-zinc-500 font-mono flex-shrink-0">{em.date}</span>
-                                    </div>
-
-                                    <div className={`text-xs truncate ${em.unread ? 'font-bold text-zinc-200' : 'text-zinc-400'}`}>
-                                      {em.subject}
-                                    </div>
-
-                                    <div className="flex items-center justify-between text-[11px] pt-1">
-                                      <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
-                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                                        em.tag === 'Cotización'
-                                          ? 'bg-red-600/20 text-red-400 border border-red-800/40'
-                                          : em.tag === 'Comprobante'
-                                          ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
-                                          : 'bg-zinc-800 text-zinc-400'
-                                      }`}>
-                                        {em.tag}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                            </div>
-                          </div>
-
-                          {/* Columna Derecha: Panel de Lectura del Mensaje (7 cols) */}
-                          <div className="lg:col-span-7 bg-black border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
-                            {(() => {
-                              const currentEmail = inboxEmails.find(e => (e.folder || 'inbox') === 'inbox' && e.id === selectedInboxEmailId) || inboxEmails.find(e => (e.folder || 'inbox') === 'inbox');
-                              if (!currentEmail) {
-                                return (
-                                  <div className="text-center py-20 text-zinc-500 text-xs">
-                                    No hay correos en esta pestaña para mostrar
-                                  </div>
-                                );
-                              }
-                              return (
-                                <div className="space-y-5">
-                                  {/* Encabezado del Correo */}
-                                  <div className="border-b border-zinc-800 pb-4 space-y-3">
-                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                      <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
-                                        currentEmail.tag === 'Cotización'
-                                          ? 'bg-red-600/20 text-red-400 border border-red-800/40'
-                                          : currentEmail.tag === 'Comprobante'
-                                          ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
-                                          : 'bg-zinc-800 text-zinc-300'
-                                      }`}>
-                                        {currentEmail.tag}
-                                      </span>
-                                      <span className="text-xs font-mono text-zinc-500">{currentEmail.date}</span>
-                                    </div>
-
-                                    <h3 className="text-lg font-black text-white font-heading leading-tight">
-                                      {currentEmail.subject}
-                                    </h3>
-
-                                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
-                                      <div>
-                                        <span className="text-zinc-500 block text-[10px] uppercase font-bold">De:</span>
-                                        <strong className="text-white">{currentEmail.fromName}</strong>
-                                        <span className="text-zinc-400 font-mono ml-2">({currentEmail.fromEmail})</span>
-                                        {currentEmail.rut && (
-                                          <span className="ml-2 text-[10px] font-mono text-zinc-500">RUT: {currentEmail.rut}</span>
-                                        )}
-                                      </div>
-                                      <div className="text-right">
-                                        <span className="text-zinc-500 block text-[10px] uppercase font-bold">Para:</span>
-                                        <span className="text-zinc-300 font-mono">contacto@letrerosolivar.com</span>
-                                      </div>
-                                    </div>
-
-                                    {/* Acciones directas integradas con la Intranet */}
-                                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleQuoteFromInboxEmail(currentEmail)}
-                                        className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition flex items-center gap-1.5 shadow-md shadow-red-600/30"
-                                        title="Carga este cliente y requerimiento en una nueva cotización formal"
-                                      >
-                                        <Icon name="cotizacion" className="w-3.5 h-3.5" />
-                                        <span>?? Cotizar a este Cliente</span>
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSaveInboxEmailToMaster(currentEmail)}
-                                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
-                                        title="Guarda o actualiza el correo de este cliente en la Maestra"
-                                      >
-                                        <Icon name="users" className="w-3.5 h-3.5" />
-                                        <span>?? Sincronizar en Maestra</span>
-                                      </button>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleReplyInboxEmail(currentEmail)}
-                                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-blue-600/30"
-                                      >
-                                        <Icon name="file-text" className="w-3.5 h-3.5" />
-                                        <span>?? Responder</span>
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Cuerpo del Mensaje */}
-                                  <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[140px]">
-                                    {currentEmail.body}
-                                  </div>
-
-                                  {/* CAJA DE RESPUESTA DIRECTA IN-APP */}
-                                  <div className="p-4 rounded-xl bg-zinc-950/90 border border-zinc-800 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                                        <Icon name="mail" className="w-3.5 h-3.5 text-blue-400" />
-                                        <span>Responder a {currentEmail.fromName} ({currentEmail.fromEmail})</span>
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setInlineReplyText('')}
-                                        className="text-zinc-500 hover:text-zinc-300 text-xs"
-                                      >
-                                        Limpiar
-                                      </button>
-                                    </div>
-
-                                    <textarea
-                                      rows={3}
-                                      value={inlineReplyText}
-                                      onChange={(e) => setInlineReplyText(e.target.value)}
-                                      placeholder="Escribe tu respuesta rápida aquí..."
-                                      className="w-full bg-black text-white p-3 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none text-xs font-mono"
-                                    ></textarea>
-
-                                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] text-zinc-500 font-bold uppercase">Atajos:</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => setInlineReplyText('Estimado(a),\n\nJunto con saludar, confirmamos la recepción conforme de su requerimiento. En breve le enviaremos el presupuesto formal.\n\nSaludos cordiales,\nLetreros Olivar SpA')}
-                                          className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-[10px]"
-                                        >
-                                          Acuse de recibo
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setInlineReplyText('Estimado(a),\n\nHemos verificado el comprobante de transferencia y su trabajo ha ingresado a la cola de producción.\n\nAtentamente,\nLetreros Olivar SpA')}
-                                          className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-[10px]"
-                                        >
-                                          Pago verificado
-                                        </button>
-                                      </div>
-
-                                      <div className="flex items-center gap-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => handleSendInlineReply(currentEmail)}
-                                          disabled={isSendingMail}
-                                          className="bg-red-600 hover:bg-red-500 text-white font-black px-5 py-2 rounded-xl text-xs transition flex items-center gap-2 shadow-lg shadow-red-600/30"
-                                        >
-                                          <Icon name="check" className={`w-3.5 h-3.5 ${isSendingMail ? 'animate-spin' : ''}`} />
-                                          <span>{isSendingMail ? 'Enviando...' : 'Enviar Respuesta ??'}</span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* VISTA 2: BANDEJA DE CORREOS ENVIADOS */}
-                    {webmailSubTab === 'sent' && (
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                        {/* Columna Izquierda: Lista de Enviados (5 cols) */}
-                        <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
-                          <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
-                            <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <span>Correos Enviados ({inboxEmails.filter(e => e.folder === 'sent').length})</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setWebmailSubTab('compose')}
-                              className="text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white px-2.5 py-1 rounded-lg border border-emerald-500/30 font-bold transition flex items-center gap-1"
-                            >
-                              <Icon name="plus" className="w-3.5 h-3.5" />
-                              <span>Redactar</span>
-                            </button>
-                          </div>
-
-                          <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
-                            {inboxEmails.filter(e => e.folder === 'sent').length === 0 ? (
-                              <div className="text-center py-16 text-zinc-500 text-xs">
-                                No hay correos enviados registrados aún
-                              </div>
-                            ) : (
-                              inboxEmails.filter(e => e.folder === 'sent').map(em => (
-                                <div
-                                  key={em.id}
-                                  onClick={() => setSelectedInboxEmailId(em.id)}
-                                  className={`p-3 rounded-xl border cursor-pointer transition text-left space-y-1.5 ${
-                                    selectedInboxEmailId === em.id
-                                      ? 'bg-zinc-900 border-emerald-500 shadow-md ring-1 ring-emerald-500/40'
-                                      : 'bg-zinc-950/70 hover:bg-zinc-900/60 border-zinc-800/80'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
-                                      <span className="text-xs font-bold text-white truncate">
-                                        Para: {em.toEmail || em.fromEmail}
-                                      </span>
-                                    </div>
-                                    <span className="text-[10px] text-zinc-500 font-mono flex-shrink-0">{em.date}</span>
-                                  </div>
-                                  <div className="text-xs font-semibold text-zinc-300 truncate">
-                                    {em.subject}
-                                  </div>
-                                  <div className="flex items-center justify-between text-[11px] pt-1">
-                                    <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-800/40">
-                                      Enviado ??
-                                    </span>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Columna Derecha: Lectura del Correo Enviado (7 cols) */}
-                        <div className="lg:col-span-7 bg-black border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
-                          {(() => {
-                            const sentEmails = inboxEmails.filter(e => e.folder === 'sent');
-                            const currentSent = sentEmails.find(e => e.id === selectedInboxEmailId) || sentEmails[0];
-                            if (!currentSent) {
-                              return (
-                                <div className="text-center py-20 text-zinc-500 text-xs">
-                                  Selecciona un correo enviado para revisar su contenido
-                                </div>
-                              );
-                            }
-                            return (
-                              <div className="space-y-5">
-                                <div className="border-b border-zinc-800 pb-4 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-800/40 flex items-center gap-1.5">
-                                      <Icon name="check-circle" className="w-3.5 h-3.5" />
-                                      Mensaje Despachado
-                                    </span>
-                                    <span className="text-xs font-mono text-zinc-500">{currentSent.date}</span>
-                                  </div>
-
-                                  <h3 className="text-lg font-black text-white font-heading">
-                                    {currentSent.subject}
-                                  </h3>
-
-                                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
-                                    <div>
-                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">Destinatario:</span>
-                                      <strong className="text-white">{currentSent.toEmail || '(Destinatario registrado)'}</strong>
-                                    </div>
-                                    <div className="text-right">
-                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">Remitente:</span>
-                                      <span className="text-zinc-300 font-mono">contacto@letrerosolivar.com</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[160px]">
-                                  {currentSent.body}
-                                </div>
-
-                                <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs">
-                                  <span className="text-zinc-500">
-                                    Registrado en el historial oficial de la Intranet
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setQuickMailTo(currentSent.toEmail || '');
-                                      setQuickMailSubject(`Re: ${currentSent.subject}`);
-                                      setWebmailSubTab('compose');
-                                    }}
-                                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 font-bold transition flex items-center gap-1.5"
-                                  >
-                                    <Icon name="mail" className="w-3.5 h-3.5" />
-                                    <span>Escribir otro a este destinatario</span>
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* VISTA 3: BANDEJA DE BORRADORES */}
-                    {webmailSubTab === 'drafts' && (
-                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                        {/* Columna Izquierda: Lista de Borradores (5 cols) */}
-                        <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
-                          <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
-                            <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                              <span>Borradores Guardados ({inboxEmails.filter(e => e.folder === 'drafts').length})</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setWebmailSubTab('compose')}
-                              className="text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white px-2.5 py-1 rounded-lg border border-amber-500/30 font-bold transition flex items-center gap-1"
-                            >
-                              <Icon name="plus" className="w-3.5 h-3.5" />
-                              <span>Nuevo Borrador</span>
-                            </button>
-                          </div>
-
-                          <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
-                            {inboxEmails.filter(e => e.folder === 'drafts').length === 0 ? (
-                              <div className="text-center py-16 text-zinc-500 text-xs">
-                                No tienes borradores pendientes de envío
-                              </div>
-                            ) : (
-                              inboxEmails.filter(e => e.folder === 'drafts').map(em => (
-                                <div
-                                  key={em.id}
-                                  onClick={() => setSelectedInboxEmailId(em.id)}
-                                  className={`p-3 rounded-xl border cursor-pointer transition text-left space-y-1.5 ${
-                                    selectedInboxEmailId === em.id
-                                      ? 'bg-zinc-900 border-amber-500 shadow-md ring-1 ring-amber-500/40'
-                                      : 'bg-zinc-950/70 hover:bg-zinc-900/60 border-zinc-800/80'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <Icon name="file-text" className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                                      <span className="text-xs font-bold text-white truncate">
-                                        Para: {em.toEmail || '(Sin destinatario)'}
-                                      </span>
-                                    </div>
-                                    <span className="text-[10px] text-zinc-500 font-mono flex-shrink-0">{em.date}</span>
-                                  </div>
-                                  <div className="text-xs font-semibold text-zinc-300 truncate">
-                                    {em.subject}
-                                  </div>
-                                  <div className="flex items-center justify-between text-[11px] pt-1">
-                                    <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-600/20 text-amber-400 border border-amber-800/40">
-                                      Borrador
-                                    </span>
-                                  </div>
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Columna Derecha: Previsualización de Borrador (7 cols) */}
-                        <div className="lg:col-span-7 bg-black border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
-                          {(() => {
-                            const draftEmails = inboxEmails.filter(e => e.folder === 'drafts');
-                            const currentDraft = draftEmails.find(e => e.id === selectedInboxEmailId) || draftEmails[0];
-                            if (!currentDraft) {
-                              return (
-                                <div className="text-center py-20 text-zinc-500 text-xs">
-                                  Selecciona un borrador para continuar redactando o descartar
-                                </div>
-                              );
-                            }
-                            return (
-                              <div className="space-y-5">
-                                <div className="border-b border-zinc-800 pb-4 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-600/20 text-amber-400 border border-amber-800/40 flex items-center gap-1.5">
-                                      <Icon name="file-text" className="w-3.5 h-3.5" />
-                                      Borrador en Pausa
-                                    </span>
-                                    <span className="text-xs font-mono text-zinc-500">{currentDraft.date}</span>
-                                  </div>
-
-                                  <h3 className="text-lg font-black text-white font-heading">
-                                    {currentDraft.subject}
-                                  </h3>
-
-                                  <div className="text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
-                                    <span className="text-zinc-500 block text-[10px] uppercase font-bold">Destinatario previsto:</span>
-                                    <strong className="text-white">{currentDraft.toEmail || '(Sin definir)'}</strong>
-                                  </div>
-                                </div>
-
-                                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[160px]">
-                                  {currentDraft.body}
-                                </div>
-
-                                <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteDraft(currentDraft.id)}
-                                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-red-950/60 text-zinc-400 hover:text-red-400 border border-zinc-800 transition flex items-center gap-1.5"
-                                  >
-                                    <Icon name="trash" className="w-3.5 h-3.5" />
-                                    <span>Descartar Borrador</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditDraft(currentDraft)}
-                                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-2 shadow-lg shadow-red-600/30"
-                                  >
-                                    <Icon name="file-text" className="w-3.5 h-3.5" />
-                                    <span>Continuar Redactando ??</span>
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* VISTA 4: REDACTOR DE CORREO */}
-                    {webmailSubTab === 'compose' && (
-                      <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-5 shadow-xl">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
-                          <div>
-                            <h3 className="text-base font-bold text-white font-heading flex items-center gap-2">
-                              <Icon name="mail" className="w-4 h-4 text-red-500" />
-                              <span>Redactor de Correos Corporativos</span>
-                            </h3>
-                            <p className="text-xs text-zinc-400 mt-0.5">
-                              contacto@letrerosolivar.com • Redacta, guarda borrador o despacha vía Gmail Workspace.
-                            </p>
-                          </div>
-
-                          {/* Plantillas rápidas */}
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-[10px] text-zinc-500 uppercase font-bold mr-1">Plantillas:</span>
-                            <button
-                              type="button"
-                              onClick={() => handleApplyEmailTemplate('cotizacion')}
-                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                            >
-                              ?? Cotización
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleApplyEmailTemplate('comprobante')}
-                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                            >
-                              ?? Pago Recibido
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleApplyEmailTemplate('terminado')}
-                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                            >
-                              ? Trabajo Listo
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleApplyEmailTemplate('instalacion')}
-                              className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
-                            >
-                              ?? Instalación
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4 text-xs">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <label className="text-zinc-300 font-semibold">Destinatario (Para:)</label>
-                                {clientsMaster.length > 0 && (
-                                  <select
-                                    onChange={(e) => {
-                                      if (e.target.value) setQuickMailTo(e.target.value);
-                                    }}
-                                    defaultValue=""
-                                    className="text-[10px] bg-zinc-950 text-zinc-400 border border-zinc-800 rounded px-2 py-0.5 focus:border-red-600 focus:outline-none"
-                                  >
-                                    <option value="">-- Cargar de Maestra de Clientes --</option>
-                                    {clientsMaster.filter(c => c.email).map(c => (
-                                      <option key={c.id} value={c.email}>
-                                        {c.name} ({c.email})
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </div>
-                              <input
-                                type="email"
-                                value={quickMailTo}
-                                onChange={(e) => setQuickMailTo(e.target.value)}
-                                placeholder="ej: contacto@cliente.cl"
-                                className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-zinc-300 font-semibold mb-1">Asunto:</label>
-                              <input
-                                type="text"
-                                value={quickMailSubject}
-                                onChange={(e) => setQuickMailSubject(e.target.value)}
-                                placeholder="Asunto del correo..."
-                                className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-zinc-300 font-semibold mb-1">Mensaje / Cuerpo del Correo:</label>
-                            <textarea
-                              rows={8}
-                              value={quickMailBody}
-                              onChange={(e) => setQuickMailBody(e.target.value)}
-                              className="w-full bg-zinc-950 text-white p-3.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono text-xs leading-relaxed"
-                              placeholder="Escribe el cuerpo del mensaje aquí..."
-                            ></textarea>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-                            <span className="text-[11px] text-zinc-500">
-                              Remitente: <strong className="text-zinc-300">contacto@letrerosolivar.com</strong> (Letreros Olivar SpA)
-                            </span>
-
-                            <div className="flex flex-wrap items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={handleSaveDraftMail}
-                                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-amber-400 hover:text-amber-300 font-bold border border-zinc-700 transition flex items-center gap-1.5"
-                                title="Guardar en la pestaña Borradores"
-                              >
-                                <Icon name="file-text" className="w-3.5 h-3.5" />
-                                <span>Guardar Borrador</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={handleSendDirectMail}
-                                disabled={isSendingMail}
-                                className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold transition flex items-center gap-2 border border-zinc-700"
-                                title="Registrar en la carpeta de Enviados de la Intranet"
-                              >
-                                <Icon name="check" className={`w-4 h-4 ${isSendingMail ? 'animate-spin' : ''}`} />
-                                <span>Guardar en Enviados</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={handleSendViaGmailDirect}
-                                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black transition flex items-center gap-2 shadow-lg shadow-red-600/40"
-                                title="Abre Gmail con destinatario, asunto y mensaje ya listos para enviar por los servidores de Google"
-                              >
-                                <Icon name="external-link" className="w-4 h-4" />
-                                <span>?? Despachar con Gmail (1 Clic)</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* VISTA 5: DIAGNÓSTICO & CONEXIÓN SMTP / IMAP */}
-                    {webmailSubTab === 'sync' && (
-                      <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-6 shadow-xl text-xs">
-                        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                              <span className="font-extrabold text-white text-sm">Google Workspace: Servidor SMTP Activo</span>
-                            </div>
-                            <p className="text-zinc-300 text-xs">
-                              Cuenta: <strong className="text-white">contacto@letrerosolivar.com</strong> • Conexión verificada en <span className="font-mono text-emerald-400">smtp.gmail.com:587</span>
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 text-[11px] font-mono bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-800">
-                            <span className="text-zinc-400">Estado de Salida:</span>
-                            <span className="text-emerald-400 font-bold">Autenticado OK</span>
-                          </div>
-                        </div>
-
-                        <div className="border-b border-zinc-800 pb-4">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">DIAGNÓSTICO TÉCNICO DE CORREO</span>
-                          <h3 className="text-xl font-black text-white font-heading mt-1">
-                            ¿Por qué los correos deben despacharse mediante la pasarela de Google?
-                          </h3>
-                          <p className="text-zinc-400 mt-1 max-w-3xl leading-relaxed">
-                            Los navegadores web bloquean las conexiones TCP directas a servidores de correo por motivos de seguridad. Para garantizar que ningún correo sea marcado como SPAM ni bloqueado por Hotmail, Gmail o Yahoo, la intranet incluye el botón <strong className="text-white">"?? Despachar con Gmail (1 Clic)"</strong>, el cual transfiere de forma instantánea el destinatario, asunto y mensaje a los servidores oficiales de Google para su entrega inmediata.
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
-                            <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">1</span>
-                              <span>Pestañas Organizadoras de Gmail</span>
-                            </h4>
-                            <p className="text-zinc-400 text-[11px] leading-relaxed">
-                              La bandeja de entrada ahora clasifica tus mensajes exactamente como en Google Workspace:
-                            </p>
-                            <ul className="text-zinc-300 text-[11px] space-y-1 pt-1">
-                              <li>• <strong>Principal:</strong> Mensajes directos, cotizaciones y clientes.</li>
-                              <li>• <strong>Promociones:</strong> Ofertas comerciales y catálogos de proveedores.</li>
-                              <li>• <strong>Social:</strong> Comunicaciones comunales, Teletón y redes.</li>
-                              <li>• <strong>Notificaciones:</strong> Comprobantes de transferencia y avisos bancarios.</li>
-                            </ul>
-                          </div>
-
-                          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
-                            <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">2</span>
-                              <span>Carpetas de Enviados y Borradores</span>
-                            </h4>
-                            <p className="text-zinc-400 text-[11px] leading-relaxed">
-                              Tus mensajes enviados y tus borradores quedan respaldados en sus respectivas carpetas dentro de la Intranet, permitiéndote retomar redacciones o consultar comprobantes en cualquier momento.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between gap-4">
-                          <div>
-                            <span className="text-white font-bold block">Acceso Rápido a Bandejas</span>
-                            <span className="text-zinc-400 text-[11px]">Tu cuenta corporativa está 100% activa.</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setWebmailSubTab('inbox')}
-                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 flex-shrink-0"
-                          >
-                            Ir a Bandeja de Entrada ?
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                )}
-
-              </div>
-            </main>
-          )}
-
-          {/* ============================================================== */}
-          {/* MODAL: LOGIN DE INTRANET                                       */}
+                
+{/* MODAL: LOGIN DE INTRANET                                       */}
           {/* ============================================================== */}
           {showLoginModal && (
             <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
@@ -7462,7 +6680,126 @@
             </div>
           )}
 
-        </div>
+        
+          {/* MODAL: AGENDAR TRABAJO EN CALENDARIO */}
+          {showAddCalModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Icon name="calendar" className="w-5 h-5 text-red-500" />
+                    <h3 className="text-base font-bold text-white font-heading">Agendar Trabajo en Calendario</h3>
+                  </div>
+                  <button onClick={() => setShowAddCalModal(false)} className="text-zinc-500 hover:text-white">
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveCalEvent} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 mb-1">Título del Trabajo / Proyecto *</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Montaje Letrero Luminoso 4x1.5m"
+                      value={newCalEvent.title}
+                      onChange={(e) => setNewCalEvent({ ...newCalEvent, title: e.target.value })}
+                      className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 text-xs"
+                      required
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Cliente / Empresa</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: Agrícola El Olivar SpA"
+                        value={newCalEvent.client}
+                        onChange={(e) => setNewCalEvent({ ...newCalEvent, client: e.target.value })}
+                        className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Tipo de Actividad</label>
+                      <select
+                        value={newCalEvent.type}
+                        onChange={(e) => setNewCalEvent({ ...newCalEvent, type: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2.5 rounded-xl border border-zinc-800 text-xs font-medium"
+                      >
+                        <option value="instalacion">🏗️ Instalación en Terreno</option>
+                        <option value="entrega">📦 Despacho / Entrega a Cliente</option>
+                        <option value="produccion">🏭 Producción en Taller</option>
+                        <option value="medicion">📐 Medición / Visita Técnica</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Fecha *</label>
+                      <input
+                        type="date"
+                        value={newCalEvent.date}
+                        onChange={(e) => setNewCalEvent({ ...newCalEvent, date: e.target.value })}
+                        className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 text-xs font-mono"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Hora Programada</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: 11:30 hrs"
+                        value={newCalEvent.time}
+                        onChange={(e) => setNewCalEvent({ ...newCalEvent, time: e.target.value })}
+                        className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 mb-1">Lugar / Dirección de Obra</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Ruta Travesía Km 85, Rancagua"
+                      value={newCalEvent.address}
+                      onChange={(e) => setNewCalEvent({ ...newCalEvent, address: e.target.value })}
+                      className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 mb-1">Notas / Instrucciones del Taller</label>
+                    <textarea
+                      rows="2"
+                      placeholder="Herramientas necesarias, andamios, cables, personal a cargo..."
+                      value={newCalEvent.notes}
+                      onChange={(e) => setNewCalEvent({ ...newCalEvent, notes: e.target.value })}
+                      className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 text-xs"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-900">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCalModal(false)}
+                      className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold rounded-xl transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-red-600/30"
+                    >
+                      Guardar en Calendario
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+</div>
       );
     }
 
