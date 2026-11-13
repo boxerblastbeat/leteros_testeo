@@ -606,13 +606,17 @@
         }
       });
 
-      // VISTA ACTUAL: 'intranet' (En intranet.html siempre inicia directamente en la Intranet con sesión abierta o recordada)
-      const [currentView, setCurrentView] = useState('intranet');
+      // VISTA INTELIGENTE UNIFICADA: Detecta si entra por /intranet o por el sitio público
+      const isIntranetRoute = window.location.pathname.toLowerCase().includes('intranet') || window.location.search.includes('intranet') || window.location.hash.includes('intranet');
+      const [currentView, setCurrentView] = useState(isIntranetRoute ? 'intranet' : 'public');
       const [isIntranetLoggedIn, setIsIntranetLoggedIn] = useState(() => {
         return sessionStorage.getItem('olivar_intranet_auth') === 'true';
       });
       const [showLoginModal, setShowLoginModal] = useState(() => {
-        return sessionStorage.getItem('olivar_intranet_auth') !== 'true';
+        if (isIntranetRoute) {
+          return sessionStorage.getItem('olivar_intranet_auth') !== 'true';
+        }
+        return false;
       });
       const [loginPassword, setLoginPassword] = useState('');
       const [loginError, setLoginError] = useState('');
@@ -788,7 +792,7 @@
             });
             setQuoteHistory(fireQuotes);
             localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes));
-            showToast(✅ ¡Historial sincronizado! ( cotizaciones en la nube));
+            showToast('✅ ¡Historial sincronizado con la nube!');
           } else {
             showToast('ℹ️ No hay cotizaciones en la nube aún');
           }

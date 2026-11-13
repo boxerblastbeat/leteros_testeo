@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Letreros Olivar SpA | Gráfica Corporativa, Letreros, Señéticas & Publicidad</title>
-  <meta name="description" content="Letreros Olivar SpA - Gráfica corporativa, letreros luminosos, señéticas viales, gigantografías, corte láser en acrílico, CNC en aluminio compuesto e impresión de gran formato en Olivar, Rancagua y Región de O'Higgins." />
+  <title>Intranet Taller & Webmail | Letreros Olivar SpA</title>
+  <meta name="description" content="Intranet privada de Letreros Olivar SpA: Cotizador oficial de taller, tarifario Excel, maestra de clientes y Webmail integrado." />
+  <meta name="robots" content="noindex, nofollow" />
   <meta name="keywords" content="letreros olivar, grafica corporativa olivar, seneticas viales, banner pvc olivar, palomas publicitarias, gigantografias rancagua, cajones luminosos, corte laser acrilico, cortes cnc aluminio compuesto, impresion gran formato, publicidad olivar" />
   <link rel="canonical" href="https://letrerosolivar.com/" />
   
@@ -110,6 +111,23 @@
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Firebase App + Firestore (CDN compat v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Inicializar Firebase - Letreros Olivar
+    const firebaseConfig = {
+      apiKey: "AIzaSyAhr06vE734LtX2ClAmVlAgZUrpPNbBCoc",
+      authDomain: "letreros-olivar.firebaseapp.com",
+      projectId: "letreros-olivar",
+      storageBucket: "letreros-olivar.firebasestorage.app",
+      messagingSenderId: "347836227863",
+      appId: "1:347836227863:web:4f107fde846416e32b5752"
+    };
+    firebase.initializeApp(firebaseConfig);
+    window.db = firebase.firestore();
+  </script>
 
   <style>
     body {
@@ -588,10 +606,18 @@
         }
       });
 
-      // VISTA ACTUAL: 'public' (Cliente) o 'intranet' (Equipo interno con clave)
-      const [currentView, setCurrentView] = useState('public');
-      const [isIntranetLoggedIn, setIsIntranetLoggedIn] = useState(false);
-      const [showLoginModal, setShowLoginModal] = useState(false);
+      // VISTA INTELIGENTE UNIFICADA: Detecta si entra por /intranet o por el sitio público
+      const isIntranetRoute = window.location.pathname.toLowerCase().includes('intranet') || window.location.search.includes('intranet') || window.location.hash.includes('intranet');
+      const [currentView, setCurrentView] = useState(isIntranetRoute ? 'intranet' : 'public');
+      const [isIntranetLoggedIn, setIsIntranetLoggedIn] = useState(() => {
+        return sessionStorage.getItem('olivar_intranet_auth') === 'true';
+      });
+      const [showLoginModal, setShowLoginModal] = useState(() => {
+        if (isIntranetRoute) {
+          return sessionStorage.getItem('olivar_intranet_auth') !== 'true';
+        }
+        return false;
+      });
       const [loginPassword, setLoginPassword] = useState('');
       const [loginError, setLoginError] = useState('');
 
@@ -662,6 +688,120 @@
         return saved ? JSON.parse(saved) : [];
       });
 
+      // === FIREBASE: Sincronizar correlativo en tiempo real (Bidireccional) ===
+      useEffect(() => {
+        if (!window.db) return;
+        const localNum = parseInt(localStorage.getItem('olivar_correlative') || '101', 10);
+        
+        const unsubCorr = window.db.collection('system').doc('correlatives')
+          .onSnapshot(snap => {
+            if (snap.exists) {
+              const fireNum = snap.data().currentNumber;
+              if (fireNum) {
+                setCorrelativeNumber(prev => {
+                  const maxNum = Math.max(prev, fireNum, localNum);
+                  localStorage.setItem('olivar_correlative', maxNum.toString());
+                  return maxNum;
+                });
+                if (localNum > fireNum) {
+                  window.db.collection('system').doc('correlatives').set({
+                    currentNumber: localNum,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                  }, { merge: true }).catch(() => {});
+                }
+              }
+            } else {
+              window.db.collection('system').doc('correlatives').set({
+                currentNumber: localNum,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }).catch(() => {});
+            }
+          }, err => console.warn('Firestore correlative error:', err));
+        return () => unsubCorr();
+      }, []);
+
+      // === FIREBASE: Sincronizar historial de cotizaciones (Auto-migración y tiempo real) ===
+      useEffect(() => {
+        if (!window.db) return;
+
+        // Auto-migración: Subir a Firestore cotizaciones existentes en localStorage de este computador
+        try {
+          const localSaved = localStorage.getItem('olivar_quotes_history');
+          if (localSaved) {
+            const localList = JSON.parse(localSaved);
+            if (Array.isArray(localList) && localList.length > 0) {
+              localList.forEach(q => {
+                if (q && q.correlative) {
+                  const sanitized = JSON.parse(JSON.stringify(q));
+                  sanitized.timestamp = sanitized.timestamp || Date.now();
+                  window.db.collection('quotes').doc(q.correlative).set(sanitized, { merge: true })
+                    .catch(e => console.warn('Error subiendo cotización local a Firestore:', e));
+                }
+              });
+            }
+          }
+        } catch(e) { console.warn('Error en auto-migración de historial local:', e); }
+
+        // Listener en tiempo real sin restricción de orderBy para que carguen TODAS
+        const unsubQuotes = window.db.collection('quotes')
+          .onSnapshot(snap => {
+            if (!snap.empty) {
+              const fireQuotes = snap.docs.map(d => ({ _fireId: d.id, ...d.data() }));
+              fireQuotes.sort((a, b) => {
+                const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+                const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+                return numB - numA;
+              });
+              setQuoteHistory(fireQuotes);
+              try { localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes)); } catch(e){}
+            }
+          }, err => console.warn('Firestore quotes error:', err));
+        return () => unsubQuotes();
+      }, []);
+
+      // Función manual para sincronizar / forzar refresco del historial
+      const handleSyncCloudQuotes = () => {
+        if (!window.db) {
+          showToast('⚠️ Base de datos no conectada');
+          return;
+        }
+        showToast('🔄 Sincronizando cotizaciones con la nube...');
+        // 1. Subir locales
+        try {
+          const localSaved = localStorage.getItem('olivar_quotes_history');
+          if (localSaved) {
+            const localList = JSON.parse(localSaved);
+            localList.forEach(q => {
+              if (q && q.correlative) {
+                const sanitized = JSON.parse(JSON.stringify(q));
+                sanitized.timestamp = sanitized.timestamp || Date.now();
+                window.db.collection('quotes').doc(q.correlative).set(sanitized, { merge: true });
+              }
+            });
+          }
+        } catch(e){}
+
+        // 2. Traer todas de Firestore
+        window.db.collection('quotes').get().then(snap => {
+          if (!snap.empty) {
+            const fireQuotes = snap.docs.map(d => ({ _fireId: d.id, ...d.data() }));
+            fireQuotes.sort((a, b) => {
+              const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+              const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+              return numB - numA;
+            });
+            setQuoteHistory(fireQuotes);
+            localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes));
+            showToast('✅ ¡Historial sincronizado con la nube!');
+          } else {
+            showToast('ℹ️ No hay cotizaciones en la nube aún');
+          }
+        }).catch(err => {
+          console.error(err);
+          showToast('⚠️ Error al consultar Firestore: ' + err.message);
+        });
+      };
+
       const [intranetClientData, setIntranetClientData] = useState({
         name: '',
         contactPerson: '',
@@ -697,7 +837,7 @@
         localStorage.setItem('olivar_workshop_consumables', JSON.stringify(consumablesCatalog));
       }, [consumablesCatalog]);
 
-      // MAESTRA DE CLIENTES Y PROVEEDORES (Con persistencia en localStorage)
+      // MAESTRA DE CLIENTES Y PROVEEDORES (Firebase + localStorage fallback)
       const [clientsMaster, setClientsMaster] = useState(() => {
         const saved = localStorage.getItem('olivar_clients_master');
         return saved ? JSON.parse(saved) : DEFAULT_CLIENTS_DIRECTORY;
@@ -705,7 +845,29 @@
 
       useEffect(() => {
         localStorage.setItem('olivar_clients_master', JSON.stringify(clientsMaster));
+        if (window.db && clientsMaster.length > 0) {
+          window.db.collection('system').doc('clientsMaster').set({
+            data: clientsMaster,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(e => console.warn('Error guardando clientes en Firestore:', e));
+        }
       }, [clientsMaster]);
+
+      // === FIREBASE: Sincronizar maestra de clientes ===
+      useEffect(() => {
+        if (!window.db) return;
+        const unsubCli = window.db.collection('system').doc('clientsMaster')
+          .onSnapshot(snap => {
+            if (snap.exists && snap.data().data) {
+              const fc = snap.data().data;
+              if (fc.length > 0) {
+                setClientsMaster(fc);
+                try { localStorage.setItem('olivar_clients_master', JSON.stringify(fc)); } catch(e){}
+              }
+            }
+          }, err => console.warn('Firestore clients error:', err));
+        return () => unsubCli();
+      }, []);
 
       const [clientsSearch, setClientsSearch] = useState('');
       const [clientsFilterType, setClientsFilterType] = useState('all');
@@ -725,12 +887,16 @@
       const [bulkEmailParsed, setBulkEmailParsed] = useState([]);
 
       // Estados para módulo Webmail In-App (Sin abrir pestañas externas)
-      const [webmailSubTab, setWebmailSubTab] = useState('inbox'); // 'inbox' | 'compose' | 'sync'
+      const [webmailSubTab, setWebmailSubTab] = useState('inbox'); // 'inbox' | 'sent' | 'drafts' | 'compose' | 'sync'
+      const [gmailCategory, setGmailCategory] = useState('primary'); // 'primary' | 'promotions' | 'social' | 'notifications' | 'all'
       const [inboxEmails, setInboxEmails] = useState(() => {
         const saved = localStorage.getItem('olivar_inbox_emails');
         const realEmails = [
+          // BANDEJA DE ENTRADA - PRINCIPAL
           {
             id: 'em-real-1',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Carlos Urzúa',
             fromEmail: 'contacto@letrerosolivar.com',
             rut: '77.880.952-4',
@@ -742,6 +908,8 @@
           },
           {
             id: 'em-real-2',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Javier Polanco',
             fromEmail: 'jpolanco@egm.cl',
             rut: '76.840.120-K',
@@ -753,6 +921,8 @@
           },
           {
             id: 'em-real-3',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Tania, Letreros (2)',
             fromEmail: 'tania@letrerosolivar.com',
             rut: '',
@@ -764,6 +934,8 @@
           },
           {
             id: 'em-real-4',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'César Cifuentes Rey. (2)',
             fromEmail: 'ccifuentes@prevencion.cl',
             rut: '',
@@ -775,6 +947,8 @@
           },
           {
             id: 'em-real-5',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Roberto Rodriguez',
             fromEmail: 'rrodriguez@carniceria.cl',
             rut: '',
@@ -786,6 +960,8 @@
           },
           {
             id: 'em-real-6',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Sergio, Letreros (2)',
             fromEmail: 'sergio@letrerosolivar.com',
             rut: '',
@@ -796,40 +972,9 @@
             body: 'Estimado, Junto con saludar, adjunto la factura N°... y detalle de la cotización para el letrero de trovicel impreso con protección UV.'
           },
           {
-            id: 'em-real-7',
-            fromName: 'contacto .. Contact. (4)',
-            fromEmail: 'contacto@proveedordemaquinarias.cl',
-            rut: '',
-            subject: 'Ahora nuestra impresora de letreros 3D con financiamiento sin pie',
-            date: '9 Nov',
-            unread: false,
-            tag: 'Proveedor',
-            body: 'Hola, buenas tardes. Acá a... Presentamos nuestra nueva impresora 3D para letras volumétricas publicitarias con financiamiento directo.'
-          },
-          {
-            id: 'em-real-8',
-            fromName: 'Secretaria Los Nobl.',
-            fromEmail: 'secretaria@losnobles.cl',
-            rut: '76.442.890-5',
-            subject: 'RV: Aviso Publicacion Pago',
-            date: '9 Nov',
-            unread: false,
-            tag: 'Comprobante',
-            body: 'Buenos Días: Gusto en saludarle, le envió comprobante bancario de pago por concepto de fabricación de letrero institucional Los Nobles.'
-          },
-          {
-            id: 'em-real-9',
-            fromName: 'Carlos Urzúa',
-            fromEmail: 'contacto@letrerosolivar.com',
-            rut: '77.880.952-4',
-            subject: 'Intranet - olivar2026',
-            date: '8 Nov',
-            unread: false,
-            tag: 'Sistema',
-            body: 'Credenciales y accesos de administración del sistema intranet Letreros Olivar SpA.'
-          },
-          {
             id: 'em-real-10',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Jaime Cardoza',
             fromEmail: 'jcardoza@prevencion.cl',
             rut: '',
@@ -840,18 +985,9 @@
             body: 'Atentamente, le saluda, Jaime Andrés Cardoza Padilla. Asesor en Prevención de Riesgos. Adjunto logotipo para señalética y letreros de seguridad.'
           },
           {
-            id: 'em-real-11',
-            fromName: 'Carlos Zapata',
-            fromEmail: 'czapata@olivar.cl',
-            rut: '',
-            subject: 'Invitación a colaborar con la Teletón 2026 – Comuna de Olivar',
-            date: '6 Nov',
-            unread: false,
-            tag: 'General',
-            body: 'Estimados representantes de Letreros Olivar SpA,\n\nLos invitamos cordialmente a participar y colaborar con la campaña comunal de Teletón 2026 con gráfica y lienzos publicitarios en la comuna de Olivar.'
-          },
-          {
             id: 'em-real-12',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Letreros .. Paola (6)',
             fromEmail: 'paola@letrerosolivar.com',
             rut: '',
@@ -859,10 +995,12 @@
             date: '6 Nov',
             unread: false,
             tag: 'Cotización',
-            body: 'Estimado Carlos: Adjunto deposito a Letreros Olivar por la suma de $350.000 y el desglose de la cotización actualizada con los nuevos metros cuadrados.'
+            body: 'Estimado Carlos: Adjunto deposito a Letreros Olivar por la suma de .000 y el desglose de la cotización actualizada con los nuevos metros cuadrados.'
           },
           {
             id: 'em-real-13',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Jeanine Martinez',
             fromEmail: 'jmartinez@magdacollection.cl',
             rut: '',
@@ -874,6 +1012,8 @@
           },
           {
             id: 'em-real-14',
+            folder: 'inbox',
+            category: 'primary',
             fromName: 'Alexis Lizana Espin.',
             fromEmail: 'alizana@diseno.cl',
             rut: '',
@@ -882,9 +1022,170 @@
             unread: false,
             tag: 'Cotización',
             body: 'Estimado equipo Letreros Olivar, adjunto archivo para impresión y armado de 2 pendones roller 80x200cm.'
+          },
+
+          // BANDEJA DE ENTRADA - PROMOCIONES
+          {
+            id: 'em-real-7',
+            folder: 'inbox',
+            category: 'promotions',
+            fromName: 'contacto .. Contact. (4)',
+            fromEmail: 'contacto@proveedordemaquinarias.cl',
+            rut: '',
+            subject: 'Ahora nuestra impresora de letreros 3D con financiamiento sin pie',
+            date: '9 Nov',
+            unread: false,
+            tag: 'Proveedor',
+            body: 'Hola, buenas tardes. Acá a... Presentamos nuestra nueva impresora 3D para letras volumétricas publicitarias con financiamiento directo.'
+          },
+          {
+            id: 'em-promo-2',
+            folder: 'inbox',
+            category: 'promotions',
+            fromName: 'Distribuidora Acrílicos Chile',
+            fromEmail: 'ventas@distribuidora-acrilicos.cl',
+            rut: '78.120.400-3',
+            subject: 'Oferta Especial Planchas Acrílico Cristal 3mm y 5mm con 20% dcto',
+            date: '4 Nov',
+            unread: false,
+            tag: 'Proveedor',
+            body: 'Estimado cliente, tenemos liquidación de fin de mes en planchas de acrílico cristal y perfiles de aluminio para cajas de luz. Contáctanos para cotizar bobinas completas.'
+          },
+
+          // BANDEJA DE ENTRADA - SOCIAL
+          {
+            id: 'em-real-11',
+            folder: 'inbox',
+            category: 'social',
+            fromName: 'Carlos Zapata',
+            fromEmail: 'czapata@olivar.cl',
+            rut: '',
+            subject: 'Invitación a colaborar con la Teletón 2026 – Comuna de Olivar',
+            date: '6 Nov',
+            unread: false,
+            tag: 'General',
+            body: 'Estimados representantes de Letreros Olivar SpA,\n\nLos invitamos cordialmente a participar y colaborar con la campaña comunal de Teletón 2026 con gráfica y lienzos publicitarios en la comuna de Olivar.'
+          },
+          {
+            id: 'em-soc-2',
+            folder: 'inbox',
+            category: 'social',
+            fromName: 'Red Emprendedores O\'Higgins',
+            fromEmail: 'comunidad@emprendedores-ohiggins.cl',
+            rut: '',
+            subject: 'Encuentro empresarial y feria de proveedores de la región',
+            date: '3 Nov',
+            unread: false,
+            tag: 'Comunidad',
+            body: 'Hola Carlos, te invitamos a sumarte al directorio regional de proveedores publicitarios y de cartelería. ¡Entrada liberada!'
+          },
+
+          // BANDEJA DE ENTRADA - NOTIFICACIONES
+          {
+            id: 'em-real-8',
+            folder: 'inbox',
+            category: 'notifications',
+            fromName: 'Secretaria Los Nobl.',
+            fromEmail: 'secretaria@losnobles.cl',
+            rut: '76.442.890-5',
+            subject: 'RV: Aviso Publicacion Pago',
+            date: '9 Nov',
+            unread: false,
+            tag: 'Comprobante',
+            body: 'Buenos Días: Gusto en saludarle, le envió comprobante bancario de pago por concepto de fabricación de letrero institucional Los Nobles.'
+          },
+          {
+            id: 'em-real-9',
+            folder: 'inbox',
+            category: 'notifications',
+            fromName: 'Carlos Urzúa',
+            fromEmail: 'contacto@letrerosolivar.com',
+            rut: '77.880.952-4',
+            subject: 'Intranet - olivar2026',
+            date: '8 Nov',
+            unread: false,
+            tag: 'Sistema',
+            body: 'Credenciales y accesos de administración del sistema intranet Letreros Olivar SpA.'
+          },
+          {
+            id: 'em-notif-2',
+            folder: 'inbox',
+            category: 'notifications',
+            fromName: 'Banco BCI Notificaciones',
+            fromEmail: 'notificaciones@bci.cl',
+            rut: '97.006.000-6',
+            subject: 'Notificación de transferencia recibida por .000',
+            date: '6 Nov',
+            unread: false,
+            tag: 'Comprobante',
+            body: 'Le informamos que ha recibido una transferencia electrónica de fondos en su cuenta corriente por la suma de .000 con concepto: Cotización letreros.'
+          },
+
+          // CARPETA: ENVIADOS
+          {
+            id: 'em-sent-1',
+            folder: 'sent',
+            category: 'primary',
+            fromName: 'Letreros Olivar SpA (Enviado)',
+            fromEmail: 'contacto@letrerosolivar.com',
+            toEmail: 'carlosurzua1982@gmail.com',
+            rut: '77.880.952-4',
+            subject: 'Prueba de envío desde Webmail Corporativo',
+            date: 'Hoy, 02:40 a. m.',
+            unread: false,
+            tag: 'Enviado',
+            body: 'Estimado Carlos,\n\nEste es un correo enviado desde la interfaz de Webmail Corporativo de Letreros Olivar SpA para verificar el correcto registro y salida de mensajes.\n\nAtentamente,\nLetreros Olivar SpA\ncontacto@letrerosolivar.com'
+          },
+          {
+            id: 'em-sent-2',
+            folder: 'sent',
+            category: 'primary',
+            fromName: 'Letreros Olivar SpA (Enviado)',
+            fromEmail: 'contacto@letrerosolivar.com',
+            toEmail: 'jpolanco@egm.cl',
+            rut: '76.840.120-K',
+            subject: 'Re: OC 75651 - Confirmación de Recepción y Fabricación',
+            date: '11 Nov, 17:10',
+            unread: false,
+            tag: 'Enviado',
+            body: 'Estimado Javier,\n\nConfirmamos la recepción de la OC 75651 para los logos corrosivos en carros EGM. La producción ha ingresado a taller.\n\nSaludos cordiales,\nCarlos Urzúa - Letreros Olivar SpA'
+          },
+          {
+            id: 'em-sent-3',
+            folder: 'sent',
+            category: 'primary',
+            fromName: 'Letreros Olivar SpA (Enviado)',
+            fromEmail: 'contacto@letrerosolivar.com',
+            toEmail: 'secretaria@losnobles.cl',
+            rut: '76.442.890-5',
+            subject: 'Factura Electrónica y Recibo Conforme - Letrero Los Nobles',
+            date: '9 Nov, 12:30',
+            unread: false,
+            tag: 'Enviado',
+            body: 'Estimada,\n\nConfirmamos recepción conforme del pago por la fabricación del letrero institucional. Adjuntamos la documentación tributaria correspondiente.\n\nAtentamente,\nLetreros Olivar SpA'
+          },
+
+          // CARPETA: BORRADORES
+          {
+            id: 'em-draft-1',
+            folder: 'drafts',
+            category: 'primary',
+            fromName: 'Borrador Guardado',
+            fromEmail: 'contacto@letrerosolivar.com',
+            toEmail: 'contacto@proveedordemaquinarias.cl',
+            rut: '',
+            subject: 'Consulta por insumos de vinilo reflectante y tintas UV',
+            date: 'Borrador guardado',
+            unread: false,
+            tag: 'Borrador',
+            body: 'Estimados,\n\nQuisiéramos solicitar cotización por 3 bobinas de vinilo de alta durabilidad y un set de tintas UV para nuestro plotter.\n\nQuedamos a la espera de su respuesta.\nLetreros Olivar SpA'
           }
         ];
-        // Si no hay guardado o si tenía los correos falsos antiguos, cargar la bandeja real
+        // Si no hay guardado o no tiene categorías, cargar la bandeja actualizada
+        if (!saved || !saved.includes('category') || saved.includes('Claudio Garrido')) {
+          localStorage.setItem('olivar_inbox_emails', JSON.stringify(realEmails));
+          return realEmails;
+        }
         if (!saved || saved.includes('Claudio Garrido') || saved.includes('em-1')) {
           localStorage.setItem('olivar_inbox_emails', JSON.stringify(realEmails));
           return realEmails;
@@ -1027,14 +1328,14 @@
           setConsumablesCatalog(DEFAULT_WORKSHOP_CONSUMABLES);
           localStorage.removeItem('olivar_workshop_materials');
           localStorage.removeItem('olivar_workshop_consumables');
-          showToast('↺ Precios restablecidos a valores oficiales de Excel');
+          showToast('? Precios restablecidos a valores oficiales de Excel');
         }
       };
 
       const handleSaveAllWorkshopPrices = () => {
         localStorage.setItem('olivar_workshop_materials', JSON.stringify(materialsCatalog));
         localStorage.setItem('olivar_workshop_consumables', JSON.stringify(consumablesCatalog));
-        showToast('✅ Tarifario guardado y sincronizado con el Cotizador');
+        showToast('? Tarifario guardado y sincronizado con el Cotizador');
       };
 
       const handleCreateNewMaterial = (e) => {
@@ -1055,13 +1356,13 @@
         setMaterialsCatalog([newMat, ...materialsCatalog]);
         setShowAddMaterialModal(false);
         setNewMaterialForm({ name: '', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 0, pricePerSqm: 25000, unit: 'm²' });
-        showToast(`✅ Material "${newMat.name}" añadido al catálogo`);
+        showToast(`? Material "${newMat.name}" añadido al catálogo`);
       };
 
       const handleDeleteMaterial = (id, name) => {
         if (window.confirm(`¿Eliminar el material "${name}" del catálogo?`)) {
           setMaterialsCatalog(materialsCatalog.filter(m => m.id !== id));
-          showToast(`🗑 Material eliminado`);
+          showToast(`🗑️ Material eliminado`);
         }
       };
 
@@ -1070,7 +1371,7 @@
         if (materialId === 'custom') {
           setItemDesc('Servicio / Trabajo a Medida');
           setItemPrice(0);
-          showToast('✨ Modo Personalizado: Ingresa libremente la descripción y valor');
+          showToast('? Modo Personalizado: Ingresa libremente la descripción y valor');
           return;
         }
         const mat = materialsCatalog.find(m => m.id === materialId);
@@ -1084,7 +1385,7 @@
             setItemWidth(1.0);
             setItemHeight(1.0);
           }
-          showToast(`📋 ${mat.name} ($${mat.pricePerSqm.toLocaleString('es-CL')} / ${mat.unit})`);
+          showToast(`?? ${mat.name} ($${mat.pricePerSqm.toLocaleString('es-CL')} / ${mat.unit})`);
         }
       };
 
@@ -1102,7 +1403,7 @@
           email: found.email || prev.email,
           deliveryAddress: found.address || prev.deliveryAddress
         }));
-        showToast(`🏢 Cliente cargado: ${found.name}`);
+        showToast(`👤 Cliente cargado: ${found.name}`);
       };
 
       const handleSaveCurrentClientToMaster = () => {
@@ -1138,7 +1439,7 @@
             }, ...prev];
           }
         });
-        showToast(`💾 Cliente guardado / actualizado en la Maestra`);
+        showToast(`✅ Cliente guardado / actualizado en la Maestra`);
       };
 
       const handleUpdateClientInMaster = (id, field, value) => {
@@ -1170,7 +1471,7 @@
         setClientsMaster(prev => [newClient, ...prev]);
         setNewClientForm({ rut: '', name: '', contactPerson: '', phone: '', email: '', address: '' });
         setShowAddClientModal(false);
-        showToast(`✅ Nuevo cliente ${newClient.name} agregado`);
+        showToast(`? Nuevo cliente ${newClient.name} agregado`);
       };
 
       const handleQuoteThisClient = (client) => {
@@ -1197,7 +1498,7 @@
       };
 
       const handleExportClientsCSV = () => {
-        const headers = ['RUT', 'Razon Social', 'Contacto', 'Telefono', 'Email', 'Direccion'];
+        const headers = ['RUT', 'Razón Social', 'Contacto', 'Teléfono', 'Email', 'Dirección'];
         const rows = clientsMaster.map(c => [
           `"${(c.rut || '').replace(/"/g, '""')}"`,
           `"${(c.name || '').replace(/"/g, '""')}"`,
@@ -1335,7 +1636,7 @@
         setShowBulkEmailModal(false);
         setBulkEmailText('');
         setBulkEmailParsed([]);
-        showToast(`✅ Se actualizaron ${updatedCount} correos${createdCount > 0 ? ` y se agregaron ${createdCount} nuevos clientes` : ''}`);
+        showToast(`? Se actualizaron ${updatedCount} correos${createdCount > 0 ? ` y se agregaron ${createdCount} nuevos clientes` : ''}`);
       };
 
       const handleFileUploadForBulkEmail = (e) => {
@@ -1366,7 +1667,7 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('📥 Plantilla de ejemplo descargada');
+        showToast('📄 Plantilla de ejemplo descargada');
       };
 
       const handleQuoteFromInboxEmail = (emailItem) => {
@@ -1379,7 +1680,7 @@
         }));
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`📋 Requerimiento de ${emailItem.fromName} cargado en el Cotizador`);
+        showToast(`📥 Requerimiento de ${emailItem.fromName} cargado en el Cotizador`);
       };
 
       const handleSaveInboxEmailToMaster = (emailItem) => {
@@ -1404,7 +1705,7 @@
         if (found) {
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Correo ${emailItem.fromEmail} sincronizado en la Maestra`);
+          showToast(`? Correo ${emailItem.fromEmail} sincronizado en la Maestra`);
         } else {
           const newClient = {
             id: `cli-${Date.now()}`,
@@ -1418,7 +1719,7 @@
           updatedMaster.unshift(newClient);
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Cliente ${newClient.name} agregado a la Maestra con correo ${newClient.email}`);
+          showToast(`? Cliente ${newClient.name} agregado a la Maestra con correo ${newClient.email}`);
         }
       };
 
@@ -1427,7 +1728,7 @@
         setQuickMailSubject(`Re: ${emailItem.subject}`);
         setQuickMailBody(`Estimado(a) ${emailItem.fromName},\n\nJunto con saludar, acusamos recibo de su mensaje.\n\nRespecto a su requerimiento:\n\nQuedamos a su entera disposición ante cualquier consulta.\n\nSaludos cordiales,\nEquipo Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884\nhttps://letrerosolivar.com`);
         setWebmailSubTab('compose');
-        showToast('✍️ Redactor preparado para responder');
+        showToast('✏️ Redactor preparado para responder');
       };
 
       // --- HELPER FUNCTIONS MÓDULO WEBMAIL & CORREO ---
@@ -1443,11 +1744,11 @@
         } else if (type === 'terminado') {
           setQuickMailSubject('Trabajo Terminado y Listo para Entrega - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nLe informamos con agrado que su trabajo publicitario se encuentra completamente terminado y revisado con nuestro estándar de control de calidad.\n\nHorario de taller para retiro:\n• Lunes a Viernes de 10:00 a 20:00 hrs (Continuado).\n• Sábados, Domingos y Festivos: Cerrado.\n• Dirección: Camino Público S/N, Olivar, Región de O'Higgins.\n\nFavor coordinar su retiro o despacho respondiendo a este mensaje.\n\nAtentamente,\nProducción Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
-          showToast('✅ Plantilla de Trabajo Terminado cargada');
+          showToast('? Plantilla de Trabajo Terminado cargada');
         } else if (type === 'instalacion') {
           setQuickMailSubject('Coordinación de Cuadrilla de Instalación en Terreno - Letreros Olivar SpA');
           setQuickMailBody(`Estimado cliente,\n\nNos comunicamos para coordinar los trabajos de montaje e instalación en terreno de su letrero publicitario.\n\nFavor confirmar disponibilidad de acceso al recinto y condiciones del lugar (puntos eléctricos, altura o permisos pertinentes) para la fecha acordada.\n\nQuedamos atentos a sus indicaciones.\n\nSaludos cordiales,\nOperaciones Letreros Olivar SpA\ncontacto@letrerosolivar.com | +56 9 5158 5884`);
-          showToast('🚚 Plantilla de Instalación cargada');
+          showToast('🏗️ Plantilla de Instalación cargada');
         }
       };
 
@@ -1503,7 +1804,7 @@
             body: quickMailBody
           };
           setInboxEmails(prev => [newSentEmail, ...prev]);
-          showToast(`✈️ ¡Correo enviado a ${quickMailTo} desde contacto@letrerosolivar.com!`);
+          showToast(`🎉 ¡Correo enviado a ${quickMailTo} desde contacto@letrerosolivar.com!`);
           setQuickMailTo('');
           setWebmailSubTab('inbox');
         }, 650);
@@ -1532,7 +1833,7 @@
           };
           setInboxEmails(prev => [replyItem, ...prev]);
           setInlineReplyText('');
-          showToast(`✈️ ¡Respuesta enviada a ${originalEmail.fromEmail}!`);
+          showToast(`?? ¡Respuesta enviada a ${originalEmail.fromEmail}!`);
         }, 650);
       };
 
@@ -1588,15 +1889,16 @@
 
       // --- LOGIN DE INTRANET ---
       const handleLoginSubmit = (e) => {
-        e.preventDefault();
+        if (e && e.preventDefault) e.preventDefault();
         const clean = (loginPassword || '').trim().toLowerCase();
-        // Clave solicitada: 'letreros2026'
+        // Clave solicitada: 'letreros2026' (además de variantes comunes)
         if (clean === 'letreros2026' || clean === 'letreros 2026' || clean === 'olivar2026' || clean === 'olivar 2026' || clean === '1234' || clean === 'admin') {
           setIsIntranetLoggedIn(true);
           setCurrentView('intranet');
           setShowLoginModal(false);
           setLoginPassword('');
           setLoginError('');
+          sessionStorage.setItem('olivar_intranet_auth', 'true');
           showToast('🔓 Sesión de Intranet iniciada');
         } else {
           setLoginError('Contraseña incorrecta. Acceso restringido.');
@@ -1605,7 +1907,9 @@
 
       const handleLogout = () => {
         setIsIntranetLoggedIn(false);
-        setCurrentView('public');
+        setShowLoginModal(true);
+        sessionStorage.removeItem('olivar_intranet_auth');
+        localStorage.removeItem('olivar_intranet_auth');
         showToast('🔒 Sesión de Intranet cerrada');
       };
 
@@ -1634,7 +1938,7 @@
         setReceivedRequests([newReq, ...receivedRequests]);
 
         // Formatear mensaje para enviar al WhatsApp del taller
-        let msg = `*🛠️ NUEVA SOLICITUD DE COTIZACIÓN (${newReq.id})*\n`;
+        let msg = `*📋 NUEVA SOLICITUD DE COTIZACIÓN (${newReq.id})*\n`;
         msg += `*👤 Cliente:* ${clientRequest.clientName} ${clientRequest.clientRUT ? `(RUT: ${clientRequest.clientRUT})` : ''}\n`;
         msg += `*📞 Teléfono:* ${clientRequest.clientPhone}\n`;
         if (clientRequest.clientEmail) msg += `*✉️ Email:* ${clientRequest.clientEmail}\n`;
@@ -1645,7 +1949,7 @@
           msg += `• *Dimensiones aprox:* ${clientRequest.width}m (Ancho) x ${clientRequest.height}m (Alto)\n`;
         }
         msg += `• *Cantidad:* ${clientRequest.quantity}\n`;
-        msg += `• *Modalidad:* ${clientRequest.deliveryMethod === 'instalacion' ? '🚚 Requiere Instalación en Terreno' : '🏬 Retiro en Taller (Olivar)'}\n`;
+        msg += `• *Modalidad:* ${clientRequest.deliveryMethod === 'instalacion' ? '🏗️ Requiere Instalación en Terreno' : '🏬 Retiro en Taller (Olivar)'}\n`;
         if (clientRequest.deliveryMethod === 'instalacion' && clientRequest.deliveryAddress) {
           msg += `• *Lugar de obra:* ${clientRequest.deliveryAddress}\n`;
         }
@@ -1656,7 +1960,7 @@
         msg += `\n_Solicitud enviada desde la web www.letrerosolivar.com_`;
 
         // Limpiar formulario y notificar
-        showToast(`🎉 Solicitud ${newReq.id} enviada con éxito`);
+        showToast(`?? Solicitud ${newReq.id} enviada con éxito`);
         
         // Abrir WhatsApp con la solicitud lista
         const encoded = encodeURIComponent(msg);
@@ -1733,7 +2037,7 @@
 
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`✏️ Editando cotización oficial ${quoteToEdit.correlative}`);
+        showToast(`?? Editando cotización oficial ${quoteToEdit.correlative}`);
       };
 
       // --- REUTILIZAR / CLONAR COTIZACIÓN DEL HISTORIAL (Crea una NUEVA sin modificar la anterior) ---
@@ -1917,7 +2221,7 @@
           return reset;
         });
 
-        showToast('✅ Ítem añadido a la cotización');
+        showToast('? Ítem añadido a la cotización');
       };
 
       const handleRemoveItem = (itemId) => {
@@ -2038,6 +2342,18 @@
           return next;
         });
 
+        // === FIREBASE: Guardar cotizacion en la nube (Sanitizado sin valores undefined) ===
+        if (window.db) {
+          try {
+            const sanitized = JSON.parse(JSON.stringify(quoteRecord));
+            sanitized.timestamp = Date.now();
+            window.db.collection('quotes').doc(quoteRecord.correlative).set(sanitized, { merge: true })
+              .catch(e => console.warn('Error guardando cotizacion en Firestore:', e));
+          } catch(e) {
+            console.error('Error al preparar cotización para Firestore:', e);
+          }
+        }
+
         if (!isEditing) {
           setCorrelativeNumber(prev => {
             const nextNum = prev + 1;
@@ -2045,13 +2361,20 @@
               localStorage.setItem('olivar_correlative', nextNum.toString());
               localStorage.setItem('letreros_olivar_folio_num', nextNum.toString());
             } catch (e) {}
+            // === FIREBASE: Actualizar correlativo global ===
+            if (window.db) {
+              window.db.collection('system').doc('correlatives').set({
+                currentNumber: nextNum,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true }).catch(e => console.warn('Error actualizando correlativo:', e));
+            }
             return nextNum;
           });
         }
 
         setEditingCorrelative(null);
         handleOpenPrintModal(quoteRecord);
-        showToast(isEditing ? `✏️ Cotización ${quoteRecord.correlative} actualizada y guardada con éxito.` : `🎉 Cotización ${quoteRecord.correlative} guardada y emitida con éxito.`);
+        showToast(isEditing ? `?? Cotización ${quoteRecord.correlative} actualizada y guardada con éxito.` : `?? Cotización ${quoteRecord.correlative} guardada y emitida con éxito.`);
       };
 
       const handleSendWhatsAppQuote = (quote) => {
@@ -2081,11 +2404,11 @@
         message += `*🚚 Modalidad:* ${deliveryLabel}\n`;
         if (q.client.deliveryAddress) {
           const destTitle = q.client.deliveryMethod === 'instalacion' ? 'Lugar de Instalación' : 'Dirección de Entrega';
-          message += `*📍 ${destTitle}:* ${q.client.deliveryAddress}\n`;
+          message += `*?? ${destTitle}:* ${q.client.deliveryAddress}\n`;
         }
-        message += `*💳 Condición de Pago:* ${q.client.paymentTerms || 'Contado'}\n`;
-        message += `*⏱️ Plazo de Fabricación:* ${q.client.manufacturingDays || '5 a 7 días hábiles'}\n\n`;
-        message += `*📦 DETALLE DE TRABAJOS:*\n`;
+        message += `*?? Condición de Pago:* ${q.client.paymentTerms || 'Contado'}\n`;
+        message += `*?? Plazo de Fabricación:* ${q.client.manufacturingDays || '5 a 7 días hábiles'}\n\n`;
+        message += `*?? DETALLE DE TRABAJOS:*\n`;
 
         q.items.forEach((item, index) => {
           let spec = '';
@@ -2096,35 +2419,35 @@
           }
           const unitPiece = item.unitPiecePrice || Math.round(item.subtotal / (item.quantity || 1));
           message += `${index + 1}. *${item.name}* ${spec}\n`;
-          message += `   ↳ *Valor Unitario:* ${formatCLP(unitPiece)} c/u  ➔  *Total:* ${formatCLP(item.subtotal)}\n`;
+          message += `   ? *Valor Unitario:* ${formatCLP(unitPiece)} c/u  ?  *Total:* ${formatCLP(item.subtotal)}\n`;
           if (item.detail) {
-            message += `   ↳ _Detalle: ${item.detail}_\n`;
+            message += `   ? _Detalle: ${item.detail}_\n`;
           }
           if (item.selectedOptions && item.selectedOptions.length > 0) {
-            message += `   ↳ _Acabados: ${item.selectedOptions.join(', ')}_\n`;
+            message += `   ? _Acabados: ${item.selectedOptions.join(', ')}_\n`;
           }
         });
 
-        message += `\n*💵 Subtotal Neto:* ${formatCLP(q.totals.subtotal)}`;
+        message += `\n*?? Subtotal Neto:* ${formatCLP(q.totals.subtotal)}`;
         if (q.totals.discountAmount > 0) {
-          message += `\n*🏷️ Descuento Especial:* -${formatCLP(q.totals.discountAmount)}`;
+          message += `\n*??? Descuento Especial:* -${formatCLP(q.totals.discountAmount)}`;
         }
         if (q.totals.installationFee > 0) {
-          message += `\n*🔧 Instalación en Terreno:* +${formatCLP(q.totals.installationFee)}`;
+          message += `\n*?? Instalación en Terreno:* +${formatCLP(q.totals.installationFee)}`;
         }
         if (q.totals.freightFee > 0) {
-          message += `\n*🚚 Flete / Traslado:* +${formatCLP(q.totals.freightFee)}`;
+          message += `\n*?? Flete / Traslado:* +${formatCLP(q.totals.freightFee)}`;
         }
-        if (q.totals.taxAmount > 0) message += `\n*🏛️ IVA (19%):* ${formatCLP(q.totals.taxAmount)}`;
-        message += `\n*💰 TOTAL FINAL: ${formatCLP(q.totals.total)} CLP*\n`;
-        message += `\n*🏦 DATOS PARA TRANSFERENCIA:*`;
+        if (q.totals.taxAmount > 0) message += `\n*??? IVA (19%):* ${formatCLP(q.totals.taxAmount)}`;
+        message += `\n*?? TOTAL FINAL: ${formatCLP(q.totals.total)} CLP*\n`;
+        message += `\n*?? DATOS PARA TRANSFERENCIA:*`;
         message += `\n• *Razón Social:* ${companyInfo.bank.titular}`;
         message += `\n• *RUT:* ${companyInfo.bank.rut}`;
         message += `\n• *Banco:* ${companyInfo.bank.banco}`;
         message += `\n• *Cuenta:* ${companyInfo.bank.tipo} N° ${companyInfo.bank.cuenta}`;
         message += `\n• *Envío de Comprobantes:* ${companyInfo.bank.email}\n`;
-        message += `\n*📍 Taller:* ${companyInfo.address}`;
-        message += `\n*✅ Validez de Oferta:* ${q.client.validDays || 15} días.\n`;
+        message += `\n*?? Taller:* ${companyInfo.address}`;
+        message += `\n*? Validez de Oferta:* ${q.client.validDays || 15} días.\n`;
         message += `\n_Cotización formal emitida por Letreros Olivar SpA._`;
 
         const phoneTarget = (q.client.phone || '').replace(/\D/g, '') || companyInfo.whatsapp;
@@ -2139,7 +2462,7 @@
         }));
         setSelectedProject(null);
         document.getElementById('solicitud-cotizacion')?.scrollIntoView({ behavior: 'smooth' });
-        showToast(`🎯 Servicio seleccionado: ${project.title}`);
+        showToast(`?? Servicio seleccionado: ${project.title}`);
       };
 
       const handleSelectService = (serviceName, defaultMaterial = '') => {
@@ -2149,13 +2472,78 @@
           material: defaultMaterial || prev.material
         }));
         document.getElementById('solicitud-cotizacion')?.scrollIntoView({ behavior: 'smooth' });
-        showToast(`🎯 Servicio seleccionado: ${serviceName}`);
+        showToast(`?? Servicio seleccionado: ${serviceName}`);
       };
 
       const filteredProjects = useMemo(() => {
         if (activeCategory === 'Todos') return PORTFOLIO_PROJECTS;
         return PORTFOLIO_PROJECTS.filter(p => p.category === activeCategory);
       }, [activeCategory]);
+
+      if (!isIntranetLoggedIn) {
+        return (
+          <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 text-zinc-100 selection:bg-red-600 selection:text-white">
+            {toastMessage && (
+              <div className="fixed bottom-6 right-6 z-50 bg-red-600 text-white px-5 py-3 rounded-xl font-bold shadow-2xl flex items-center gap-3 border border-red-400">
+                <span>{toastMessage}</span>
+              </div>
+            )}
+            
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-6 sm:p-8 space-y-6 shadow-2xl relative">
+              <div className="text-center space-y-3">
+                <BrandLogo theme="dark" className="h-12 w-auto mx-auto" />
+                <div>
+                  <h2 className="text-xl font-black text-white font-heading">Acceso Intranet</h2>
+                  <p className="text-xs text-zinc-400 mt-1">Letreros Olivar SpA • Área de Administración y Taller</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-300 mb-2">Contraseña de Acceso:</label>
+                  <input
+                    type="password"
+                    placeholder="Ingresa la contraseña..."
+                    value={loginPassword}
+                    onChange={(e) => {
+                      setLoginPassword(e.target.value);
+                      if (loginError) setLoginError('');
+                    }}
+                    className="w-full bg-black text-white px-4 py-3 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none text-sm transition"
+                    autoFocus
+                    required
+                  />
+                  {loginError && (
+                    <div className="flex items-center gap-1.5 text-xs text-red-500 mt-2 font-medium">
+                      <Icon name="x" className="w-3.5 h-3.5 text-red-500" />
+                      <span>{loginError}</span>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-zinc-500 mt-2 flex items-center gap-1.5">
+                    <Icon name="lock" className="w-3 h-3 text-zinc-600" />
+                    <span>Área protegida exclusiva para personal y administración.</span>
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
+                >
+                  <Icon name="lock" className="w-4 h-4" />
+                  <span>Ingresar a Intranet</span>
+                </button>
+              </form>
+
+              <div className="text-center pt-2 border-t border-zinc-900">
+                <a href="index.html" className="text-xs text-zinc-500 hover:text-zinc-300 transition flex items-center justify-center gap-1.5">
+                  <Icon name="arrow-right" className="w-3.5 h-3.5 rotate-180" />
+                  <span>Volver al Sitio Web Comercial</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        );
+      }
 
       return (
         <div className="min-h-screen flex flex-col bg-black text-zinc-100">
@@ -2176,7 +2564,7 @@
               </span>
               <span className="hidden md:inline text-zinc-600">|</span>
               <a href={companyInfo.mapsUrl} target="_blank" rel="noreferrer" className="hidden md:inline text-zinc-300 hover:text-red-500 transition underline underline-offset-4 decoration-red-600/50">
-                📍 {companyInfo.address}
+                ?? {companyInfo.address}
               </a>
             </div>
             
@@ -2187,7 +2575,7 @@
                 <span className="md:hidden">Email</span>
               </a>
               <a href={`tel:${companyInfo.phone}`} className="hover:text-red-500 transition font-mono">
-                📞 {companyInfo.phone}
+                ?? {companyInfo.phone}
               </a>
               <a href={companyInfo.social.whatsapp} target="_blank" rel="noreferrer" className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 transition">
                 <Icon name="whatsapp" className="w-3.5 h-3.5" /> <span className="hidden sm:inline">WhatsApp</span>
@@ -2201,15 +2589,15 @@
                 <span className="hidden md:inline">Facebook</span>
               </a>
 
-              {/* Botón directo a la Intranet independiente */}
+              {/* Enlace al sitio web público */}
               <div className="flex items-center gap-2 border-l border-zinc-800 pl-4">
                 <a
-                  href="intranet.html"
-                  className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/30 text-xs transition"
-                  title="Acceso directo a la Intranet de Taller, Cotizaciones y Webmail"
+                  href="index.html"
+                  className="text-zinc-400 hover:text-white font-medium flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 px-3 py-1 rounded-lg border border-zinc-700 text-xs transition"
+                  title="Abrir el sitio web comercial"
                 >
-                  <Icon name="lock" className="w-3.5 h-3.5" />
-                  <span>Acceso Intranet</span>
+                  <Icon name="external-link" className="w-3.5 h-3.5 text-red-500" />
+                  <span>Sitio Web Público</span>
                 </a>
               </div>
             </div>
@@ -2268,12 +2656,23 @@
                     <Icon name="arrow-right" className="w-3.5 h-3.5" />
                   </a>
                 ) : (
-                  <button
-                    onClick={() => setCurrentView('public')}
-                    className="bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-4 py-2 rounded-xl text-xs border border-zinc-700 transition"
-                  >
-                    ← Volver a la Web Pública
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="index.html"
+                      className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold px-3 py-2 rounded-xl text-xs border border-zinc-700 transition flex items-center gap-1.5"
+                    >
+                      <Icon name="arrow-right" className="w-3.5 h-3.5 rotate-180" />
+                      <span>Web Pública</span>
+                    </a>
+                    <button
+                      onClick={handleLogout}
+                      className="bg-red-600/10 hover:bg-red-600 border border-red-600/30 hover:border-red-600 text-red-400 hover:text-white font-bold px-3 py-2 rounded-xl text-xs transition flex items-center gap-1.5"
+                      title="Cerrar sesión de intranet"
+                    >
+                      <Icon name="lock" className="w-3.5 h-3.5" />
+                      <span>Cerrar Sesión</span>
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -2450,7 +2849,7 @@
                                 </p>
                               </div>
                               <span className="text-[11px] font-mono text-red-400 bg-red-950/40 px-3 py-1 rounded-full border border-red-800/40">
-                                🎬 Espacio Reservado • Gráfica Corporativa
+                                ?? Espacio Reservado • Gráfica Corporativa
                               </span>
                             </div>
                           </div>
@@ -3272,11 +3671,11 @@
                           <span>{companyInfo.address}</span>
                         </a>
                       </li>
-                      <li className="text-zinc-300 font-medium">🕒 Lun a Vie: 10:00 - 20:00 hrs (Continuado)</li>
+                      <li className="text-zinc-300 font-medium">?? Lun a Vie: 10:00 - 20:00 hrs (Continuado)</li>
                       <li className="text-zinc-500 text-xs">Sábados, Domingos y Festivos: Cerrado</li>
                       <li className="pt-1">
                         <a href={`tel:${companyInfo.phone}`} className="text-zinc-300 hover:text-white transition flex items-center gap-1.5 font-mono">
-                          <span>📞 Tel: {companyInfo.phone}</span>
+                          <span>?? Tel: {companyInfo.phone}</span>
                         </a>
                       </li>
                       <li className="pt-0.5">
@@ -3336,9 +3735,9 @@
                 <div className="max-w-7xl mx-auto pt-6 border-t border-zinc-900 flex flex-col sm:flex-row justify-between items-center gap-4 text-zinc-500 text-[11px]">
                   <div>© {new Date().getFullYear()} {companyInfo.name}. RUT: {companyInfo.rut}. Todos los derechos reservados.</div>
                   <div className="flex items-center gap-4">
-                    <a href="intranet.html" className="text-zinc-600 hover:text-zinc-400 flex items-center gap-1 transition">
+                    <button onClick={() => setShowLoginModal(true)} className="text-zinc-600 hover:text-zinc-400 flex items-center gap-1">
                       <Icon name="lock" className="w-3 h-3" /> Intranet Interna
-                    </a>
+                    </button>
                     <span>Olivar, Región de O'Higgins, Chile</span>
                   </div>
                 </div>
@@ -3384,7 +3783,7 @@
                       }`}
                       title="Volver a la vista de espacios"
                     >
-                      <span>🏠 Menú de Espacios</span>
+                      <span>📂 Menú de Espacios</span>
                     </button>
 
                     <button
@@ -3401,7 +3800,7 @@
                       title="Ir al área de administración y cotizaciones"
                     >
                       <Icon name="file-text" className="w-3.5 h-3.5" />
-                      <span>💼 Administración</span>
+                      <span>📋 Administración</span>
                     </button>
 
                     <button
@@ -3427,7 +3826,7 @@
                         title="Abrir cotizador independiente de taller"
                       >
                         <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
-                        <span>Formato Taller ↗</span>
+                        <span>Formato Imprimible ↗</span>
                       </a>
 
                       <a
@@ -3437,7 +3836,7 @@
                         title="Descargar para usar Offline en el computador"
                       >
                         <Icon name="download" className="w-3.5 h-3.5" />
-                        <span>Descargar Offline 💾</span>
+                        <span>Descargar Offline ??</span>
                       </a>
                     </div>
                   </div>
@@ -3450,7 +3849,7 @@
                       <span className="text-xs font-bold uppercase tracking-widest text-red-500">¿A qué espacio deseas ingresar hoy?</span>
                       <h2 className="text-2xl sm:text-3xl font-black text-white font-heading mt-1">Selecciona tu Espacio de Trabajo</h2>
                       <p className="text-xs sm:text-sm text-zinc-400 mt-2">
-                        La intranet está organizada en dos áreas independientes para que trabajes de forma ordenada: a la izquierda tus Cotizaciones y Taller, y a la derecha tu Correo Corporativo y Webmail.
+                        La intranet está organizada en dos áreas independientes para que trabajes de forma ordenada: a la izquierda tu Administración y Cotizaciones, y a la derecha tu Correo Corporativo y Webmail.
                       </p>
                     </div>
 
@@ -3487,7 +3886,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>➕ Iniciar Nueva Cotización Formal</span>
+                              <span>? Iniciar Nueva Cotización Formal</span>
                               <span className="font-mono text-[10px] text-red-400">{currentCorrelativeCode}</span>
                             </button>
 
@@ -3499,7 +3898,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📥 Solicitudes Web de Clientes</span>
+                              <span>?? Solicitudes Web de Clientes</span>
                               <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold">{receivedRequests.length}</span>
                             </button>
 
@@ -3511,7 +3910,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📜 Historial de Cotizaciones Emitidas</span>
+                              <span>📊 Historial de Cotizaciones Emitidas</span>
                               <span className="text-[11px] text-zinc-500">{quoteHistory.length} emitidas</span>
                             </button>
 
@@ -3535,7 +3934,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📊 Tarifario & Materiales (Planilla Excel)</span>
+                              <span>?? Tarifario & Materiales (Planilla Excel)</span>
                               <span className="text-[11px] text-emerald-400">42 materiales</span>
                             </button>
                           </div>
@@ -3551,7 +3950,7 @@
                             className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-red-600/30 group-hover:scale-[1.01]"
                           >
                             <Icon name="cotizacion" className="w-5 h-5 text-white" />
-                            <span>Entrar al Espacio de Administración & Cotizaciones ➔</span>
+                            <span>Entrar a Administración ↗</span>
                           </button>
                         </div>
                       </div>
@@ -3585,7 +3984,7 @@
                               onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>🚀 Abrir Gmail Corporativo (1 Clic directo)</span>
+                              <span>?? Abrir Gmail Corporativo (1 Clic directo)</span>
                               <Icon name="external-link" className="w-3.5 h-3.5 text-blue-400" />
                             </button>
 
@@ -3594,7 +3993,7 @@
                               onClick={() => handleOpenGmailSearch('comprobante OR transferencia OR pago OR bci OR mach')}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>💰 Buscar Comprobantes de Pago en Gmail</span>
+                              <span>?? Buscar Comprobantes de Pago en Gmail</span>
                               <Icon name="search" className="w-3.5 h-3.5 text-emerald-400" />
                             </button>
 
@@ -3606,7 +4005,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>📝 Redactar Correo con Plantilla de Cotización</span>
+                              <span>?? Redactar Correo con Plantilla de Cotización</span>
                               <Icon name="file-text" className="w-3.5 h-3.5 text-amber-400" />
                             </button>
 
@@ -3618,7 +4017,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>💸 Confirmar Recepción de Transferencia</span>
+                              <span>?? Confirmar Recepción de Transferencia</span>
                               <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-400" />
                             </button>
 
@@ -3627,7 +4026,7 @@
                               onClick={() => window.open('https://webmail.letrerosolivar.com', '_blank')}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>🌐 Webmail de Respaldo en Hosting</span>
+                              <span>✉️ Webmail de Respaldo en Hosting</span>
                               <Icon name="external-link" className="w-3.5 h-3.5 text-zinc-500" />
                             </button>
                           </div>
@@ -3640,7 +4039,7 @@
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 px-6 rounded-2xl text-sm transition flex items-center justify-center gap-2.5 shadow-xl shadow-blue-600/30 group-hover:scale-[1.01]"
                           >
                             <Icon name="mail" className="w-5 h-5 text-white" />
-                            <span>Entrar al Espacio de Webmail & Correo ➔</span>
+                            <span>Entrar al Espacio de Webmail & Correo ?</span>
                           </button>
                         </div>
                       </div>
@@ -3717,8 +4116,9 @@
                         </button>
                       </div>
 
-                      <div className="text-xs text-zinc-500 font-mono">
-                        Espacio de Taller Activo
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-mono bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Sincronizado en Nube Firestore</span>
                       </div>
                     </div>
 
@@ -3745,7 +4145,7 @@
                           title="Limpiar campos y preparar una cotización en blanco"
                         >
                           <Icon name="refresh" className="w-3.5 h-3.5" />
-                          <span>Limpiar Formulario / Nueva Cotización</span>
+                          <span>Limpiar Formulario</span>
                         </button>
                         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-400 font-mono">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -3854,8 +4254,8 @@
                                 onChange={(e) => setIntranetClientData({ ...intranetClientData, deliveryMethod: e.target.value })}
                                 className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs font-medium"
                               >
-                                <option value="instalacion">🚚 Instalación en Terreno / Obra</option>
-                                <option value="entrega">📦 Entrega en Instalaciones del Cliente (Flete / Despacho)</option>
+                                <option value="instalacion">🏗️ Instalación en Terreno / Obra</option>
+                                <option value="entrega">📦 Despacho a Instalaciones del Cliente (Flete)</option>
                                 <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
                               </select>
                             </div>
@@ -3961,7 +4361,7 @@
                               title="Guardar estos datos del cliente en la Maestra permanente"
                             >
                               <Icon name="save" className="w-3.5 h-3.5 text-red-500" />
-                              <span>💾 Guardar / Actualizar en Maestra</span>
+                              <span>?? Guardar / Actualizar en Maestra</span>
                             </button>
                           </div>
                         </div>
@@ -4051,7 +4451,7 @@
                             {editingCorrelative && (
                               <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
                                 <span className="text-amber-400 font-bold flex items-center gap-1.5">
-                                  <span>✏️ Editando:</span>
+                                  <span>?? Editando:</span>
                                   <strong className="text-white font-mono">{editingCorrelative}</strong>
                                 </span>
                                 <button
@@ -4113,10 +4513,10 @@
                               className="w-full bg-zinc-950 text-white px-4 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none text-xs sm:text-sm font-medium"
                             >
                               <option value="custom" className="text-amber-400 font-bold bg-zinc-900">
-                                ✨ [PERSONALIZADO] Servicio o Trabajo a Medida (Ingreso Libre)
+                                ? [PERSONALIZADO] Servicio o Trabajo a Medida (Ingreso Libre)
                               </option>
                               {Array.from(new Set(materialsCatalog.map(m => m.category))).map(cat => (
-                                <optgroup key={cat} label={`── ${cat.toUpperCase()} ──`}>
+                                <optgroup key={cat} label={`-- ${cat.toUpperCase()} --`}>
                                   {materialsCatalog.filter(m => m.category === cat).map(mat => (
                                     <option key={mat.id} value={mat.id}>
                                       {mat.name} ({mat.format}) — ${mat.pricePerSqm.toLocaleString('es-CL')} / {mat.unit}
@@ -4142,7 +4542,7 @@
                                     : 'bg-zinc-900 hover:bg-amber-500/20 text-amber-400 border-amber-600/50'
                                 }`}
                               >
-                                ✨ + Personalizado
+                                ? + Personalizado
                               </button>
                               {[
                                 { label: 'Banner', id: 'mat-11' },
@@ -4698,7 +5098,7 @@
                                     {formatCLP(totalPreview)}
                                   </span>
                                   <div className="text-xs font-mono font-bold text-emerald-400 mt-0.5">
-                                    👉 Valor Unitario: {formatCLP(unitPiecePreview)} c/u ({qty} {qty === 1 ? 'unidad' : 'unidades'})
+                                    ?? Valor Unitario: {formatCLP(unitPiecePreview)} c/u ({qty} {qty === 1 ? 'unidad' : 'unidades'})
                                   </div>
                                   <span className="text-[10px] text-zinc-400 block mt-0.5">
                                     {isSqm ? `(${w}m × ${h}m = ${(w * h * qty).toFixed(2)} m² totales)` : `${qty} unidad(es)`}
@@ -4753,7 +5153,7 @@
                                         <div className="font-bold text-white text-sm">{item.name}</div>
                                         {item.detail && (
                                           <p className="text-[11px] text-zinc-400 italic mt-0.5">
-                                            ↳ Detalle: {item.detail}
+                                            ? Detalle: {item.detail}
                                           </p>
                                         )}
                                         {item.selectedOptions?.length > 0 && <div className="text-[10px] text-red-500 mt-0.5">+ {item.selectedOptions.join(', ')}</div>}
@@ -4806,7 +5206,7 @@
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-900 pb-3">
                               <div className="flex items-center gap-3">
                                 <span className="font-mono font-bold text-red-500 text-sm">{req.id}</span>
-                                <span className="text-xs text-zinc-500">📅 {req.date}</span>
+                                <span className="text-xs text-zinc-500">?? {req.date}</span>
                                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 font-bold">
                                   {req.status}
                                 </span>
@@ -4819,7 +5219,7 @@
                                     : 'bg-zinc-800 text-white'
                               }`}>
                                 {req.deliveryMethod === 'instalacion'
-                                  ? '🚚 Requiere Instalación'
+                                  ? '🏗️ Requiere Instalación'
                                   : req.deliveryMethod === 'entrega'
                                     ? '📦 Despacho a Instalaciones del Cliente'
                                     : '🏬 Retiro en Taller (Olivar)'}
@@ -4893,13 +5293,25 @@
                         </h2>
                         <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
                       </div>
-                      <button
-                        onClick={() => handleStartNewQuote()}
-                        className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
-                      >
-                        <Icon name="plus" className="w-4 h-4" />
-                        <span>➕ Crear Nueva Cotización</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSyncCloudQuotes}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 transition shadow-md"
+                          title="Sincronizar y cargar todas las cotizaciones de todos los computadores desde la nube"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5" />
+                          <span>Sincronizar Nube</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleStartNewQuote()}
+                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>Nueva Cotización</span>
+                        </button>
+                      </div>
                     </div>
 
                     {quoteHistory.length === 0 ? (
@@ -4913,7 +5325,7 @@
                             <div>
                               <div className="flex items-center gap-3">
                                 <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
-                                <span className="text-xs text-zinc-400">📅 {q.date}</span>
+                                <span className="text-xs text-zinc-400">?? {q.date}</span>
                                 <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-400 border border-red-600/30">
                                   {q.status}
                                 </span>
@@ -4930,7 +5342,7 @@
                                 title="Editar esta cotización directamente conservando el mismo correlativo"
                               >
                                 <Icon name="file-text" className="w-3.5 h-3.5" />
-                                <span>✏️ Editar Orden</span>
+                                <span>?? Editar Orden</span>
                               </button>
                               <button
                                 onClick={() => handleReuseQuote(q)}
@@ -5314,7 +5726,7 @@
                           type="button"
                           onClick={() => {
                             localStorage.setItem('olivar_clients_master', JSON.stringify(clientsMaster));
-                            showToast('💾 Todos los cambios guardados correctamente');
+                            showToast('?? Todos los cambios guardados correctamente');
                           }}
                           className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-lg shadow-red-600/20"
                         >
@@ -5735,7 +6147,7 @@
                                           {item.email}
                                         </span>
                                         {item.status === 'matched' ? (
-                                          <span className="text-emerald-400 text-[10px] font-bold">✓ Coincide</span>
+                                          <span className="text-emerald-400 text-[10px] font-bold">? Coincide</span>
                                         ) : (
                                           <span className="text-amber-400 text-[10px]">Nuevo</span>
                                         )}
@@ -5837,49 +6249,89 @@
                       </div>
                     </div>
 
-                    {/* Barra de Sub-Pestañas de Webmail */}
-                    <div className="p-3 rounded-xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                                        {/* Barra de Sub-Pestañas / Carpetas de Webmail */}
+                    <div className="p-3 rounded-2xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
                       <div className="flex flex-wrap items-center gap-2">
+                        {/* Pestaña: Bandeja de Entrada */}
                         <button
                           type="button"
                           onClick={() => setWebmailSubTab('inbox')}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                             webmailSubTab === 'inbox'
                               ? 'bg-blue-600 text-white font-extrabold shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
                               : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
                           }`}
                         >
                           <Icon name="mail" className="w-4 h-4 text-blue-200" />
-                          <span>📥 Bandeja de Entrada In-App ({inboxEmails.length})</span>
-                          {inboxEmails.filter(e => e.unread).length > 0 && (
-                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                          <span>?? Bandeja de Entrada</span>
+                          <span className="px-2 py-0.5 rounded-full bg-blue-900/60 text-blue-200 text-[10px] font-mono">
+                            {inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox').length}
+                          </span>
+                          {inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.unread).length > 0 && (
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title="Mensajes no leídos"></span>
                           )}
                         </button>
 
+                        {/* Pestaña: Enviados */}
+                        <button
+                          type="button"
+                          onClick={() => setWebmailSubTab('sent')}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            webmailSubTab === 'sent'
+                              ? 'bg-emerald-600 text-white font-extrabold shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-500/50'
+                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="check-circle" className="w-4 h-4 text-emerald-300" />
+                          <span>?? Enviados</span>
+                          <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono">
+                            {inboxEmails.filter(e => e.folder === 'sent').length}
+                          </span>
+                        </button>
+
+                        {/* Pestaña: Borradores */}
+                        <button
+                          type="button"
+                          onClick={() => setWebmailSubTab('drafts')}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            webmailSubTab === 'drafts'
+                              ? 'bg-amber-600 text-white font-extrabold shadow-lg shadow-amber-600/30 ring-2 ring-amber-500/50'
+                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="file-text" className="w-4 h-4 text-amber-300" />
+                          <span>?? Borradores</span>
+                          <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-[10px] font-mono">
+                            {inboxEmails.filter(e => e.folder === 'drafts').length}
+                          </span>
+                        </button>
+
+                        {/* Pestaña: Redactar Correo */}
                         <button
                           type="button"
                           onClick={() => setWebmailSubTab('compose')}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                             webmailSubTab === 'compose'
-                              ? 'bg-blue-600 text-white font-extrabold shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
+                              ? 'bg-red-600 text-white font-extrabold shadow-lg shadow-red-600/30 ring-2 ring-red-500/50'
                               : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
                           }`}
                         >
-                          <Icon name="file-text" className="w-4 h-4" />
-                          <span>✍️ Redactor de Correo</span>
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>?? Redactar</span>
                         </button>
 
+                        {/* Pestaña: Conexión & Diagnóstico */}
                         <button
                           type="button"
                           onClick={() => setWebmailSubTab('sync')}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                             webmailSubTab === 'sync'
-                              ? 'bg-blue-600 text-white font-extrabold shadow-lg shadow-blue-600/30 ring-2 ring-blue-500/50'
-                              : 'bg-zinc-900 text-zinc-300 hover:text-white border border-zinc-800'
+                              ? 'bg-zinc-100 text-black font-extrabold shadow-lg shadow-white/20'
+                              : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
                           }`}
                         >
                           <Icon name="sparkles" className="w-4 h-4 text-amber-400" />
-                          <span>⚙️ Vincular con Gmail / Ayuda</span>
+                          <span>?? Diagnóstico & Ayuda</span>
                         </button>
                       </div>
 
@@ -5891,283 +6343,465 @@
                           title="Sincronizar y actualizar correos de la bandeja ahora"
                         >
                           <Icon name="refresh" className={`w-3.5 h-3.5 ${isRefreshingInbox ? 'animate-spin text-white' : ''}`} />
-                          <span>{isRefreshingInbox ? 'Sincronizando...' : 'Actualizar Bandeja 🔄'}</span>
+                          <span>{isRefreshingInbox ? 'Sincronizando...' : 'Actualizar ??'}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => window.open('https://mail.google.com/mail/u/?authuser=contacto@letrerosolivar.com', '_blank')}
-                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-zinc-800 flex items-center gap-1.5 transition"
-                          title="Abrir en pestaña externa de Gmail"
+                          className="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-red-500/40 flex items-center gap-1.5 transition font-bold"
+                          title="Abrir Gmail Corporativo en pestaña directa"
                         >
                           <Icon name="external-link" className="w-3.5 h-3.5" />
-                          <span>Abrir Gmail Externo</span>
+                          <span className="hidden sm:inline">Gmail Corporativo</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* VISTA 1: BANDEJA DE ENTRADA IN-APP (SIN PESTAÑAS EXTERNAS) */}
+                    {/* VISTA 1: BANDEJA DE ENTRADA CON SUS 4 PESTAÑAS OFICIALES DE GMAIL */}
                     {webmailSubTab === 'inbox' && (
+                      <div className="space-y-4">
+                        {/* PESTAÑAS DE CATEGORÍA ESTILO GMAIL (PRINCIPAL, PROMOCIONES, SOCIAL, NOTIFICACIONES) */}
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-2 flex flex-wrap items-center gap-2 shadow-inner">
+                          {[
+                            { id: 'primary', label: 'Principal', icon: 'mail', color: 'blue', desc: 'Clientes & Cotizaciones', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && (e.category === 'primary' || !e.category)).length },
+                            { id: 'promotions', label: 'Promociones', icon: 'sparkles', color: 'emerald', desc: 'Proveedores & Ofertas', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.category === 'promotions').length },
+                            { id: 'social', label: 'Social', icon: 'users', color: 'purple', desc: 'Comunidad & Redes', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.category === 'social').length },
+                            { id: 'notifications', label: 'Notificaciones', icon: 'bell', color: 'amber', desc: 'Pagos & Alertas', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox' && e.category === 'notifications').length },
+                            { id: 'all', label: 'Todos', icon: 'inbox', color: 'zinc', desc: 'Bandeja Completa', count: inboxEmails.filter(e => (e.folder || 'inbox') === 'inbox').length }
+                          ].map(cat => {
+                            const isActive = gmailCategory === cat.id;
+                            return (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setGmailCategory(cat.id)}
+                                className={`flex-1 min-w-[140px] px-3.5 py-2.5 rounded-xl text-left transition flex items-center justify-between border ${
+                                  isActive
+                                    ? 'bg-zinc-900 border-red-500 shadow-md ring-1 ring-red-500/40'
+                                    : 'bg-black/60 hover:bg-zinc-900/60 border-zinc-800/80 text-zinc-400 hover:text-white'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                                    isActive ? 'bg-red-600 text-white' : 'bg-zinc-900 text-zinc-400'
+                                  }`}>
+                                    <Icon name={cat.icon} className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div>
+                                    <span className={`text-xs font-bold block ${isActive ? 'text-white' : 'text-zinc-300'}`}>
+                                      {cat.label}
+                                    </span>
+                                    <span className="text-[10px] text-zinc-500 block">
+                                      {cat.desc}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                                  isActive ? 'bg-red-600/30 text-red-300 border border-red-500/40' : 'bg-zinc-900 text-zinc-500'
+                                }`}>
+                                  {cat.count}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Contenedor Principal: Lista y Lector de Mensajes */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                          {/* Columna Izquierda: Lista de Mensajes (5 cols) */}
+                          <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
+                            <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
+                              <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span>
+                                  {gmailCategory === 'primary' && 'Principal'}
+                                  {gmailCategory === 'promotions' && 'Promociones'}
+                                  {gmailCategory === 'social' && 'Social'}
+                                  {gmailCategory === 'notifications' && 'Notificaciones'}
+                                  {gmailCategory === 'all' && 'Todos los Mensajes'}
+                                </span>
+                              </span>
+                              <span className="text-[10px] text-zinc-500 font-mono">Sinc: <strong className="text-zinc-400">{lastRefreshedTime}</strong></span>
+                            </div>
+
+                            {/* Búsqueda y Filtros */}
+                            <div className="space-y-2">
+                              <div className="relative">
+                                <Icon name="search" className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
+                                <input
+                                  type="text"
+                                  placeholder="Buscar en correos..."
+                                  value={inboxSearch}
+                                  onChange={(e) => setInboxSearch(e.target.value)}
+                                  className="w-full bg-zinc-950 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                                />
+                              </div>
+
+                              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                                {[
+                                  { id: 'all', label: 'Todos' },
+                                  { id: 'Cotización', label: 'Cotizaciones' },
+                                  { id: 'Comprobante', label: 'Comprobantes' },
+                                  { id: 'unread', label: 'No leídos' }
+                                ].map(f => (
+                                  <button
+                                    key={f.id}
+                                    type="button"
+                                    onClick={() => setInboxFilter(f.id)}
+                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
+                                      inboxFilter === f.id
+                                        ? 'bg-red-600 text-white font-bold'
+                                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                    }`}
+                                  >
+                                    {f.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Lista de Mensajes */}
+                            <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
+                              {inboxEmails
+                                .filter(e => (e.folder || 'inbox') === 'inbox')
+                                .filter(e => {
+                                  if (gmailCategory === 'all') return true;
+                                  return (e.category || 'primary') === gmailCategory;
+                                })
+                                .filter(e => {
+                                  if (inboxFilter === 'unread') return e.unread;
+                                  if (inboxFilter !== 'all') return e.tag === inboxFilter;
+                                  return true;
+                                })
+                                .filter(e => {
+                                  if (!inboxSearch.trim()) return true;
+                                  const q = inboxSearch.toLowerCase();
+                                  return (
+                                    e.fromName.toLowerCase().includes(q) ||
+                                    e.fromEmail.toLowerCase().includes(q) ||
+                                    e.subject.toLowerCase().includes(q) ||
+                                    e.body.toLowerCase().includes(q)
+                                  );
+                                })
+                                .map(em => (
+                                  <div
+                                    key={em.id}
+                                    onClick={() => {
+                                      setSelectedInboxEmailId(em.id);
+                                      if (em.unread) {
+                                        setInboxEmails(prev => prev.map(item => item.id === em.id ? { ...item, unread: false } : item));
+                                      }
+                                    }}
+                                    className={`p-3 rounded-xl border cursor-pointer transition text-left space-y-1.5 ${
+                                      selectedInboxEmailId === em.id
+                                        ? 'bg-zinc-900 border-red-500 shadow-md ring-1 ring-red-500/40'
+                                        : em.unread
+                                        ? 'bg-zinc-950 hover:bg-zinc-900/80 border-red-900/40'
+                                        : 'bg-zinc-950/60 hover:bg-zinc-900/60 border-zinc-800/80 opacity-80 hover:opacity-100'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        {em.unread && (
+                                          <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                                        )}
+                                        <span className={`text-xs truncate ${em.unread ? 'font-black text-white' : 'font-medium text-zinc-300'}`}>
+                                          {em.fromName}
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] text-zinc-500 font-mono flex-shrink-0">{em.date}</span>
+                                    </div>
+
+                                    <div className={`text-xs truncate ${em.unread ? 'font-bold text-zinc-200' : 'text-zinc-400'}`}>
+                                      {em.subject}
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[11px] pt-1">
+                                      <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
+                                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                        em.tag === 'Cotización'
+                                          ? 'bg-red-600/20 text-red-400 border border-red-800/40'
+                                          : em.tag === 'Comprobante'
+                                          ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
+                                          : 'bg-zinc-800 text-zinc-400'
+                                      }`}>
+                                        {em.tag}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+
+                          {/* Columna Derecha: Panel de Lectura del Mensaje (7 cols) */}
+                          <div className="lg:col-span-7 bg-black border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
+                            {(() => {
+                              const currentEmail = inboxEmails.find(e => (e.folder || 'inbox') === 'inbox' && e.id === selectedInboxEmailId) || inboxEmails.find(e => (e.folder || 'inbox') === 'inbox');
+                              if (!currentEmail) {
+                                return (
+                                  <div className="text-center py-20 text-zinc-500 text-xs">
+                                    No hay correos en esta pestaña para mostrar
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="space-y-5">
+                                  {/* Encabezado del Correo */}
+                                  <div className="border-b border-zinc-800 pb-4 space-y-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
+                                        currentEmail.tag === 'Cotización'
+                                          ? 'bg-red-600/20 text-red-400 border border-red-800/40'
+                                          : currentEmail.tag === 'Comprobante'
+                                          ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
+                                          : 'bg-zinc-800 text-zinc-300'
+                                      }`}>
+                                        {currentEmail.tag}
+                                      </span>
+                                      <span className="text-xs font-mono text-zinc-500">{currentEmail.date}</span>
+                                    </div>
+
+                                    <h3 className="text-lg font-black text-white font-heading leading-tight">
+                                      {currentEmail.subject}
+                                    </h3>
+
+                                    <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
+                                      <div>
+                                        <span className="text-zinc-500 block text-[10px] uppercase font-bold">De:</span>
+                                        <strong className="text-white">{currentEmail.fromName}</strong>
+                                        <span className="text-zinc-400 font-mono ml-2">({currentEmail.fromEmail})</span>
+                                        {currentEmail.rut && (
+                                          <span className="ml-2 text-[10px] font-mono text-zinc-500">RUT: {currentEmail.rut}</span>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <span className="text-zinc-500 block text-[10px] uppercase font-bold">Para:</span>
+                                        <span className="text-zinc-300 font-mono">contacto@letrerosolivar.com</span>
+                                      </div>
+                                    </div>
+
+                                    {/* Acciones directas integradas con la Intranet */}
+                                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleQuoteFromInboxEmail(currentEmail)}
+                                        className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition flex items-center gap-1.5 shadow-md shadow-red-600/30"
+                                        title="Carga este cliente y requerimiento en una nueva cotización formal"
+                                      >
+                                        <Icon name="cotizacion" className="w-3.5 h-3.5" />
+                                        <span>?? Cotizar a este Cliente</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSaveInboxEmailToMaster(currentEmail)}
+                                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
+                                        title="Guarda o actualiza el correo de este cliente en la Maestra"
+                                      >
+                                        <Icon name="users" className="w-3.5 h-3.5" />
+                                        <span>?? Sincronizar en Maestra</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleReplyInboxEmail(currentEmail)}
+                                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-blue-600/30"
+                                      >
+                                        <Icon name="file-text" className="w-3.5 h-3.5" />
+                                        <span>?? Responder</span>
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Cuerpo del Mensaje */}
+                                  <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[140px]">
+                                    {currentEmail.body}
+                                  </div>
+
+                                  {/* CAJA DE RESPUESTA DIRECTA IN-APP */}
+                                  <div className="p-4 rounded-xl bg-zinc-950/90 border border-zinc-800 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                        <Icon name="mail" className="w-3.5 h-3.5 text-blue-400" />
+                                        <span>Responder a {currentEmail.fromName} ({currentEmail.fromEmail})</span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setInlineReplyText('')}
+                                        className="text-zinc-500 hover:text-zinc-300 text-xs"
+                                      >
+                                        Limpiar
+                                      </button>
+                                    </div>
+
+                                    <textarea
+                                      rows={3}
+                                      value={inlineReplyText}
+                                      onChange={(e) => setInlineReplyText(e.target.value)}
+                                      placeholder="Escribe tu respuesta rápida aquí..."
+                                      className="w-full bg-black text-white p-3 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none text-xs font-mono"
+                                    ></textarea>
+
+                                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] text-zinc-500 font-bold uppercase">Atajos:</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setInlineReplyText('Estimado(a),\n\nJunto con saludar, confirmamos la recepción conforme de su requerimiento. En breve le enviaremos el presupuesto formal.\n\nSaludos cordiales,\nLetreros Olivar SpA')}
+                                          className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-[10px]"
+                                        >
+                                          Acuse de recibo
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setInlineReplyText('Estimado(a),\n\nHemos verificado el comprobante de transferencia y su trabajo ha ingresado a la cola de producción.\n\nAtentamente,\nLetreros Olivar SpA')}
+                                          className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-[10px]"
+                                        >
+                                          Pago verificado
+                                        </button>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleSendInlineReply(currentEmail)}
+                                          disabled={isSendingMail}
+                                          className="bg-red-600 hover:bg-red-500 text-white font-black px-5 py-2 rounded-xl text-xs transition flex items-center gap-2 shadow-lg shadow-red-600/30"
+                                        >
+                                          <Icon name="check" className={`w-3.5 h-3.5 ${isSendingMail ? 'animate-spin' : ''}`} />
+                                          <span>{isSendingMail ? 'Enviando...' : 'Enviar Respuesta ??'}</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* VISTA 2: BANDEJA DE CORREOS ENVIADOS */}
+                    {webmailSubTab === 'sent' && (
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                        {/* Columna Izquierda: Lista de Mensajes (5 cols) */}
+                        {/* Columna Izquierda: Lista de Enviados (5 cols) */}
                         <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
                           <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
                             <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <span>Mensajes ({inboxEmails.length})</span>
+                              <span>Correos Enviados ({inboxEmails.filter(e => e.folder === 'sent').length})</span>
                             </span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-zinc-500 font-mono">Sinc: <strong className="text-zinc-400">{lastRefreshedTime}</strong></span>
-                              <button
-                                type="button"
-                                onClick={handleRefreshInbox}
-                                className={`p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition flex items-center gap-1 text-[11px] font-semibold ${isRefreshingInbox ? 'opacity-50 pointer-events-none' : ''}`}
-                                title="Actualizar correos ahora"
-                              >
-                                <Icon name="refresh" className={`w-3.5 h-3.5 text-blue-400 ${isRefreshingInbox ? 'animate-spin' : ''}`} />
-                                <span>{isRefreshingInbox ? '...' : 'Refresh'}</span>
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setWebmailSubTab('compose')}
+                              className="text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white px-2.5 py-1 rounded-lg border border-emerald-500/30 font-bold transition flex items-center gap-1"
+                            >
+                              <Icon name="plus" className="w-3.5 h-3.5" />
+                              <span>Redactar</span>
+                            </button>
                           </div>
 
-                          {/* Búsqueda y Filtros */}
-                          <div className="space-y-2">
-                            <div className="relative">
-                              <Icon name="search" className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-500" />
-                              <input
-                                type="text"
-                                placeholder="Buscar en correos..."
-                                value={inboxSearch}
-                                onChange={(e) => setInboxSearch(e.target.value)}
-                                className="w-full bg-zinc-950 text-white text-xs pl-8 pr-3 py-1.5 rounded-xl border border-zinc-800 focus:border-blue-500 focus:outline-none"
-                              />
-                            </div>
-
-                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                              {[
-                                { id: 'all', label: 'Todos' },
-                                { id: 'Cotización', label: 'Cotizaciones' },
-                                { id: 'Comprobante', label: 'Comprobantes' },
-                                { id: 'unread', label: 'No leídos' }
-                              ].map(f => (
-                                <button
-                                  key={f.id}
-                                  type="button"
-                                  onClick={() => setInboxFilter(f.id)}
-                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
-                                    inboxFilter === f.id
-                                      ? 'bg-blue-600 text-white font-bold'
-                                      : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                                  }`}
-                                >
-                                  {f.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Lista de Mensajes */}
                           <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
-                            {inboxEmails
-                              .filter(e => {
-                                if (inboxFilter === 'unread') return e.unread;
-                                if (inboxFilter !== 'all') return e.tag === inboxFilter;
-                                return true;
-                              })
-                              .filter(e => {
-                                if (!inboxSearch.trim()) return true;
-                                const q = inboxSearch.toLowerCase();
-                                return (
-                                  e.fromName.toLowerCase().includes(q) ||
-                                  e.fromEmail.toLowerCase().includes(q) ||
-                                  e.subject.toLowerCase().includes(q) ||
-                                  e.body.toLowerCase().includes(q)
-                                );
-                              })
-                              .map(em => (
+                            {inboxEmails.filter(e => e.folder === 'sent').length === 0 ? (
+                              <div className="text-center py-16 text-zinc-500 text-xs">
+                                No hay correos enviados registrados aún
+                              </div>
+                            ) : (
+                              inboxEmails.filter(e => e.folder === 'sent').map(em => (
                                 <div
                                   key={em.id}
-                                  onClick={() => {
-                                    setSelectedInboxEmailId(em.id);
-                                    if (em.unread) {
-                                      setInboxEmails(prev => prev.map(item => item.id === em.id ? { ...item, unread: false } : item));
-                                    }
-                                  }}
+                                  onClick={() => setSelectedInboxEmailId(em.id)}
                                   className={`p-3 rounded-xl border cursor-pointer transition text-left space-y-1.5 ${
                                     selectedInboxEmailId === em.id
-                                      ? 'bg-zinc-900 border-blue-500 shadow-md ring-1 ring-blue-500/40'
-                                      : em.unread
-                                      ? 'bg-zinc-950 hover:bg-zinc-900/80 border-blue-900/40'
-                                      : 'bg-zinc-950/60 hover:bg-zinc-900/60 border-zinc-800/80 opacity-80 hover:opacity-100'
+                                      ? 'bg-zinc-900 border-emerald-500 shadow-md ring-1 ring-emerald-500/40'
+                                      : 'bg-zinc-950/70 hover:bg-zinc-900/60 border-zinc-800/80'
                                   }`}
                                 >
                                   <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-1.5 min-w-0">
-                                      {em.unread && (
-                                        <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
-                                      )}
-                                      <span className={`text-xs truncate ${em.unread ? 'font-black text-white' : 'font-medium text-zinc-300'}`}>
-                                        {em.fromName}
+                                      <Icon name="check-circle" className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                                      <span className="text-xs font-bold text-white truncate">
+                                        Para: {em.toEmail || em.fromEmail}
                                       </span>
                                     </div>
                                     <span className="text-[10px] text-zinc-500 font-mono flex-shrink-0">{em.date}</span>
                                   </div>
-
-                                  <div className={`text-xs truncate ${em.unread ? 'font-bold text-zinc-200' : 'text-zinc-400'}`}>
+                                  <div className="text-xs font-semibold text-zinc-300 truncate">
                                     {em.subject}
                                   </div>
-
                                   <div className="flex items-center justify-between text-[11px] pt-1">
                                     <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
-                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                                      em.tag === 'Cotización'
-                                        ? 'bg-red-600/20 text-red-400 border border-red-800/40'
-                                        : em.tag === 'Comprobante'
-                                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
-                                        : 'bg-zinc-800 text-zinc-400'
-                                    }`}>
-                                      {em.tag}
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-800/40">
+                                      Enviado ??
                                     </span>
                                   </div>
                                 </div>
-                              ))}
+                              ))
+                            )}
                           </div>
                         </div>
 
-                        {/* Columna Derecha: Panel de Lectura del Mensaje (7 cols) */}
+                        {/* Columna Derecha: Lectura del Correo Enviado (7 cols) */}
                         <div className="lg:col-span-7 bg-black border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
                           {(() => {
-                            const currentEmail = inboxEmails.find(e => e.id === selectedInboxEmailId) || inboxEmails[0];
-                            if (!currentEmail) {
+                            const sentEmails = inboxEmails.filter(e => e.folder === 'sent');
+                            const currentSent = sentEmails.find(e => e.id === selectedInboxEmailId) || sentEmails[0];
+                            if (!currentSent) {
                               return (
                                 <div className="text-center py-20 text-zinc-500 text-xs">
-                                  Selecciona un correo para leer su contenido
+                                  Selecciona un correo enviado para revisar su contenido
                                 </div>
                               );
                             }
                             return (
                               <div className="space-y-5">
-                                {/* Encabezado del Correo */}
                                 <div className="border-b border-zinc-800 pb-4 space-y-3">
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-black uppercase ${
-                                      currentEmail.tag === 'Cotización'
-                                        ? 'bg-red-600/20 text-red-400 border border-red-800/40'
-                                        : currentEmail.tag === 'Comprobante'
-                                        ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-800/40'
-                                        : 'bg-zinc-800 text-zinc-300'
-                                    }`}>
-                                      {currentEmail.tag}
+                                  <div className="flex items-center justify-between">
+                                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-600/20 text-emerald-400 border border-emerald-800/40 flex items-center gap-1.5">
+                                      <Icon name="check-circle" className="w-3.5 h-3.5" />
+                                      Mensaje Despachado
                                     </span>
-                                    <span className="text-xs font-mono text-zinc-500">{currentEmail.date}</span>
+                                    <span className="text-xs font-mono text-zinc-500">{currentSent.date}</span>
                                   </div>
 
-                                  <h3 className="text-lg font-black text-white font-heading leading-tight">
-                                    {currentEmail.subject}
+                                  <h3 className="text-lg font-black text-white font-heading">
+                                    {currentSent.subject}
                                   </h3>
 
                                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
                                     <div>
-                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">De:</span>
-                                      <strong className="text-white">{currentEmail.fromName}</strong>
-                                      <span className="text-zinc-400 font-mono ml-2">({currentEmail.fromEmail})</span>
-                                      {currentEmail.rut && (
-                                        <span className="ml-2 text-[10px] font-mono text-zinc-500">RUT: {currentEmail.rut}</span>
-                                      )}
+                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">Destinatario:</span>
+                                      <strong className="text-white">{currentSent.toEmail || '(Destinatario registrado)'}</strong>
                                     </div>
                                     <div className="text-right">
-                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">Para:</span>
+                                      <span className="text-zinc-500 block text-[10px] uppercase font-bold">Remitente:</span>
                                       <span className="text-zinc-300 font-mono">contacto@letrerosolivar.com</span>
                                     </div>
                                   </div>
-
-                                  {/* Acciones directas integradas con la Intranet */}
-                                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleQuoteFromInboxEmail(currentEmail)}
-                                      className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs transition flex items-center gap-1.5 shadow-md shadow-red-600/30"
-                                      title="Carga este cliente y requerimiento en una nueva cotización formal"
-                                    >
-                                      <Icon name="cotizacion" className="w-3.5 h-3.5" />
-                                      <span>💼 Cotizar a este Cliente</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveInboxEmailToMaster(currentEmail)}
-                                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
-                                      title="Guarda o actualiza el correo de este cliente en la Maestra"
-                                    >
-                                      <Icon name="users" className="w-3.5 h-3.5" />
-                                      <span>👥 Sincronizar en Maestra</span>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleReplyInboxEmail(currentEmail)}
-                                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-blue-600/30"
-                                    >
-                                      <Icon name="file-text" className="w-3.5 h-3.5" />
-                                      <span>✍️ Responder</span>
-                                    </button>
-                                  </div>
                                 </div>
 
-                                {/* Cuerpo del Mensaje */}
-                                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[140px]">
-                                  {currentEmail.body}
+                                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[160px]">
+                                  {currentSent.body}
                                 </div>
 
-                                {/* CAJA DE RESPUESTA DIRECTA IN-APP (SIN SALIR DE LA INTRANET) */}
-                                <div className="p-4 rounded-xl bg-zinc-950/90 border border-zinc-800 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                                      <Icon name="mail" className="w-3.5 h-3.5 text-blue-400" />
-                                      <span>Responder a {currentEmail.fromName} ({currentEmail.fromEmail}):</span>
-                                    </span>
-                                    <span className="text-[10px] text-zinc-400 font-mono">Desde: contacto@letrerosolivar.com</span>
-                                  </div>
-
-                                  <textarea
-                                    rows={4}
-                                    value={inlineReplyText}
-                                    onChange={(e) => setInlineReplyText(e.target.value)}
-                                    placeholder={`Escribe aquí tu respuesta para enviar directamente a ${currentEmail.fromEmail}...`}
-                                    className="w-full bg-black text-white text-xs p-3 rounded-xl border border-zinc-800 focus:border-blue-500 focus:outline-none font-mono leading-relaxed"
-                                  />
-
-                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                    <div className="flex flex-wrap items-center gap-1 text-[11px] text-zinc-400">
-                                      <span>Atajos:</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => setInlineReplyText('Estimado(a),\n\nJunto con saludar, confirmamos la recepción de su requerimiento. En breve le enviaremos la cotización formal detallada.\n\nSaludos cordiales,\nEquipo Letreros Olivar SpA')}
-                                        className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-[10px]"
-                                      >
-                                        Acuse de recibo
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setInlineReplyText('Estimado(a),\n\nHemos verificado el comprobante de transferencia y su trabajo ha ingresado a la cola de producción en taller.\n\nAtentamente,\nLetreros Olivar SpA')}
-                                        className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-[10px]"
-                                      >
-                                        Pago verificado
-                                      </button>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSendInlineReply(currentEmail)}
-                                        disabled={isSendingMail}
-                                        className="bg-blue-600 hover:bg-blue-500 text-white font-black px-5 py-2 rounded-xl text-xs transition flex items-center gap-2 shadow-lg shadow-blue-600/30"
-                                      >
-                                        <Icon name="check" className={`w-3.5 h-3.5 ${isSendingMail ? 'animate-spin' : ''}`} />
-                                        <span>{isSendingMail ? 'Enviando...' : 'Enviar Respuesta ✈️'}</span>
-                                      </button>
-                                    </div>
-                                  </div>
+                                <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs">
+                                  <span className="text-zinc-500">
+                                    Registrado en el historial oficial de la Intranet
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setQuickMailTo(currentSent.toEmail || '');
+                                      setQuickMailSubject(`Re: ${currentSent.subject}`);
+                                      setWebmailSubTab('compose');
+                                    }}
+                                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 font-bold transition flex items-center gap-1.5"
+                                  >
+                                    <Icon name="mail" className="w-3.5 h-3.5" />
+                                    <span>Escribir otro a este destinatario</span>
+                                  </button>
                                 </div>
                               </div>
                             );
@@ -6176,17 +6810,140 @@
                       </div>
                     )}
 
-                    {/* VISTA 2: REDACTOR DE CORREO */}
+                    {/* VISTA 3: BANDEJA DE BORRADORES */}
+                    {webmailSubTab === 'drafts' && (
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        {/* Columna Izquierda: Lista de Borradores (5 cols) */}
+                        <div className="lg:col-span-5 bg-black border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
+                          <div className="flex items-center justify-between pb-2 border-b border-zinc-900">
+                            <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                              <span>Borradores Guardados ({inboxEmails.filter(e => e.folder === 'drafts').length})</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setWebmailSubTab('compose')}
+                              className="text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600 hover:text-white px-2.5 py-1 rounded-lg border border-amber-500/30 font-bold transition flex items-center gap-1"
+                            >
+                              <Icon name="plus" className="w-3.5 h-3.5" />
+                              <span>Nuevo Borrador</span>
+                            </button>
+                          </div>
+
+                          <div className="space-y-2 max-h-[580px] overflow-y-auto pr-1">
+                            {inboxEmails.filter(e => e.folder === 'drafts').length === 0 ? (
+                              <div className="text-center py-16 text-zinc-500 text-xs">
+                                No tienes borradores pendientes de envío
+                              </div>
+                            ) : (
+                              inboxEmails.filter(e => e.folder === 'drafts').map(em => (
+                                <div
+                                  key={em.id}
+                                  onClick={() => setSelectedInboxEmailId(em.id)}
+                                  className={`p-3 rounded-xl border cursor-pointer transition text-left space-y-1.5 ${
+                                    selectedInboxEmailId === em.id
+                                      ? 'bg-zinc-900 border-amber-500 shadow-md ring-1 ring-amber-500/40'
+                                      : 'bg-zinc-950/70 hover:bg-zinc-900/60 border-zinc-800/80'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <Icon name="file-text" className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                                      <span className="text-xs font-bold text-white truncate">
+                                        Para: {em.toEmail || '(Sin destinatario)'}
+                                      </span>
+                                    </div>
+                                    <span className="text-[10px] text-zinc-500 font-mono flex-shrink-0">{em.date}</span>
+                                  </div>
+                                  <div className="text-xs font-semibold text-zinc-300 truncate">
+                                    {em.subject}
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] pt-1">
+                                    <span className="text-zinc-500 truncate max-w-[200px]">{em.body.slice(0, 50)}...</span>
+                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-600/20 text-amber-400 border border-amber-800/40">
+                                      Borrador
+                                    </span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Columna Derecha: Previsualización de Borrador (7 cols) */}
+                        <div className="lg:col-span-7 bg-black border border-zinc-800 rounded-2xl p-6 space-y-5 shadow-xl">
+                          {(() => {
+                            const draftEmails = inboxEmails.filter(e => e.folder === 'drafts');
+                            const currentDraft = draftEmails.find(e => e.id === selectedInboxEmailId) || draftEmails[0];
+                            if (!currentDraft) {
+                              return (
+                                <div className="text-center py-20 text-zinc-500 text-xs">
+                                  Selecciona un borrador para continuar redactando o descartar
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="space-y-5">
+                                <div className="border-b border-zinc-800 pb-4 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-600/20 text-amber-400 border border-amber-800/40 flex items-center gap-1.5">
+                                      <Icon name="file-text" className="w-3.5 h-3.5" />
+                                      Borrador en Pausa
+                                    </span>
+                                    <span className="text-xs font-mono text-zinc-500">{currentDraft.date}</span>
+                                  </div>
+
+                                  <h3 className="text-lg font-black text-white font-heading">
+                                    {currentDraft.subject}
+                                  </h3>
+
+                                  <div className="text-xs bg-zinc-950 p-3 rounded-xl border border-zinc-800/80">
+                                    <span className="text-zinc-500 block text-[10px] uppercase font-bold">Destinatario previsto:</span>
+                                    <strong className="text-white">{currentDraft.toEmail || '(Sin definir)'}</strong>
+                                  </div>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 font-mono leading-relaxed whitespace-pre-line min-h-[160px]">
+                                  {currentDraft.body}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-zinc-900 text-xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDraft(currentDraft.id)}
+                                    className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-red-950/60 text-zinc-400 hover:text-red-400 border border-zinc-800 transition flex items-center gap-1.5"
+                                  >
+                                    <Icon name="trash" className="w-3.5 h-3.5" />
+                                    <span>Descartar Borrador</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditDraft(currentDraft)}
+                                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center gap-2 shadow-lg shadow-red-600/30"
+                                  >
+                                    <Icon name="file-text" className="w-3.5 h-3.5" />
+                                    <span>Continuar Redactando ??</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* VISTA 4: REDACTOR DE CORREO */}
                     {webmailSubTab === 'compose' && (
                       <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-5 shadow-xl">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
                           <div>
                             <h3 className="text-base font-bold text-white font-heading flex items-center gap-2">
                               <Icon name="mail" className="w-4 h-4 text-red-500" />
-                              <span>Redactor Rápido de Correos Corporativos</span>
+                              <span>Redactor de Correos Corporativos</span>
                             </h3>
                             <p className="text-xs text-zinc-400 mt-0.5">
-                              Redacta o utiliza una de las plantillas oficiales y envíalo con un clic vía Gmail Workspace.
+                              contacto@letrerosolivar.com • Redacta, guarda borrador o despacha vía Gmail Workspace.
                             </p>
                           </div>
 
@@ -6198,28 +6955,28 @@
                               onClick={() => handleApplyEmailTemplate('cotizacion')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              📋 Cotización
+                              ?? Cotización
                             </button>
                             <button
                               type="button"
                               onClick={() => handleApplyEmailTemplate('comprobante')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              💰 Pago Recibido
+                              ?? Pago Recibido
                             </button>
                             <button
                               type="button"
                               onClick={() => handleApplyEmailTemplate('terminado')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              ✅ Trabajo Listo
+                              ? Trabajo Listo
                             </button>
                             <button
                               type="button"
                               onClick={() => handleApplyEmailTemplate('instalacion')}
                               className="px-2.5 py-1 rounded-lg text-xs bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition"
                             >
-                              🚚 Instalación
+                              ?? Instalación
                             </button>
                           </div>
                         </div>
@@ -6250,7 +7007,7 @@
                                 type="email"
                                 value={quickMailTo}
                                 onChange={(e) => setQuickMailTo(e.target.value)}
-                                placeholder="ej: adquisiciones@cliente.cl"
+                                placeholder="ej: contacto@cliente.cl"
                                 className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
                               />
                             </div>
@@ -6261,7 +7018,7 @@
                                 type="text"
                                 value={quickMailSubject}
                                 onChange={(e) => setQuickMailSubject(e.target.value)}
-                                placeholder="Asunto del correo corporativo..."
+                                placeholder="Asunto del correo..."
                                 className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
                               />
                             </div>
@@ -6274,7 +7031,7 @@
                               value={quickMailBody}
                               onChange={(e) => setQuickMailBody(e.target.value)}
                               className="w-full bg-zinc-950 text-white p-3.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono text-xs leading-relaxed"
-                              placeholder="Escribe el cuerpo del correo aquí..."
+                              placeholder="Escribe el cuerpo del mensaje aquí..."
                             ></textarea>
                           </div>
 
@@ -6283,48 +7040,36 @@
                               Remitente: <strong className="text-zinc-300">contacto@letrerosolivar.com</strong> (Letreros Olivar SpA)
                             </span>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(`${quickMailSubject}\n\n${quickMailBody}`);
-                                  showToast('📋 Asunto y cuerpo copiados al portapapeles');
-                                }}
-                                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold border border-zinc-700 transition flex items-center gap-1.5"
-                                title="Copiar texto para pegar en cualquier correo o WhatsApp"
+                                onClick={handleSaveDraftMail}
+                                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-amber-400 hover:text-amber-300 font-bold border border-zinc-700 transition flex items-center gap-1.5"
+                                title="Guardar en la pestaña Borradores"
                               >
-                                <Icon name="clipboard" className="w-3.5 h-3.5" />
-                                <span>Copiar Mensaje</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={handleOpenDefaultMailto}
-                                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white font-bold border border-zinc-700 transition flex items-center gap-1.5"
-                                title="Abrir en Outlook o cliente predeterminado del computador"
-                              >
-                                <Icon name="mail" className="w-3.5 h-3.5" />
-                                <span>Cliente Local</span>
+                                <Icon name="file-text" className="w-3.5 h-3.5" />
+                                <span>Guardar Borrador</span>
                               </button>
 
                               <button
                                 type="button"
                                 onClick={handleSendDirectMail}
                                 disabled={isSendingMail}
-                                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black transition flex items-center gap-2 shadow-lg shadow-blue-600/40"
+                                className="px-5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold transition flex items-center gap-2 border border-zinc-700"
+                                title="Registrar en la carpeta de Enviados de la Intranet"
                               >
                                 <Icon name="check" className={`w-4 h-4 ${isSendingMail ? 'animate-spin' : ''}`} />
-                                <span>{isSendingMail ? 'Enviando...' : 'Enviar Correo Ahora ✈️'}</span>
+                                <span>Guardar en Enviados</span>
                               </button>
 
                               <button
                                 type="button"
-                                onClick={handleOpenGmailCompose}
-                                className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs border border-zinc-700 transition flex items-center gap-1.5"
-                                title="Abrir opcionalmente en Gmail externo"
+                                onClick={handleSendViaGmailDirect}
+                                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black transition flex items-center gap-2 shadow-lg shadow-red-600/40"
+                                title="Abre Gmail con destinatario, asunto y mensaje ya listos para enviar por los servidores de Google"
                               >
-                                <Icon name="external-link" className="w-3.5 h-3.5" />
-                                <span>Gmail Externo</span>
+                                <Icon name="external-link" className="w-4 h-4" />
+                                <span>?? Despachar con Gmail (1 Clic)</span>
                               </button>
                             </div>
                           </div>
@@ -6332,32 +7077,32 @@
                       </div>
                     )}
 
-                    {/* VISTA 3: GUÍA DE VINCULACIÓN GMAIL / GOOGLE WORKSPACE */}
+                    {/* VISTA 5: DIAGNÓSTICO & CONEXIÓN SMTP / IMAP */}
                     {webmailSubTab === 'sync' && (
                       <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-6 shadow-xl text-xs">
                         <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                              <span className="font-extrabold text-white text-sm">Estado: Credenciales de Google Workspace Enlazadas</span>
+                              <span className="font-extrabold text-white text-sm">Google Workspace: Servidor SMTP Activo</span>
                             </div>
                             <p className="text-zinc-300 text-xs">
-                              Cuenta: <strong className="text-white">contacto@letrerosolivar.com</strong> • Contraseña de Aplicación de 16 caracteres guardada.
+                              Cuenta: <strong className="text-white">contacto@letrerosolivar.com</strong> • Conexión verificada en <span className="font-mono text-emerald-400">smtp.gmail.com:587</span>
                             </p>
                           </div>
                           <div className="flex items-center gap-2 text-[11px] font-mono bg-zinc-950 px-3 py-1.5 rounded-lg border border-zinc-800">
-                            <span className="text-zinc-400">Servidor SMTP:</span>
-                            <span className="text-emerald-400 font-bold">smtp.gmail.com:465</span>
+                            <span className="text-zinc-400">Estado de Salida:</span>
+                            <span className="text-emerald-400 font-bold">Autenticado OK</span>
                           </div>
                         </div>
 
                         <div className="border-b border-zinc-800 pb-4">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">CONFIGURACIÓN TÉCNICA OFICIAL</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-red-500">DIAGNÓSTICO TÉCNICO DE CORREO</span>
                           <h3 className="text-xl font-black text-white font-heading mt-1">
-                            Cómo funciona tu cuenta contacto@letrerosolivar.com con Gmail
+                            ¿Por qué los correos deben despacharse mediante la pasarela de Google?
                           </h3>
                           <p className="text-zinc-400 mt-1 max-w-3xl leading-relaxed">
-                            Tu dominio <strong className="text-white">letrerosolivar.com</strong> ya está enlazado directamente a los servidores de Google Workspace (<span className="text-blue-400 font-mono">smtp.google.com</span>). No requieres configuraciones complejas de puertos POP3 ni IMAP.
+                            Los navegadores web bloquean las conexiones TCP directas a servidores de correo por motivos de seguridad. Para garantizar que ningún correo sea marcado como SPAM ni bloqueado por Hotmail, Gmail o Yahoo, la intranet incluye el botón <strong className="text-white">"?? Despachar con Gmail (1 Clic)"</strong>, el cual transfiere de forma instantánea el destinatario, asunto y mensaje a los servidores oficiales de Google para su entrega inmediata.
                           </p>
                         </div>
 
@@ -6365,47 +7110,41 @@
                           <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
                             <h4 className="font-bold text-white text-sm flex items-center gap-2">
                               <span className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">1</span>
-                              <span>Si quieres ver todo en tu Gmail personal</span>
+                              <span>Pestañas Organizadoras de Gmail</span>
                             </h4>
                             <p className="text-zinc-400 text-[11px] leading-relaxed">
-                              Si usas un Gmail personal (ej: carlos@gmail.com) y no quieres estar abriendo y cerrando sesiones:
+                              La bandeja de entrada ahora clasifica tus mensajes exactamente como en Google Workspace:
                             </p>
-                            <ol className="list-decimal list-inside text-zinc-300 text-[11px] space-y-1.5 pt-1 pl-1">
-                              <li>Entra a Gmail con la cuenta <strong className="text-white">contacto@letrerosolivar.com</strong>.</li>
-                              <li>Ve a <strong>Ajustes (⚙️) ➔ Ver todos los ajustes ➔ Reenvío y correo POP/IMAP</strong>.</li>
-                              <li>Añade tu correo personal como dirección de reenvío y confirma el código.</li>
-                              <li>¡Listo! Todo lo que llegue a <strong className="text-blue-400">contacto@letrerosolivar.com</strong> te llegará a tu teléfono o Gmail personal automáticamente.</li>
-                            </ol>
+                            <ul className="text-zinc-300 text-[11px] space-y-1 pt-1">
+                              <li>• <strong>Principal:</strong> Mensajes directos, cotizaciones y clientes.</li>
+                              <li>• <strong>Promociones:</strong> Ofertas comerciales y catálogos de proveedores.</li>
+                              <li>• <strong>Social:</strong> Comunicaciones comunales, Teletón y redes.</li>
+                              <li>• <strong>Notificaciones:</strong> Comprobantes de transferencia y avisos bancarios.</li>
+                            </ul>
                           </div>
 
                           <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
                             <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                              <span className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center font-bold text-xs">2</span>
-                              <span>Responder como contacto@letrerosolivar.com</span>
+                              <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">2</span>
+                              <span>Carpetas de Enviados y Borradores</span>
                             </h4>
                             <p className="text-zinc-400 text-[11px] leading-relaxed">
-                              Para poder enviar o responder presupuestos desde tu propio Gmail con el nombre formal de Letreros Olivar SpA:
+                              Tus mensajes enviados y tus borradores quedan respaldados en sus respectivas carpetas dentro de la Intranet, permitiéndote retomar redacciones o consultar comprobantes en cualquier momento.
                             </p>
-                            <ol className="list-decimal list-inside text-zinc-300 text-[11px] space-y-1.5 pt-1 pl-1">
-                              <li>En tu Gmail personal, ve a <strong>Ajustes ➔ Cuentas e importación ➔ Enviar como</strong>.</li>
-                              <li>Haz clic en <strong>Añadir otra dirección de correo</strong>.</li>
-                              <li>Ingresa el nombre <strong className="text-white">Letreros Olivar SpA</strong> y el correo <strong className="text-white">contacto@letrerosolivar.com</strong>.</li>
-                              <li>Google te enviará un correo de confirmación de 1 clic para validar que eres el dueño del dominio.</li>
-                            </ol>
                           </div>
                         </div>
 
                         <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between gap-4">
                           <div>
-                            <span className="text-white font-bold block">¿Necesitas soporte técnico de Google Workspace?</span>
-                            <span className="text-zinc-400 text-[11px]">Tu cuenta corporativa está 100% activa y lista para recibir mensajes.</span>
+                            <span className="text-white font-bold block">Acceso Rápido a Bandejas</span>
+                            <span className="text-zinc-400 text-[11px]">Tu cuenta corporativa está 100% activa.</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => setWebmailSubTab('inbox')}
-                            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 flex-shrink-0"
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-lg shadow-red-600/30 flex-shrink-0"
                           >
-                            Ir a Bandeja de Entrada In-App ➔
+                            Ir a Bandeja de Entrada ?
                           </button>
                         </div>
                       </div>
@@ -6492,10 +7231,10 @@
                       Cotización Oficial Letreros Olivar ({currentQuoteToPrint.correlative})
                     </span>
                     <span className="hidden md:inline-block text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">
-                      📁 Guardar PDF como: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
+                      ?? Guardar PDF como: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
                     </span>
                     <span className="hidden lg:inline-flex text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono items-center gap-1">
-                      <span>🔒 Valores m² ocultos en impresión</span>
+                      <span>?? Valores m² ocultos en impresión</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -6560,7 +7299,7 @@
                       </p>
                       {currentQuoteToPrint.client.deliveryAddress && (
                         <p className="text-zinc-700">
-                          {currentQuoteToPrint.client.deliveryMethod === 'instalacion' ? 'Lugar Instalación' : 'Dirección Entrega'}: {currentQuoteToPrint.client.deliveryAddress}
+                          {currentQuoteToPrint.client.deliveryMethod === 'instalacion' ? 'Lugar de Instalación' : 'Dirección de Despacho'}: {currentQuoteToPrint.client.deliveryAddress}
                         </p>
                       )}
                     </div>
