@@ -968,6 +968,11 @@
       const [showCalModal, setShowCalModal] = useState(false);
       const [calFilterType, setCalFilterType] = useState('todos');
       const [calFilterStatus, setCalFilterStatus] = useState('todos');
+      // Estados para borrado protegido de cotizaciones con PIN
+      const [quoteToDelete, setQuoteToDelete] = useState(null);
+      const [deletePinInput, setDeletePinInput] = useState('');
+      const [deletePinError, setDeletePinError] = useState('');
+      const [showDeleteModal, setShowDeleteModal] = useState(false);
       const [newCalEvent, setNewCalEvent] = useState({
         id: '',
         date: new Date().toISOString().slice(0, 10),
@@ -2102,6 +2107,45 @@
         showToast(isEditing ? `✏️ Cotización ${quoteRecord.correlative} actualizada y guardada con éxito.` : `🎉 Cotización ${quoteRecord.correlative} guardada y emitida con éxito.`);
       };
 
+      const handleRequestDeleteQuote = (quote) => {
+        setQuoteToDelete(quote);
+        setDeletePinInput('');
+        setDeletePinError('');
+        setShowDeleteModal(true);
+      };
+
+      const handleConfirmDeleteQuote = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        const MASTER_PIN = localStorage.getItem('olivar_admin_pin') || '2026';
+        if (deletePinInput.trim() !== MASTER_PIN) {
+          setDeletePinError('PIN incorrecto. Solo el administrador puede eliminar cotizaciones.');
+          return;
+        }
+        if (!quoteToDelete) return;
+
+        const correlative = quoteToDelete.correlative;
+
+        // 1. Quitar del estado local y localStorage
+        setQuoteHistory(prev => {
+          const updated = prev.filter(q => q.correlative !== correlative);
+          try {
+            localStorage.setItem('olivar_quotes_history', JSON.stringify(updated));
+          } catch(err) {}
+          return updated;
+        });
+
+        // 2. Eliminar de Firebase Firestore
+        if (window.db) {
+          window.db.collection('quotes').doc(correlative).delete()
+            .then(() => console.log('Cotización eliminada de Firestore:', correlative))
+            .catch(err => console.warn('Error eliminando de Firestore:', err));
+        }
+
+        setShowDeleteModal(false);
+        setQuoteToDelete(null);
+        setDeletePinInput('');
+        showToast('🗑️ Cotización ' + correlative + ' eliminada permanentemente.');
+      };
       const handleSendWhatsAppQuote = (quote) => {
         const q = quote || {
           correlative: currentCorrelativeCode,
@@ -4882,6 +4926,14 @@
                                 <Icon name="whatsapp" className="w-3.5 h-3.5" />
                                 <span>WhatsApp</span>
                               </button>
+                              <button
+                                onClick={() => handleRequestDeleteQuote(q)}
+                                className="bg-red-950/30 hover:bg-red-600 text-red-500 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-900/50 hover:border-red-600 flex items-center gap-1.5 transition shadow-sm"
+                                title="Eliminar cotización permanentemente (Requiere PIN de Administrador)"
+                              >
+                                <Icon name="trash" className="w-3.5 h-3.5" />
+                                <span>🗑️ Borrar</span>
+                              </button>
                             </div>
                           </div>
                         ))}
@@ -6298,6 +6350,89 @@
             </div>
           )}
 
+
+                    {/* ============================================================== */}
+          {/* MODAL: CONFIRMAR BORRADO CON PIN DE ADMINISTRADOR (4 DÍGITOS)   */}
+          {/* ============================================================== */}
+          {showDeleteModal && quoteToDelete && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-red-900/60 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-600/20 text-red-500 border border-red-500/40 flex items-center justify-center font-bold">
+                      <Icon name="lock" className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-black text-white text-sm">
+                        Autorización de Administrador
+                      </h3>
+                      <p className="text-[10px] text-zinc-400">Eliminación de Cotización</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setShowDeleteModal(false); setQuoteToDelete(null); }}
+                    className="text-zinc-500 hover:text-white"
+                  >
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="bg-red-950/20 border border-red-900/40 p-3 rounded-xl text-xs space-y-1">
+                  <div className="text-zinc-300 font-bold">
+                    ¿Eliminar <span className="text-red-400 font-mono font-black">{quoteToDelete.correlative}</span>?
+                  </div>
+                  <div className="text-zinc-400 text-[11px] truncate">
+                    Cliente: {quoteToDelete.client && quoteToDelete.client.name}
+                  </div>
+                  <div className="text-red-400 text-[10px]">
+                    ⚠️ Esta acción borrará el registro de este computador y de Firebase Cloud.
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmDeleteQuote} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 mb-1.5 text-center">
+                      Ingresa tu PIN de 4 dígitos:
+                    </label>
+                    <input
+                      type="password"
+                      maxLength={4}
+                      placeholder="••••"
+                      value={deletePinInput}
+                      onChange={(e) => {
+                        setDeletePinInput(e.target.value.replace(/\D/g, '').slice(0, 4));
+                        setDeletePinError('');
+                      }}
+                      className="w-36 mx-auto block bg-black text-white text-center text-2xl tracking-[0.5em] font-mono py-2 rounded-xl border border-zinc-700 focus:border-red-600 focus:outline-none"
+                      autoFocus
+                      required
+                    />
+                    {deletePinError && (
+                      <p className="text-[11px] text-red-500 mt-1.5 text-center font-semibold">{deletePinError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-900">
+                    <button
+                      type="button"
+                      onClick={() => { setShowDeleteModal(false); setQuoteToDelete(null); }}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shadow-lg shadow-red-600/30 transition flex items-center gap-1.5"
+                    >
+                      <Icon name="trash" className="w-3.5 h-3.5" />
+                      <span>Confirmar Borrado</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {/* MODAL: LOGIN DE INTRANET                                       */}
           {/* ============================================================== */}
