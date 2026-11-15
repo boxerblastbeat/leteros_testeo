@@ -640,8 +640,8 @@
       const [loginPassword, setLoginPassword] = useState('');
       const [loginError, setLoginError] = useState('');
 
-      // Espacio Principal de la Intranet: 'portal' (menú dividido 2 lados), 'taller' (cotizaciones) o 'webmail' (correo)
-      const [intranetSection, setIntranetSection] = useState('taller');
+      // Espacio Principal de la Intranet: 'portal' (2 cuadros: Administración / Taller), 'admin' (cotizaciones) o 'taller' (producción)
+      const [intranetSection, setIntranetSection] = useState('portal');
       // Sub-pestaña de la Intranet (área de cotizaciones): 'cotizador' | 'solicitudes' | 'historial' | 'precios' | 'clientes'
       const [intranetTab, setIntranetTab] = useState('cotizador');
 
@@ -1168,6 +1168,130 @@
         }
       ]);
 
+      // Fotografías y Renders Adjuntos a la Cotización (Requerimiento Camila)
+      const [quoteImages, setQuoteImages] = useState([]);
+
+      const handleImageUpload = (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        files.forEach(file => {
+          const reader = new FileReader();
+          reader.onload = (loadEvent) => {
+            const dataUrl = loadEvent.target.result;
+            setQuoteImages(prev => [
+              ...prev,
+              {
+                id: 'img-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                name: file.name,
+                data: dataUrl,
+                caption: ''
+              }
+            ]);
+          };
+          reader.readAsDataURL(file);
+        });
+        showToast(`📷 ${files.length} fotografía(s) adjuntada(s) a la cotización.`);
+        e.target.value = '';
+      };
+
+      const handleRemoveQuoteImage = (imgId) => {
+        setQuoteImages(prev => prev.filter(img => img.id !== imgId));
+      };
+
+      const handleUpdateImageCaption = (imgId, caption) => {
+        setQuoteImages(prev => prev.map(img => img.id === imgId ? { ...img, caption } : img));
+      };
+
+      const handleOpenLivePreview = () => {
+        if (quoteItems.length === 0) {
+          alert('Agrega al menos un ítem al cotizador para ver la vista previa.');
+          return;
+        }
+        const previewQuote = {
+          correlative: editingCorrelative || currentCorrelativeCode,
+          numericCorrelative: correlativeNumber,
+          date: new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+          client: { ...intranetClientData },
+          items: [...quoteItems],
+          images: [...quoteImages],
+          totals: { ...financialTotals },
+          discountAmount,
+          taxRate,
+          status: editingCorrelative ? 'Editando (Vista Previa)' : 'Borrador (Vista Previa)'
+        };
+        handleOpenPrintModal(previewQuote);
+      };
+
+      // === ESTADOS Y CÁLCULO DE REPORTES & KPIS MENSUALES ===
+      const [kpiMonth, setKpiMonth] = useState(() => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      });
+
+      const monthlyKpis = useMemo(() => {
+        const isAll = kpiMonth === 'all';
+        const [yStr, mStr] = (kpiMonth || '').split('-');
+        const targetYear = parseInt(yStr, 10);
+        const targetMonth = parseInt(mStr, 10);
+
+        const checkDateMatch = (dateStr, timestamp) => {
+          if (isAll) return true;
+          if (timestamp) {
+            const d = new Date(timestamp);
+            return d.getFullYear() === targetYear && (d.getMonth() + 1) === targetMonth;
+          }
+          if (dateStr && typeof dateStr === 'string') {
+            const parts = dateStr.split(/[-/]/);
+            if (parts.length === 3) {
+              if (parts[0].length === 4) {
+                return parseInt(parts[0], 10) === targetYear && parseInt(parts[1], 10) === targetMonth;
+              } else {
+                return parseInt(parts[2], 10) === targetYear && parseInt(parts[1], 10) === targetMonth;
+              }
+            }
+          }
+          return false;
+        };
+
+        const monthQuotes = quoteHistory.filter(q => checkDateMatch(q.date, q.timestamp));
+        const totalQuotedAmount = monthQuotes.reduce((acc, q) => acc + (q.totals?.total || 0), 0);
+        const totalQuotedNet = monthQuotes.reduce((acc, q) => acc + (q.totals?.taxableSubtotal || q.totals?.subtotal || 0), 0);
+
+        const approvedQuotes = monthQuotes.filter(q => q.status === 'Aprobada');
+        const approvedAmount = approvedQuotes.reduce((acc, q) => acc + (q.totals?.total || 0), 0);
+        const approvedNet = approvedQuotes.reduce((acc, q) => acc + (q.totals?.taxableSubtotal || q.totals?.subtotal || 0), 0);
+
+        const conversionRate = monthQuotes.length > 0 ? Math.round((approvedQuotes.length / monthQuotes.length) * 100) : 0;
+
+        const monthOts = workOrders.filter(ot => checkDateMatch(ot.createdAt, ot.createdTimestamp));
+        const completedOts = monthOts.filter(ot => ot.status === 'completado');
+        const inProgressOts = monthOts.filter(ot => ot.status !== 'completado');
+        const deliveryRate = monthOts.length > 0 ? Math.round((completedOts.length / monthOts.length) * 100) : 0;
+
+        const monthRequests = receivedRequests.filter(req => checkDateMatch(req.date, req.timestamp));
+
+        return {
+          targetYear,
+          targetMonth,
+          monthQuotes,
+          totalQuotesCount: monthQuotes.length,
+          totalQuotedAmount,
+          totalQuotedNet,
+          approvedQuotes,
+          approvedQuotesCount: approvedQuotes.length,
+          approvedAmount,
+          approvedNet,
+          conversionRate,
+          monthOts,
+          totalOtsCount: monthOts.length,
+          completedOtsCount: completedOts.length,
+          inProgressOtsCount: inProgressOts.length,
+          deliveryRate,
+          monthRequestsCount: monthRequests.length
+        };
+      }, [quoteHistory, workOrders, receivedRequests, kpiMonth]);
+
       const [itemDesc, setItemDesc] = useState('Tela PVC 340gr (1.10m)');
       const [itemDetail, setItemDetail] = useState('');
       const [itemWidth, setItemWidth] = useState(3.0);
@@ -1380,7 +1504,7 @@
           email: client.email || '',
           deliveryAddress: client.address || ''
         }));
-        setIntranetSection('taller');
+        setIntranetSection('admin');
         setIntranetTab('cotizador');
         showToast(`📋 Datos de ${client.name} cargados en el Cotizador`);
       };
@@ -1879,7 +2003,7 @@
         if (req.height) setItemHeight(parseFloat(req.height) || 1.2);
         if (req.quantity) setItemQty(parseInt(req.quantity, 10) || 1);
 
-        setIntranetSection('taller');
+        setIntranetSection('admin');
         setIntranetTab('cotizador');
         showToast(`📋 Datos de ${req.clientName} cargados en el cotizador`);
       };
@@ -1909,10 +2033,11 @@
           id: item.id || ('item-edit-' + Date.now() + '-' + idx)
         }));
         setQuoteItems(clonedItems);
+        setQuoteImages(quoteToEdit.images || []);
         setDiscountAmount(quoteToEdit.discountAmount || 0);
         setTaxRate(quoteToEdit.taxRate ?? 19);
 
-        setIntranetSection('taller');
+        setIntranetSection('admin');
         setIntranetTab('cotizador');
         showToast(`✏️ Editando cotización oficial ${quoteToEdit.correlative}`);
       };
@@ -1941,13 +2066,14 @@
           id: 'item-cloned-' + Date.now() + '-' + idx
         }));
         setQuoteItems(clonedItems);
+        setQuoteImages(oldQuote.images || []);
 
         // 3. Cargar descuento y tasa de impuestos
         setDiscountAmount(oldQuote.discountAmount || 0);
         setTaxRate(oldQuote.taxRate ?? 19);
 
         // 4. Cambiar a la pestaña de cotizador para continuar o emitir
-        setIntranetSection('taller');
+        setIntranetSection('admin');
         setIntranetTab('cotizador');
         showToast(`📋 Datos de ${oldQuote.client.name} cargados para nueva cotización (${currentCorrelativeCode})`);
       };
@@ -1972,6 +2098,7 @@
           manufacturingDays: '5 a 7 días hábiles'
         });
         setQuoteItems([]);
+        setQuoteImages([]);
         setItemDesc('');
         setItemWidth('');
         setItemHeight('');
@@ -1996,7 +2123,7 @@
         setDiscountAmount(0);
         setTaxRate(19);
         setEditingCorrelative(null);
-        setIntranetSection('taller');
+        setIntranetSection('admin');
         setIntranetTab('cotizador');
         showToast(`✨ Nueva cotización lista con correlativo ${currentCorrelativeCode}`);
       };
@@ -2162,6 +2289,7 @@
           timestamp: Date.now(),
           client: { ...intranetClientData },
           items: [...quoteItems],
+          images: [...quoteImages],
           totals: { ...financialTotals },
           discountAmount,
           taxRate,
@@ -2540,6 +2668,7 @@
             deliveryAddress: quote.client?.deliveryAddress || ''
           },
           items: quote.items || [],
+          images: quote.images || [],
           materials: materials,
           assignedTech: 'Taller Matriz (Olivar)',
           priority: 'Normal',
@@ -2550,6 +2679,7 @@
         const updatedOrders = [newOt, ...workOrders];
         saveWorkOrdersList(updatedOrders);
         showToast(`🎉 Cotización ${correlative} APROBADA y enviada a Taller (${otFolio})`);
+        setIntranetSection('taller');
         setIntranetTab('taller');
         setOtSearch(correlative);
       };
@@ -4061,7 +4191,7 @@
             <main className="flex-1 bg-zinc-950 py-8 px-4 sm:px-8">
               <div className="max-w-7xl mx-auto space-y-8">
                 
-                {/* Barra Superior / Switcher de Espacios de la Intranet */}
+                                {/* Barra Superior / Switcher de Espacios de la Intranet */}
                 <div className="p-4 sm:p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shadow-lg shadow-red-600/30">
@@ -4073,13 +4203,68 @@
                         <span className="text-zinc-600">•</span>
                         <span className="text-[11px] text-zinc-400">Letreros Olivar SpA</span>
                       </div>
-                                            <h1 className="text-lg sm:text-xl font-black text-white font-heading">
-                        Administración & Cotizaciones de Taller
+                      <h1 className="text-lg sm:text-xl font-black text-white font-heading">
+                        {intranetSection === 'portal' ? 'Menú Principal de Espacios' : intranetSection === 'admin' ? 'Área Comercial & Administración' : 'Área Técnica & Taller de Producción'}
                       </h1>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Botones de navegación directa entre espacios */}
+                    <div className="flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => setIntranetSection('portal')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                          intranetSection === 'portal'
+                            ? 'bg-zinc-800 text-white shadow-sm'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Ver los dos cuadros de espacios"
+                      >
+                        <Icon name="home" className="w-3.5 h-3.5" />
+                        <span>🏠 Menú de Espacios</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIntranetSection('admin');
+                          if (intranetTab === 'taller' || intranetTab === 'calendario') {
+                            setIntranetTab('cotizador');
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                          intranetSection === 'admin'
+                            ? 'bg-red-600 text-white shadow-sm shadow-red-900/40'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Ir a Cotizaciones, Historial, Tarifario y Clientes"
+                      >
+                        <Icon name="file-text" className="w-3.5 h-3.5" />
+                        <span>💼 Administración</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIntranetSection('taller');
+                          if (intranetTab !== 'taller' && intranetTab !== 'calendario') {
+                            setIntranetTab('taller');
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                          intranetSection === 'taller'
+                            ? 'bg-amber-500 text-black shadow-sm font-extrabold'
+                            : 'text-zinc-400 hover:text-white'
+                        }`}
+                        title="Ir a Órdenes de Trabajo, Materiales y Calendario"
+                      >
+                        <Icon name="tool" className="w-3.5 h-3.5" />
+                        <span>🏭 Taller & OT</span>
+                      </button>
+                    </div>
+
                     <button
                       type="button"
                       onClick={handleSyncAllCloud}
@@ -4129,11 +4314,238 @@
                   </div>
                 </div>
 
-                {/* VISTA 2: ESPACIO DE COTIZACIONES & TALLER (CON SUS 5 PESTAÑAS INTERNAS) */}
-                {intranetSection === 'taller' && (
+                {/* ============================================================== */}
+                {/* VISTA 1: PORTAL PRINCIPAL DE 2 CUADROS INDEPENDIENTES          */}
+                {/* (ADMINISTRACIÓN COMERCIAL vs TALLER PRODUCCIÓN)                */}
+                {/* ============================================================== */}
+                {intranetSection === 'portal' && (
                   <div className="space-y-6">
-                    {/* Header secundario exclusivo de Cotizaciones */}
-                    <div className="p-4 rounded-xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                    <div className="text-center max-w-2xl mx-auto space-y-2 py-4">
+                      <span className="text-xs font-mono font-bold text-red-500 uppercase tracking-widest bg-red-950/40 px-3 py-1 rounded-full border border-red-800/40">
+                        SISTEMA INTEGRADO DE GESTIÓN
+                      </span>
+                      <h2 className="text-2xl sm:text-3xl font-black text-white font-heading">
+                        Selecciona el Espacio de Trabajo
+                      </h2>
+                      <p className="text-xs sm:text-sm text-zinc-400">
+                        Plataforma dividida en dos áreas operativas independientes para agilizar el flujo entre ventas y fabricación.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 pt-2">
+                      {/* CUADRO 1: ADMINISTRACIÓN & COTIZACIONES (COMERCIAL) */}
+                      <div className="p-6 sm:p-8 rounded-3xl bg-zinc-900/90 border border-zinc-800 hover:border-red-600/60 transition shadow-2xl flex flex-col justify-between group hover:shadow-red-950/20">
+                        <div className="space-y-5">
+                          <div className="flex items-center justify-between">
+                            <div className="w-14 h-14 rounded-2xl bg-red-600/20 text-red-500 border border-red-600/40 flex items-center justify-center font-bold text-2xl shadow-lg group-hover:scale-105 transition">
+                              <Icon name="file-text" className="w-7 h-7" />
+                            </div>
+                            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-red-600/10 text-red-400 border border-red-600/20 font-bold uppercase">
+                              Área Comercial / Ventas
+                            </span>
+                          </div>
+
+                          <div>
+                            <h3 className="text-xl sm:text-2xl font-black text-white font-heading">
+                              1. Administración & Cotizaciones
+                            </h3>
+                            <p className="text-xs sm:text-sm text-zinc-400 mt-2 leading-relaxed">
+                              Emisión formal de presupuestos con correlativo automático protegido, tarifario de materiales (Excel), recepción de solicitudes web, maestra de clientes y métricas de ventas.
+                            </p>
+                          </div>
+
+                          {/* Métricas rápidas */}
+                          <div className="grid grid-cols-3 gap-2.5 pt-2">
+                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
+                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Correlativo</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-red-500">{currentCorrelativeCode}</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
+                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Cotizadas</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-white">{quoteHistory.length}</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
+                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Clientes</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-white">{clientsMaster.length}</span>
+                            </div>
+                          </div>
+
+                          {/* Accesos rápidos */}
+                          <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('admin');
+                                setIntranetTab('cotizador');
+                                handleStartNewQuote();
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="plus" className="w-3.5 h-3.5 text-red-500" />
+                              <span className="font-semibold">+ Nueva Cotización</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('admin');
+                                setIntranetTab('historial');
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="history" className="w-3.5 h-3.5 text-red-500" />
+                              <span className="font-semibold">Historial Emitidas</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('admin');
+                                setIntranetTab('kpis');
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="bar-chart" className="w-3.5 h-3.5 text-red-500" />
+                              <span className="font-semibold">Reportes & KPIs</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('admin');
+                                setIntranetTab('clientes');
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="users" className="w-3.5 h-3.5 text-red-500" />
+                              <span className="font-semibold">Maestra Clientes</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-6 mt-4 border-t border-zinc-800/80">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIntranetSection('admin');
+                              setIntranetTab('cotizador');
+                            }}
+                            className="w-full py-3.5 px-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-red-600/30 group-hover:shadow-red-600/50"
+                          >
+                            <span>Ingresar a Administración Comercial</span>
+                            <Icon name="arrow-right" className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* CUADRO 2: TALLER & PRODUCCIÓN (TÉCNICO / MAESTROS) */}
+                      <div className="p-6 sm:p-8 rounded-3xl bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/60 transition shadow-2xl flex flex-col justify-between group hover:shadow-amber-950/20">
+                        <div className="space-y-5">
+                          <div className="flex items-center justify-between">
+                            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold text-2xl shadow-lg group-hover:scale-105 transition">
+                              <Icon name="tool" className="w-7 h-7" />
+                            </div>
+                            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold uppercase">
+                              Área Técnica / Fabricación
+                            </span>
+                          </div>
+
+                          <div>
+                            <h3 className="text-xl sm:text-2xl font-black text-white font-heading">
+                              2. Taller & Producción
+                            </h3>
+                            <p className="text-xs sm:text-sm text-zinc-400 mt-2 leading-relaxed">
+                              Panel operativo de fabricación para maestros y técnicos. Órdenes de Trabajo (OT) aprobadas, checklist de materiales, despiece técnico y calendario de entregas e instalaciones.
+                            </p>
+                          </div>
+
+                          {/* Métricas rápidas */}
+                          <div className="grid grid-cols-3 gap-2.5 pt-2">
+                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
+                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">OTs Activas</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{workOrders.filter(o => o.status !== 'completado').length}</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
+                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Listas / OK</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-emerald-400">{workOrders.filter(o => o.status === 'completado').length}</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
+                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Calendario</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-white">{workshopCalendar.filter(e => e.status !== 'completado').length}</span>
+                            </div>
+                          </div>
+
+                          {/* Accesos rápidos */}
+                          <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('taller');
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="tool" className="w-3.5 h-3.5 text-amber-400" />
+                              <span className="font-semibold">Ver OTs de Taller</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('taller');
+                                setShowNewManualOtModal(true);
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="plus" className="w-3.5 h-3.5 text-amber-400" />
+                              <span className="font-semibold">+ Nueva OT Manual</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('calendario');
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="calendar" className="w-3.5 h-3.5 text-amber-400" />
+                              <span className="font-semibold">Agenda de Entregas</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('admin');
+                                setIntranetTab('precios');
+                              }}
+                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                            >
+                              <Icon name="table" className="w-3.5 h-3.5 text-amber-400" />
+                              <span className="font-semibold">Cubicación / Tarifas</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-6 mt-4 border-t border-zinc-800/80">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIntranetSection('taller');
+                              setIntranetTab('taller');
+                            }}
+                            className="w-full py-3.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/20 group-hover:shadow-amber-500/40"
+                          >
+                            <span>Ingresar a Taller & Producción</span>
+                            <Icon name="arrow-right" className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* ============================================================== */}
+                {/* VISTA 2: ESPACIO 1 - ADMINISTRACIÓN & ÁREA COMERCIAL          */}
+                {/* ============================================================== */}
+                {intranetSection === 'admin' && (
+                  <div className="space-y-6">
+                    {/* Header secundario exclusivo de Administración Comercial */}
+                    <div className="p-4 rounded-2xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
@@ -4177,26 +4589,14 @@
 
                         <button
                           type="button"
-                          onClick={() => setIntranetTab('taller')}
+                          onClick={() => setIntranetTab('kpis')}
                           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                            intranetTab === 'taller' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                            intranetTab === 'kpis' ? 'bg-red-600 text-white shadow-lg shadow-red-900/40 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
                           }`}
                         >
-                          <Icon name="tool" className="w-4 h-4" />
-                          <span>🏭 Taller & OT ({workOrders.filter(o => o.status !== 'completado').length})</span>
+                          <Icon name="bar-chart" className="w-4 h-4" />
+                          <span>📊 Reportes & KPIs</span>
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setIntranetTab('calendario')}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                            intranetTab === 'calendario' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                          }`}
-                        >
-                          <Icon name="calendar" className="w-4 h-4" />
-                          <span>Calendario & Entregas ({workshopCalendar.filter(e => e.status !== 'completado').length})</span>
-                        </button>
-
 
                         <button
                           type="button"
@@ -4221,12 +4621,22 @@
                         </button>
                       </div>
 
-                      <div className="text-xs text-zinc-500 font-mono">
-                        Espacio de Taller Activo
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-red-400 font-mono hidden sm:inline">
+                          Área Comercial Activa
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIntranetSection('portal')}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 flex items-center gap-1.5 transition"
+                          title="Volver a la selección de espacios"
+                        >
+                          <Icon name="home" className="w-3.5 h-3.5" />
+                          <span>Volver al Menú</span>
+                        </button>
                       </div>
                     </div>
-
-                {/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO OFICIAL */}
+{/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO OFICIAL */}
                 {intranetTab === 'cotizador' && (
                   <div className="space-y-8">
                     
@@ -4567,6 +4977,15 @@
                                 </button>
                               </div>
                             )}
+                            <button
+                              type="button"
+                              onClick={handleOpenLivePreview}
+                              className="w-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs border border-blue-500/40 cursor-pointer shadow-sm"
+                              title="Revisar vista previa oficial con formato, fotos y totales antes de imprimir o emitir"
+                            >
+                              <Icon name="printer" className="w-4 h-4" />
+                              <span>👁️ Vista Previa en Vivo (Preview)</span>
+                            </button>
                             <button
                               onClick={handleEmitQuote}
                               className="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-red-600/30 transition flex items-center justify-center gap-2 text-sm"
@@ -5283,6 +5702,75 @@
                             </div>
                           )}
                         </div>
+
+                        {/* 4. FOTOGRAFÍAS & REFERENCIAS DEL PROYECTO (Camila) */}
+                        <div className="p-6 rounded-2xl bg-black border border-zinc-800/80 space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 font-heading">
+                                <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                                4. Fotografías & Referencias del Proyecto ({quoteImages.length})
+                              </h3>
+                              <p className="text-[11px] text-zinc-400 mt-0.5">
+                                Adjunta fotos de terreno, letreros existentes o bocetos. Se incluirán en la cotización, en el PDF y en la ficha de Taller.
+                              </p>
+                            </div>
+                            <label className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/40 text-xs font-bold cursor-pointer transition shadow-sm self-start sm:self-auto">
+                              <Icon name="upload" className="w-4 h-4" />
+                              <span>📸 Adjuntar Fotografías</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+
+                          {quoteImages.length === 0 ? (
+                            <div className="text-center py-6 border-2 border-dashed border-zinc-800 rounded-xl bg-zinc-950/40">
+                              <Icon name="image" className="w-8 h-8 text-zinc-700 mx-auto mb-1.5" />
+                              <p className="text-xs text-zinc-400 font-medium">Sin fotografías adjuntas a esta cotización.</p>
+                              <span className="text-[10px] text-zinc-500">Puedes cargar capturas, fotos de WhatsApp, renders o planos.</span>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                              {quoteImages.map((img, idx) => (
+                                <div key={img.id || idx} className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-2 relative group">
+                                  <div className="relative aspect-video rounded-lg overflow-hidden bg-black border border-zinc-800 flex items-center justify-center">
+                                    <img
+                                      src={img.data}
+                                      alt={img.name || `Referencia ${idx + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveQuoteImage(img.id)}
+                                      className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center hover:bg-red-500 shadow-md transition"
+                                      title="Eliminar fotografía"
+                                    >
+                                      <Icon name="x" className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <input
+                                      type="text"
+                                      placeholder="Descripción / Nota (ej: fachada tienda)..."
+                                      value={img.caption || ''}
+                                      onChange={(e) => handleUpdateImageCaption(img.id, e.target.value)}
+                                      className="w-full bg-black text-white px-2.5 py-1 rounded text-[11px] border border-zinc-800 focus:border-red-600 focus:outline-none"
+                                    />
+                                    <div className="flex items-center justify-between text-[9px] text-zinc-500 font-mono px-1">
+                                      <span className="truncate max-w-[140px]">{img.name}</span>
+                                      <span>Foto #{idx + 1}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -5534,794 +6022,287 @@
                   </div>
                 )}
 
-                {/* SUB-PESTAÑA: GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) */}
-                {intranetTab === 'taller' && (
+                
+                {/* SUB-PESTAÑA: REPORTES MENSUALES Y KPIS DE VENTAS & PRODUCCIÓN */}
+                {intranetTab === 'kpis' && (
                   <div className="space-y-6">
-                    {/* Header de Taller */}
-                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-                      <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold mb-2">
-                          <Icon name="tool" className="w-3.5 h-3.5" />
-                          ÁREA TÉCNICA & PRODUCCIÓN
-                        </div>
-                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
-                          Gestión de Taller & Órdenes de Trabajo (OT)
-                        </h2>
-                        <p className="text-xs text-zinc-400 mt-1">
-                          Seguimiento de pedidos aprobados, publicación y checklist de materiales, corte CNC, armado y control de calidad.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowNewManualOtModal(true)}
-                          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-lg shadow-red-600/30 cursor-pointer"
-                        >
-                          <Icon name="plus" className="w-4 h-4" />
-                          <span>+ Nueva OT de Taller</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSyncAllCloud}
-                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition cursor-pointer"
-                          title="Forzar actualización en tiempo real desde Firebase"
-                        >
-                          <Icon name="refresh" className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Sincronizar</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Resumen de Métricas de Producción */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Total OTs Activas</span>
-                          <span className="text-xl font-black text-white font-mono mt-0.5 block">{workOrders.length}</span>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 font-bold">🏭</div>
-                      </div>
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">📥 Por Iniciar</span>
-                          <span className="text-xl font-black text-amber-400 font-mono mt-0.5 block">
-                            {workOrders.filter(o => o.status === 'por_iniciar').length}
-                          </span>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">⏳</div>
-                      </div>
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">⚡ En Fabricación</span>
-                          <span className="text-xl font-black text-blue-400 font-mono mt-0.5 block">
-                            {workOrders.filter(o => o.status === 'fabricacion' || o.status === 'diseno').length}
-                          </span>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">⚙️</div>
-                      </div>
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">✅ Listas / Calidad</span>
-                          <span className="text-xl font-black text-emerald-400 font-mono mt-0.5 block">
-                            {workOrders.filter(o => o.status === 'completado' || o.status === 'calidad').length}
-                          </span>
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">🏆</div>
-                      </div>
-                    </div>
-
-                    {/* Filtros y Buscador */}
-                    <div className="p-4 rounded-xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {[
-                          { id: 'todos', label: 'Todas las OTs' },
-                          { id: 'por_iniciar', label: '📥 Por Iniciar' },
-                          { id: 'diseno', label: '📐 Archivo & Medidas' },
-                          { id: 'fabricacion', label: '⚡ En Fabricación' },
-                          { id: 'calidad', label: '🔍 Control Calidad' },
-                          { id: 'completado', label: '✅ Terminadas' }
-                        ].map(tab => (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setOtFilterStatus(tab.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                              otFilterStatus === tab.id ? 'bg-red-600 text-white shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                            }`}
-                          >
-                            {tab.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="relative w-full md:w-64">
-                        <input
-                          type="text"
-                          placeholder="Buscar OT, cotización, cliente..."
-                          value={otSearch}
-                          onChange={(e) => setOtSearch(e.target.value)}
-                          className="w-full bg-zinc-900 text-white text-xs pl-8 pr-3 py-2 rounded-xl border border-zinc-700 focus:border-red-600 focus:outline-none"
-                        />
-                        <div className="absolute left-2.5 top-2.5 text-zinc-500">
-                          <Icon name="search" className="w-3.5 h-3.5" />
-                        </div>
-                        {otSearch && (
-                          <button
-                            type="button"
-                            onClick={() => setOtSearch('')}
-                            className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white text-xs"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* LISTA / TARJETAS DE ÓRDENES DE TRABAJO */}
-                    {(() => {
-                      const searchLower = (otSearch || '').toLowerCase().trim();
-                      const filteredWorkOrders = workOrders.filter(ot => {
-                        const matchStatus = otFilterStatus === 'todos' || ot.status === otFilterStatus;
-                        const matchSearch = !searchLower ||
-                          (ot.otFolio || '').toLowerCase().includes(searchLower) ||
-                          (ot.correlative || '').toLowerCase().includes(searchLower) ||
-                          (ot.client?.name || '').toLowerCase().includes(searchLower) ||
-                          (ot.items || []).some(it => (it.name || '').toLowerCase().includes(searchLower)) ||
-                          (ot.materials || []).some(m => (m.name || '').toLowerCase().includes(searchLower));
-                        return matchStatus && matchSearch;
-                      });
-
-                      if (filteredWorkOrders.length === 0) {
-                        return (
-                          <div className="p-12 text-center bg-black border border-zinc-800 rounded-2xl text-zinc-500 space-y-3">
-                            <div className="text-3xl">🏭</div>
-                            <p className="text-sm font-semibold text-zinc-400">No hay órdenes de trabajo en este estado o filtro.</p>
-                            <p className="text-xs text-zinc-600">
-                              Para enviar trabajos aquí, ve a <strong>Historial Emitidas</strong> y presiona <strong>"✅ Aprobar y Crear OT"</strong> en cualquier cotización.
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div className="space-y-6">
-                          {filteredWorkOrders.map(ot => {
-                            const totalMaterials = (ot.materials || []).length;
-                            const readyMaterials = (ot.materials || []).filter(m => m.checked).length;
-                            const progressPercent = totalMaterials > 0 ? Math.round((readyMaterials / totalMaterials) * 100) : 0;
-
-                            return (
-                              <div key={ot.id} className="p-6 rounded-2xl bg-black border border-zinc-800/90 shadow-xl space-y-5 hover:border-zinc-700 transition">
-                                {/* Encabezado de la Tarjeta OT */}
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
-                                  <div>
-                                    <div className="flex flex-wrap items-center gap-2.5">
-                                      <span className="text-lg font-black font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/40 px-3 py-1 rounded-xl">
-                                        {ot.otFolio || `OT-${ot.numericFolio}`}
-                                      </span>
-                                      <span className="text-xs font-mono font-bold text-red-400 bg-red-950/30 border border-red-900/40 px-2.5 py-1 rounded-lg">
-                                        Cotización: {ot.correlative}
-                                      </span>
-                                      <span className="text-xs text-zinc-400">
-                                        📅 Ingreso: {ot.createdAt}
-                                      </span>
-                                      <span className="text-xs text-amber-400 font-semibold bg-amber-950/30 border border-amber-900/40 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                                        ⏰ Entrega Prometida: {ot.deadline || 'Por coordinar'}
-                                      </span>
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap items-center gap-3">
-                                      <span className="text-white font-bold text-base">{ot.client?.name}</span>
-                                      {ot.client?.documentId && <span className="text-xs text-zinc-400 font-mono">RUT: {ot.client.documentId}</span>}
-                                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-400 border border-blue-500/30">
-                                        {ot.client?.deliveryMethod === 'instalacion' ? '🏗️ Requiere Instalación en Terreno' : ot.client?.deliveryMethod === 'entrega' ? '📦 Despacho a Cliente' : '🏬 Retiro en Taller Matriz'}
-                                      </span>
-                                    </div>
-                                    {ot.client?.deliveryAddress && (
-                                      <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1.5">
-                                        <span>📍 Dirección Obra:</span>
-                                        <strong className="text-zinc-200">{ot.client.deliveryAddress}</strong>
-                                      </p>
-                                    )}
-                                  </div>
-
-                                  {/* Acciones Rápidas Superior */}
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenOtPrintModal(ot)}
-                                      className="bg-zinc-900 hover:bg-zinc-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                                      title="Imprimir Ficha Técnica de Taller para los Maestros (Sin precios de venta)"
-                                    >
-                                      <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
-                                      <span>🖨️ Ficha de Taller</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleScheduleOtInCalendar(ot)}
-                                      className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                                      title="Agendar entrega o instalación en el calendario oficial"
-                                    >
-                                      <Icon name="calendar" className="w-3.5 h-3.5" />
-                                      <span>📅 Agendar Entrega</span>
-                                    </button>
-                                    {ot.client?.phone && (
-                                      <a
-                                        href={`https://wa.me/${(ot.client.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${ot.client.name}, le saludamos de Letreros Olivar SpA para informarle el avance de su trabajo (${ot.otFolio}).`)}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="bg-zinc-900 hover:bg-zinc-800 text-emerald-400 px-3 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
-                                      >
-                                        <Icon name="whatsapp" className="w-3.5 h-3.5" />
-                                        <span>WhatsApp</span>
-                                      </a>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteWorkOrder(ot.id)}
-                                      className="bg-red-950/20 hover:bg-red-600 text-red-400 hover:text-white p-2 rounded-xl text-xs border border-red-900/40 transition cursor-pointer"
-                                      title="Eliminar esta Orden de Trabajo"
-                                    >
-                                      <Icon name="trash" className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* FASES DE PRODUCCIÓN (BOTONES KANBAN 1-CLICK) */}
-                                <div className="bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
-                                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-red-600"></span>
-                                    Estado del Trabajo en Taller:
-                                  </span>
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    {[
-                                      { id: 'por_iniciar', label: '📥 Por Iniciar', activeClass: 'bg-amber-600 text-white' },
-                                      { id: 'diseno', label: '📐 Archivo & Medidas', activeClass: 'bg-indigo-600 text-white' },
-                                      { id: 'fabricacion', label: '⚡ En Fabricación', activeClass: 'bg-blue-600 text-white' },
-                                      { id: 'calidad', label: '🔍 Control de Calidad', activeClass: 'bg-purple-600 text-white' },
-                                      { id: 'completado', label: '✅ Terminado / Listo', activeClass: 'bg-emerald-600 text-white' }
-                                    ].map(st => (
-                                      <button
-                                        key={st.id}
-                                        type="button"
-                                        onClick={() => handleUpdateOtStage(ot.id, st.id)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                                          ot.status === st.id ? st.activeClass + ' shadow-md' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
-                                        }`}
-                                      >
-                                        <span>{st.label}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* REQUERIMIENTO PRINCIPAL: PUBLICACIÓN Y GESTIÓN DE MATERIALES */}
-                                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800/80 space-y-3">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-900 pb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-bold text-white font-heading">
-                                        📋 Publicación de Materiales para Maestros de Taller
-                                      </span>
-                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                                        {readyMaterials} de {totalMaterials} preparados ({progressPercent}%)
-                                      </span>
-                                    </div>
-                                    <div className="w-full sm:w-48 bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-800">
-                                      <div
-                                        className={`h-full transition-all duration-300 ${progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-600'}`}
-                                        style={{ width: `${progressPercent}%` }}
-                                      ></div>
-                                    </div>
-                                  </div>
-
-                                  {/* Lista de Materiales Técnicos Calculados */}
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-                                    {(ot.materials || []).map(mat => (
-                                      <div
-                                        key={mat.id}
-                                        onClick={() => handleToggleMaterialCheck(ot.id, mat.id)}
-                                        className={`p-3 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
-                                          mat.checked ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-200' : 'bg-black border-zinc-800 hover:border-zinc-700 text-zinc-300'
-                                        }`}
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={mat.checked}
-                                          onChange={() => {}}
-                                          className="mt-0.5 rounded text-emerald-600 focus:ring-0 cursor-pointer"
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-2">
-                                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                                              mat.category === 'Sustrato' ? 'bg-blue-600/20 text-blue-400' :
-                                              mat.category === 'Planchas' ? 'bg-purple-600/20 text-purple-400' :
-                                              mat.category === 'Estructura' ? 'bg-amber-600/20 text-amber-400' :
-                                              mat.category === 'Eléctrico' ? 'bg-yellow-600/20 text-yellow-400' :
-                                              'bg-zinc-800 text-zinc-400'
-                                            }`}>
-                                              {mat.category}
-                                            </span>
-                                            <strong className={`text-xs block truncate ${mat.checked ? 'line-through text-zinc-400' : 'text-white'}`}>
-                                              {mat.name}
-                                            </strong>
-                                          </div>
-                                          <p className="text-[11px] text-zinc-400 mt-1 font-mono">
-                                            ↳ {mat.spec}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* DETALLE TÉCNICO DE TRABAJOS DE LA COTIZACIÓN */}
-                                <div className="space-y-2">
-                                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
-                                    📐 Trabajos a Realizar ({ot.items?.length || 0} ítems):
-                                  </span>
-                                  <div className="divide-y divide-zinc-900 border border-zinc-900 rounded-xl overflow-hidden bg-black">
-                                    {(ot.items || []).map((it, i) => (
-                                      <div key={i} className="p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                        <div>
-                                          <strong className="text-white text-sm block">{it.name}</strong>
-                                          {it.detail && <p className="text-zinc-400 mt-0.5 italic">{it.detail}</p>}
-                                          {it.selectedOptions && it.selectedOptions.length > 0 && (
-                                            <div className="text-[10px] text-red-400 mt-0.5">
-                                              Acabados: {it.selectedOptions.join(' • ')}
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="text-right font-mono text-zinc-300">
-                                          <span className="font-bold text-white block">{it.quantity} {it.quantity === 1 ? 'unidad' : 'unidades'}</span>
-                                          {it.calcType === 'sqm' && it.width && it.height && (
-                                            <span className="text-[11px] text-zinc-400 block">{it.width}m × {it.height}m ({(it.width * it.height * it.quantity).toFixed(2)} m²)</span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                {/* Responsable & Notas Técnicas */}
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs text-zinc-500 border-t border-zinc-900">
-                                  <div>
-                                    Responsable Asignado: <strong className="text-zinc-300">{ot.assignedTech || 'Taller Matriz (Olivar)'}</strong>
-                                  </div>
-                                  {ot.notes && (
-                                    <div className="italic text-zinc-400">
-                                      "{ot.notes}"
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-
-                                {/* SUB-PESTAÑA: CALENDARIO DE ENTREGAS & TALLER */}
-                {intranetTab === 'calendario' && (
-                  <div className="space-y-6">
-                    {/* Header de Calendario */}
+                    {/* Header de Reportes y Selector de Mes */}
                     <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
                       <div>
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 text-red-500 border border-red-500/30 text-xs font-bold mb-2">
-                          <Icon name="calendar" className="w-3.5 h-3.5" />
-                          AGENDA DE TALLER & DESPACHOS
+                          <Icon name="bar-chart" className="w-3.5 h-3.5" />
+                          CONTROL DE GESTIÓN & VENTAS NETAS
                         </div>
                         <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
-                          Calendario de Entregas, Instalaciones & Producción
+                          Reportes y Métricas Mensuales (KPIs)
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1">
-                          Planificación de cuadrillas en terreno, entregas a clientes y fabricación en taller. Sincronizado en tiempo real en la nube.
+                          Evaluación de cotizaciones emitidas, ventas netas facturables, tasa de conversión y entregas de taller.
                         </p>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenNewCalModal()}
-                          className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition flex items-center gap-2 shadow-lg shadow-red-600/30"
-                        >
-                          <Icon name="plus" className="w-4 h-4" />
-                          <span>Agendar Nueva Actividad</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleSyncAllCloud}
-                          className="px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-bold transition flex items-center gap-1.5"
-                          title="Sincronizar agenda con la nube"
-                        >
-                          <Icon name="refresh" className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Sincronizar</span>
-                        </button>
+                      {/* Selector de Mes */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 bg-zinc-950 p-3 rounded-2xl border border-zinc-800">
+                        <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+                          <Icon name="calendar" className="w-4 h-4 text-red-500" />
+                          <span>Período:</span>
+                        </label>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <input
+                            type="month"
+                            value={kpiMonth === 'all' ? '' : kpiMonth}
+                            onChange={(e) => setKpiMonth(e.target.value)}
+                            className="bg-black text-white px-3 py-1.5 rounded-xl border border-zinc-700 text-xs font-mono font-bold focus:border-red-600 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const now = new Date();
+                              setKpiMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                              kpiMonth === `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+                                ? 'bg-red-600 text-white'
+                                : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                            }`}
+                            title="Mes actual"
+                          >
+                            Mes Actual
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setKpiMonth('2027-01')}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                              kpiMonth === '2027-01'
+                                ? 'bg-amber-500 text-black font-extrabold shadow-md shadow-amber-500/20'
+                                : 'bg-zinc-900 text-amber-400 hover:text-white border border-amber-500/30'
+                            }`}
+                            title="Puesta en marcha oficial 1 de Enero de 2027"
+                          >
+                            <span>🚀 Ene 2027</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setKpiMonth('all')}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                              kpiMonth === 'all'
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-zinc-900 text-zinc-400 hover:text-white'
+                            }`}
+                            title="Ver todo el consolidado histórico acumulado"
+                          >
+                            Histórico Completo
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Contenido Principal: Grilla Mes + Lista Lateral */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                      
-                      {/* Columna Izquierda: Calendario Mensual (8 cols) */}
-                      <div className="lg:col-span-8 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 sm:p-6 space-y-4">
-                        {/* Cabecera del Mes con Controles */}
+                    {/* Banner de Inicio Enero 2027 */}
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-red-950/40 via-black to-amber-950/30 border border-red-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold text-lg">
+                          🎯
+                        </div>
+                        <div>
+                          <strong className="text-white text-sm block">Puesta en Marcha Oficial: Enero 2027</strong>
+                          <span className="text-xs text-zinc-400">
+                            Período activo: <strong className="text-amber-400 font-mono">{kpiMonth === 'all' ? 'Histórico Consolidado' : kpiMonth}</strong>. Flujo comercial Noviembre-Diciembre 2026 listo para medición continua.
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[11px] text-zinc-400 uppercase font-bold block">Tasa de Cierre Global:</span>
+                        <span className="text-lg font-mono font-black text-emerald-400">{monthlyKpis.conversionRate}%</span>
+                      </div>
+                    </div>
+
+                    {/* Grilla de 5 Tarjetas de Indicadores Clave */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* KPI 1: Ventas Netas Facturadas / Aprobadas */}
+                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-lg hover:border-emerald-500/40 transition">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-lg font-black text-white capitalize">
-                              {currentCalDate.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
-                            </h3>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentCalDate(new Date());
-                                setSelectedCalDay(new Date().toISOString().slice(0, 10));
-                              }}
-                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
-                            >
-                              Hoy
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentCalDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-                              }}
-                              className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition"
-                              title="Mes Anterior"
-                            >
-                              <Icon name="chevron-left" className="w-4 h-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentCalDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-                              }}
-                              className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition"
-                              title="Mes Siguiente"
-                            >
-                              <Icon name="chevron-right" className="w-4 h-4" />
-                            </button>
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Ventas Netas (OTs)</span>
+                          <div className="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-400 flex items-center justify-center font-bold">
+                            $
                           </div>
                         </div>
-
-                        {/* Rejilla de Días de la Semana */}
-                        <div className="grid grid-cols-7 gap-1 text-center font-bold text-xs text-zinc-400 py-2 border-b border-zinc-800">
-                          <div>Lun</div>
-                          <div>Mar</div>
-                          <div>Mié</div>
-                          <div>Jue</div>
-                          <div>Vie</div>
-                          <div className="text-red-400">Sáb</div>
-                          <div className="text-red-400">Dom</div>
+                        <div>
+                          <span className="text-2xl sm:text-3xl font-black font-mono text-white block">
+                            {formatCLP(monthlyKpis.approvedNet)}
+                          </span>
+                          <span className="text-xs text-zinc-400 mt-0.5 block">
+                            Total c/IVA: {formatCLP(monthlyKpis.approvedAmount)}
+                          </span>
                         </div>
+                        <div className="pt-2 border-t border-zinc-900 flex items-center justify-between text-xs text-zinc-400">
+                          <span>Aprobadas a Taller:</span>
+                          <strong className="text-emerald-400 font-mono font-bold">{monthlyKpis.approvedQuotesCount} cotizaciones</strong>
+                        </div>
+                      </div>
 
-                        {/* Días del Mes */}
-                        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-                          {(() => {
-                            const year = currentCalDate.getFullYear();
-                            const month = currentCalDate.getMonth();
-                            const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
-                            const daysInMonth = new Date(year, month + 1, 0).getDate();
-                            const todayStr = new Date().toISOString().slice(0, 10);
-                            const cells = [];
+                      {/* KPI 2: Total Cotizado */}
+                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-lg hover:border-red-600/40 transition">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-red-500">Total Cotizado</span>
+                          <div className="w-8 h-8 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center font-bold">
+                            <Icon name="file-text" className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-2xl sm:text-3xl font-black font-mono text-white block">
+                            {formatCLP(monthlyKpis.totalQuotedAmount)}
+                          </span>
+                          <span className="text-xs text-zinc-400 mt-0.5 block">
+                            Neto Cotizado: {formatCLP(monthlyKpis.totalQuotedNet)}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-900 flex items-center justify-between text-xs text-zinc-400">
+                          <span>Propuestas Emitidas:</span>
+                          <strong className="text-white font-mono font-bold">{monthlyKpis.totalQuotesCount} cotizaciones</strong>
+                        </div>
+                      </div>
 
-                            for (let i = 0; i < firstDayIndex; i++) {
-                              cells.push(
-                                <div key={`empty-${i}`} className="min-h-[70px] sm:min-h-[85px] rounded-xl bg-zinc-950/30 border border-transparent p-1 opacity-20"></div>
-                              );
-                            }
+                      {/* KPI 3: Tasa de Conversión (%) */}
+                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-lg hover:border-blue-500/40 transition">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Conversión a Venta</span>
+                          <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold">
+                            %
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-2xl sm:text-3xl font-black font-mono text-blue-400 block">
+                            {monthlyKpis.conversionRate}%
+                          </span>
+                          <div className="w-full bg-zinc-900 rounded-full h-2 mt-2 overflow-hidden">
+                            <div
+                              className="bg-blue-500 h-full rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min(100, monthlyKpis.conversionRate)}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-900 flex items-center justify-between text-xs text-zinc-400">
+                          <span>Efectividad Comercial:</span>
+                          <strong className="text-white font-mono">{monthlyKpis.approvedQuotesCount} de {monthlyKpis.totalQuotesCount}</strong>
+                        </div>
+                      </div>
 
-                            for (let d = 1; d <= daysInMonth; d++) {
-                              const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                              const isToday = dayStr === todayStr;
-                              const isSelected = dayStr === selectedCalDay;
-                              const dayEvents = workshopCalendar.filter(ev => ev.date === dayStr);
+                      {/* KPI 4: Rendimiento de Taller & Entregas */}
+                      <div className="p-5 rounded-2xl bg-black border border-zinc-800 space-y-3 shadow-lg hover:border-amber-500/40 transition">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Producción Taller</span>
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                            <Icon name="tool" className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-2xl sm:text-3xl font-black font-mono text-white block">
+                            {monthlyKpis.completedOtsCount} / {monthlyKpis.totalOtsCount}
+                          </span>
+                          <span className="text-xs text-emerald-400 mt-0.5 block font-semibold">
+                            {monthlyKpis.deliveryRate}% trabajos entregados
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-900 flex items-center justify-between text-xs text-zinc-400">
+                          <span>En Fabricación / Montaje:</span>
+                          <strong className="text-amber-400 font-mono font-bold">{monthlyKpis.inProgressOtsCount} OTs</strong>
+                        </div>
+                      </div>
+                    </div>
 
-                              cells.push(
-                                <div
-                                  key={dayStr}
-                                  onClick={() => setSelectedCalDay(isSelected ? null : dayStr)}
-                                  className={`min-h-[70px] sm:min-h-[85px] rounded-xl p-1.5 sm:p-2 cursor-pointer transition flex flex-col justify-between border ${
-                                    isSelected
-                                      ? 'bg-red-950/40 border-red-500 shadow-md ring-1 ring-red-500/50'
-                                      : isToday
-                                      ? 'bg-zinc-800/80 border-red-500/80'
-                                      : 'bg-zinc-950/70 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900/60'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
-                                      isToday ? 'bg-red-600 text-white font-black' : 'text-zinc-300'
-                                    }`}>
-                                      {d}
-                                    </span>
-                                    {dayEvents.length > 0 && (
-                                      <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-300">
-                                        {dayEvents.length}
+                    {/* Tabla de Desglose de Cotizaciones del Período */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 space-y-4 shadow-xl">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-900 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <Icon name="file-text" className="w-5 h-5 text-red-500" />
+                          <h3 className="font-heading font-black text-white text-base">
+                            Detalle de Cotizaciones del Período ({monthlyKpis.monthQuotes.length})
+                          </h3>
+                        </div>
+                        <span className="text-xs text-zinc-500 font-mono">
+                          Monto Acumulado: {formatCLP(monthlyKpis.totalQuotedAmount)}
+                        </span>
+                      </div>
+
+                      {monthlyKpis.monthQuotes.length === 0 ? (
+                        <div className="text-center py-10 border border-dashed border-zinc-800 rounded-xl bg-zinc-950/40">
+                          <Icon name="file-text" className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
+                          <p className="text-xs text-zinc-400 font-medium">No se registran cotizaciones emitidas en este mes.</p>
+                          <span className="text-[11px] text-zinc-500">Prueba cambiando el mes o seleccionando "Histórico Completo".</span>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="border-b border-zinc-800 text-zinc-400 uppercase text-[10px] tracking-wider">
+                                <th className="py-2.5 px-3">Folio</th>
+                                <th className="py-2.5 px-3">Fecha</th>
+                                <th className="py-2.5 px-3">Cliente / Empresa</th>
+                                <th className="py-2.5 px-3">Ítems</th>
+                                <th className="py-2.5 px-3 text-right">Neto ($)</th>
+                                <th className="py-2.5 px-3 text-right">Total ($)</th>
+                                <th className="py-2.5 px-3 text-center">Estado</th>
+                                <th className="py-2.5 px-3 text-center">Taller (OT)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800/60 font-mono">
+                              {monthlyKpis.monthQuotes.map(q => {
+                                const matchedOt = workOrders.find(o => o.correlative === q.correlative);
+                                return (
+                                  <tr key={q.correlative} className="hover:bg-zinc-950 transition">
+                                    <td className="py-3 px-3 font-bold text-red-500">{q.correlative}</td>
+                                    <td className="py-3 px-3 text-zinc-400 font-sans">{q.date}</td>
+                                    <td className="py-3 px-3 font-sans">
+                                      <strong className="text-white block">{q.client.name}</strong>
+                                      {q.client.company && <span className="text-[10px] text-zinc-400 block">{q.client.company}</span>}
+                                    </td>
+                                    <td className="py-3 px-3 text-zinc-300 font-sans">
+                                      {q.items ? q.items.length : 0} trabajo(s)
+                                    </td>
+                                    <td className="py-3 px-3 text-right text-zinc-300">
+                                      {formatCLP(q.totals?.taxableSubtotal || q.totals?.subtotal || 0)}
+                                    </td>
+                                    <td className="py-3 px-3 text-right font-black text-white">
+                                      {formatCLP(q.totals?.total || 0)}
+                                    </td>
+                                    <td className="py-3 px-3 text-center font-sans">
+                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        q.status === 'Aprobada'
+                                          ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
+                                          : 'bg-zinc-800 text-zinc-400'
+                                      }`}>
+                                        {q.status || 'Emitida'}
                                       </span>
-                                    )}
-                                  </div>
-
-                                  <div className="space-y-1 mt-1 overflow-hidden">
-                                    {dayEvents.slice(0, 2).map(ev => {
-                                      let badgeBg = 'bg-blue-600/30 text-blue-300 border-blue-500/40';
-                                      let iconStr = '🏗️';
-                                      if (ev.type === 'despacho') {
-                                        badgeBg = 'bg-emerald-600/30 text-emerald-300 border-emerald-500/40';
-                                        iconStr = '📦';
-                                      } else if (ev.type === 'produccion') {
-                                        badgeBg = 'bg-amber-600/30 text-amber-300 border-amber-500/40';
-                                        iconStr = '🏭';
-                                      } else if (ev.type === 'medicion') {
-                                        badgeBg = 'bg-purple-600/30 text-purple-300 border-purple-500/40';
-                                        iconStr = '📐';
-                                      }
-                                      return (
-                                        <div
-                                          key={ev.id}
-                                          className={`text-[9px] sm:text-[10px] font-semibold truncate px-1 py-0.5 rounded border ${badgeBg} ${
-                                            ev.status === 'completado' ? 'line-through opacity-60' : ''
-                                          }`}
-                                          title={`${ev.time} - ${ev.title} (${ev.client})`}
+                                    </td>
+                                    <td className="py-3 px-3 text-center font-sans">
+                                      {matchedOt ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setIntranetSection('taller');
+                                            setIntranetTab('taller');
+                                            setOtSearch(q.correlative);
+                                          }}
+                                          className="text-[10px] px-2 py-0.5 rounded bg-emerald-600/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 font-mono transition"
+                                          title="Ver en Taller"
                                         >
-                                          {iconStr} {ev.title}
-                                        </div>
-                                      );
-                                    })}
-                                    {dayEvents.length > 2 && (
-                                      <div className="text-[9px] text-zinc-500 font-bold pl-1">
-                                        +{dayEvents.length - 2} más...
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            }
-
-                            return cells;
-                          })()}
-                        </div>
-
-                        {/* Leyenda de Colores */}
-                        <div className="pt-3 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-[11px] text-zinc-400">
-                          <div className="flex flex-wrap items-center gap-3">
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                              <span>🏗️ Instalación Terreno</span>
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                              <span>📦 Despacho Cliente</span>
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                              <span>🏭 Producción Taller</span>
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                              <span>📐 Medición Técnica</span>
-                            </span>
-                          </div>
-
-                          {selectedCalDay && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenNewCalModal({ date: selectedCalDay })}
-                              className="text-xs font-bold text-red-500 hover:text-red-400 underline flex items-center gap-1"
-                            >
-                              <span>+ Agendar para el {selectedCalDay}</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Columna Derecha: Lista de Tareas y Agenda (4 cols) */}
-                      <div className="lg:col-span-4 space-y-4">
-                        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="font-heading font-black text-white text-sm flex items-center gap-2">
-                              <Icon name="clock" className="w-4 h-4 text-red-500" />
-                              <span>
-                                {selectedCalDay ? `Actividades del ${selectedCalDay}` : 'Próximas Actividades'}
-                              </span>
-                            </h3>
-                            {selectedCalDay && (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedCalDay(null)}
-                                className="text-[11px] text-zinc-400 hover:text-white"
-                              >
-                                Ver Todas
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Filtros de Tipo y Estado */}
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            <select
-                              value={calFilterType}
-                              onChange={(e) => setCalFilterType(e.target.value)}
-                              className="bg-black text-zinc-300 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none"
-                            >
-                              <option value="todos">Todos los Tipos</option>
-                              <option value="instalacion">🏗️ Instalaciones</option>
-                              <option value="despacho">📦 Despachos</option>
-                              <option value="produccion">🏭 Producción</option>
-                              <option value="medicion">📐 Mediciones</option>
-                            </select>
-
-                            <select
-                              value={calFilterStatus}
-                              onChange={(e) => setCalFilterStatus(e.target.value)}
-                              className="bg-black text-zinc-300 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none"
-                            >
-                              <option value="todos">Todos los Estados</option>
-                              <option value="pendiente">⏳ Pendientes</option>
-                              <option value="en_proceso">⚡ En Proceso</option>
-                              <option value="completado">✅ Completados</option>
-                            </select>
-                          </div>
-
-                          {/* Lista de Actividades */}
-                          <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-                            {(() => {
-                              let list = workshopCalendar || [];
-                              if (selectedCalDay) {
-                                list = list.filter(ev => ev.date === selectedCalDay);
-                              }
-                              if (calFilterType !== 'todos') {
-                                list = list.filter(ev => ev.type === calFilterType);
-                              }
-                              if (calFilterStatus !== 'todos') {
-                                list = list.filter(ev => ev.status === calFilterStatus);
-                              }
-                              list.sort((a, b) => (a.date + ' ' + a.time).localeCompare(b.date + ' ' + b.time));
-
-                              if (list.length === 0) {
-                                return (
-                                  <div className="p-8 text-center text-zinc-500 text-xs">
-                                    No hay actividades registradas con los filtros seleccionados.
-                                  </div>
+                                          {matchedOt.otFolio} ({matchedOt.status === 'completado' ? 'Listo' : 'En taller'})
+                                        </button>
+                                      ) : (
+                                        <span className="text-[10px] text-zinc-600 font-mono">Sin OT</span>
+                                      )}
+                                    </td>
+                                  </tr>
                                 );
-                              }
-
-                              return list.map(ev => {
-                                let badgeBg = 'bg-blue-600/20 text-blue-400 border-blue-500/30';
-                                let typeLabel = 'Instalación';
-                                if (ev.type === 'despacho') {
-                                  badgeBg = 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30';
-                                  typeLabel = 'Despacho';
-                                } else if (ev.type === 'produccion') {
-                                  badgeBg = 'bg-amber-600/20 text-amber-400 border-amber-500/30';
-                                  typeLabel = 'Producción';
-                                } else if (ev.type === 'medicion') {
-                                  badgeBg = 'bg-purple-600/20 text-purple-400 border-purple-500/30';
-                                  typeLabel = 'Medición';
-                                }
-
-                                return (
-                                  <div
-                                    key={ev.id}
-                                    className={`p-3.5 rounded-xl border bg-black/60 transition space-y-2.5 ${
-                                      ev.status === 'completado'
-                                        ? 'border-zinc-800/60 opacity-60'
-                                        : 'border-zinc-800 hover:border-zinc-700'
-                                    }`}
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="space-y-1">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeBg}`}>
-                                            {typeLabel}
-                                          </span>
-                                          <span className="text-[11px] font-mono font-bold text-zinc-300">
-                                            📅 {ev.date} • 🕒 {ev.time}
-                                          </span>
-                                        </div>
-                                        <h4 className={`text-xs font-bold text-white ${ev.status === 'completado' ? 'line-through text-zinc-400' : ''}`}>
-                                          {ev.title}
-                                        </h4>
-                                      </div>
-
-                                      <button
-                                        type="button"
-                                        onClick={() => handleToggleCalEventStatus(ev.id)}
-                                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition ${
-                                          ev.status === 'completado'
-                                            ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/40'
-                                            : ev.status === 'en_proceso'
-                                            ? 'bg-amber-600/20 text-amber-400 border-amber-500/40'
-                                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
-                                        }`}
-                                        title="Cambiar estado"
-                                      >
-                                        {ev.status === 'completado' ? '✓ Listo' : ev.status === 'en_proceso' ? '⚡ Proceso' : '⏳ Pendiente'}
-                                      </button>
-                                    </div>
-
-                                    {ev.client && (
-                                      <div className="text-[11px] text-zinc-400 flex items-center justify-between gap-2">
-                                        <span className="truncate font-semibold text-zinc-300">🏢 {ev.client}</span>
-                                        {ev.phone && (
-                                          <a
-                                            href={`https://wa.me/${ev.phone.replace(/\D/g, '')}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-emerald-400 hover:underline flex items-center gap-1 flex-shrink-0"
-                                            title="Contactar por WhatsApp"
-                                          >
-                                            <Icon name="phone" className="w-3 h-3" />
-                                            <span>WhatsApp</span>
-                                          </a>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {ev.address && (
-                                      <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
-                                        <Icon name="map-pin" className="w-3 h-3 text-red-500 flex-shrink-0" />
-                                        <a
-                                          href={`https://maps.google.com/?q=${encodeURIComponent(ev.address)}`}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="truncate hover:text-white hover:underline"
-                                          title="Ver en Google Maps"
-                                        >
-                                          {ev.address}
-                                        </a>
-                                      </div>
-                                    )}
-
-                                    {ev.correlative && (
-                                      <div className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
-                                        <span>Doc:</span>
-                                        <span className="text-red-400 font-bold">{ev.correlative}</span>
-                                      </div>
-                                    )}
-
-                                    {ev.notes && (
-                                      <p className="text-[11px] text-zinc-400 italic bg-zinc-950/60 p-2 rounded-lg border border-zinc-900">
-                                        "{ev.notes}"
-                                      </p>
-                                    )}
-
-                                    <div className="pt-2 border-t border-zinc-900 flex items-center justify-end gap-2 text-[11px]">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleEditCalEvent(ev)}
-                                        className="text-zinc-400 hover:text-white flex items-center gap-1"
-                                      >
-                                        <Icon name="edit" className="w-3 h-3" />
-                                        <span>Editar</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteCalEvent(ev.id)}
-                                        className="text-red-500 hover:text-red-400 flex items-center gap-1 ml-2"
-                                      >
-                                        <Icon name="trash" className="w-3 h-3" />
-                                        <span>Eliminar</span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              });
-                            })()}
-                          </div>
+                              })}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
-
+                      )}
                     </div>
                   </div>
                 )}
-
-
-                {/* SUB-PESTAÑA 4: GESTIÓN DE TARIFARIO Y PRECIOS DE TALLER (EXCEL) */}
+{/* SUB-PESTAÑA 4: GESTIÓN DE TARIFARIO Y PRECIOS DE TALLER (EXCEL) */}
                 {intranetTab === 'precios' && (
                   <div className="space-y-6">
                     {/* Header y Acciones */}
@@ -7145,6 +7126,850 @@
                 )}
                 </div>
               )}
+                {/* ============================================================== */}
+                {/* VISTA 3: ESPACIO 2 - TALLER & PRODUCCIÓN (TÉCNICO / MAESTROS)   */}
+                {/* ============================================================== */}
+                {intranetSection === 'taller' && (
+                  <div className="space-y-6">
+                    {/* Header secundario exclusivo de Taller */}
+                    <div className="p-4 rounded-2xl bg-black border border-zinc-800 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIntranetTab('taller')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'taller' ? 'bg-amber-500 text-black font-extrabold shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/50' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="tool" className="w-4 h-4" />
+                          <span>🏭 Órdenes de Trabajo OT ({workOrders.filter(o => o.status !== 'completado').length} activas)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIntranetTab('calendario')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'calendario' ? 'bg-amber-500 text-black font-extrabold shadow-lg shadow-amber-500/20 ring-2 ring-amber-400/50' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="calendar" className="w-4 h-4" />
+                          <span>📅 Calendario & Entregas ({workshopCalendar.filter(e => e.status !== 'completado').length})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowNewManualOtModal(true)}
+                          className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-400 hover:bg-amber-500 hover:text-black border border-amber-500/40 flex items-center gap-1.5 transition ml-1"
+                          title="Crear una orden de trabajo manual directa"
+                        >
+                          <Icon name="plus" className="w-3.5 h-3.5" />
+                          <span>+ Nueva OT Manual</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-amber-400 font-mono hidden sm:inline">
+                          Área Técnica Activa
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIntranetSection('portal')}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 flex items-center gap-1.5 transition"
+                          title="Volver a la selección de espacios"
+                        >
+                          <Icon name="home" className="w-3.5 h-3.5" />
+                          <span>Volver al Menú</span>
+                        </button>
+                      </div>
+                    </div>{/* SUB-PESTAÑA: GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) */}
+                {intranetTab === 'taller' && (
+                  <div className="space-y-6">
+                    {/* Header de Taller */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                      <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold mb-2">
+                          <Icon name="tool" className="w-3.5 h-3.5" />
+                          ÁREA TÉCNICA & PRODUCCIÓN
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
+                          Gestión de Taller & Órdenes de Trabajo (OT)
+                        </h2>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          Seguimiento de pedidos aprobados, publicación y checklist de materiales, corte CNC, armado y control de calidad.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowNewManualOtModal(true)}
+                          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-lg shadow-red-600/30 cursor-pointer"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>+ Nueva OT de Taller</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSyncAllCloud}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition cursor-pointer"
+                          title="Forzar actualización en tiempo real desde Firebase"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Sincronizar</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Resumen de Métricas de Producción */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Total OTs Activas</span>
+                          <span className="text-xl font-black text-white font-mono mt-0.5 block">{workOrders.length}</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 font-bold">🏭</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">📥 Por Iniciar</span>
+                          <span className="text-xl font-black text-amber-400 font-mono mt-0.5 block">
+                            {workOrders.filter(o => o.status === 'por_iniciar').length}
+                          </span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">⏳</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">⚡ En Fabricación</span>
+                          <span className="text-xl font-black text-blue-400 font-mono mt-0.5 block">
+                            {workOrders.filter(o => o.status === 'fabricacion' || o.status === 'diseno').length}
+                          </span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">⚙️</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">✅ Listas / Calidad</span>
+                          <span className="text-xl font-black text-emerald-400 font-mono mt-0.5 block">
+                            {workOrders.filter(o => o.status === 'completado' || o.status === 'calidad').length}
+                          </span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">🏆</div>
+                      </div>
+                    </div>
+
+                    {/* Filtros y Buscador */}
+                    <div className="p-4 rounded-xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { id: 'todos', label: 'Todas las OTs' },
+                          { id: 'por_iniciar', label: '📥 Por Iniciar' },
+                          { id: 'diseno', label: '📐 Archivo & Medidas' },
+                          { id: 'fabricacion', label: '⚡ En Fabricación' },
+                          { id: 'calidad', label: '🔍 Control Calidad' },
+                          { id: 'completado', label: '✅ Terminadas' }
+                        ].map(tab => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setOtFilterStatus(tab.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                              otFilterStatus === tab.id ? 'bg-red-600 text-white shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="relative w-full md:w-64">
+                        <input
+                          type="text"
+                          placeholder="Buscar OT, cotización, cliente..."
+                          value={otSearch}
+                          onChange={(e) => setOtSearch(e.target.value)}
+                          className="w-full bg-zinc-900 text-white text-xs pl-8 pr-3 py-2 rounded-xl border border-zinc-700 focus:border-red-600 focus:outline-none"
+                        />
+                        <div className="absolute left-2.5 top-2.5 text-zinc-500">
+                          <Icon name="search" className="w-3.5 h-3.5" />
+                        </div>
+                        {otSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setOtSearch('')}
+                            className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* LISTA / TARJETAS DE ÓRDENES DE TRABAJO */}
+                    {(() => {
+                      const searchLower = (otSearch || '').toLowerCase().trim();
+                      const filteredWorkOrders = workOrders.filter(ot => {
+                        const matchStatus = otFilterStatus === 'todos' || ot.status === otFilterStatus;
+                        const matchSearch = !searchLower ||
+                          (ot.otFolio || '').toLowerCase().includes(searchLower) ||
+                          (ot.correlative || '').toLowerCase().includes(searchLower) ||
+                          (ot.client?.name || '').toLowerCase().includes(searchLower) ||
+                          (ot.items || []).some(it => (it.name || '').toLowerCase().includes(searchLower)) ||
+                          (ot.materials || []).some(m => (m.name || '').toLowerCase().includes(searchLower));
+                        return matchStatus && matchSearch;
+                      });
+
+                      if (filteredWorkOrders.length === 0) {
+                        return (
+                          <div className="p-12 text-center bg-black border border-zinc-800 rounded-2xl text-zinc-500 space-y-3">
+                            <div className="text-3xl">🏭</div>
+                            <p className="text-sm font-semibold text-zinc-400">No hay órdenes de trabajo en este estado o filtro.</p>
+                            <p className="text-xs text-zinc-600">
+                              Para enviar trabajos aquí, ve a <strong>Historial Emitidas</strong> y presiona <strong>"✅ Aprobar y Crear OT"</strong> en cualquier cotización.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-6">
+                          {filteredWorkOrders.map(ot => {
+                            const totalMaterials = (ot.materials || []).length;
+                            const readyMaterials = (ot.materials || []).filter(m => m.checked).length;
+                            const progressPercent = totalMaterials > 0 ? Math.round((readyMaterials / totalMaterials) * 100) : 0;
+
+                            return (
+                              <div key={ot.id} className="p-6 rounded-2xl bg-black border border-zinc-800/90 shadow-xl space-y-5 hover:border-zinc-700 transition">
+                                {/* Encabezado de la Tarjeta OT */}
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                      <span className="text-lg font-black font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/40 px-3 py-1 rounded-xl">
+                                        {ot.otFolio || `OT-${ot.numericFolio}`}
+                                      </span>
+                                      <span className="text-xs font-mono font-bold text-red-400 bg-red-950/30 border border-red-900/40 px-2.5 py-1 rounded-lg">
+                                        Cotización: {ot.correlative}
+                                      </span>
+                                      <span className="text-xs text-zinc-400">
+                                        📅 Ingreso: {ot.createdAt}
+                                      </span>
+                                      <span className="text-xs text-amber-400 font-semibold bg-amber-950/30 border border-amber-900/40 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                        ⏰ Entrega Prometida: {ot.deadline || 'Por coordinar'}
+                                      </span>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                                      <span className="text-white font-bold text-base">{ot.client?.name}</span>
+                                      {ot.client?.documentId && <span className="text-xs text-zinc-400 font-mono">RUT: {ot.client.documentId}</span>}
+                                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-400 border border-blue-500/30">
+                                        {ot.client?.deliveryMethod === 'instalacion' ? '🏗️ Requiere Instalación en Terreno' : ot.client?.deliveryMethod === 'entrega' ? '📦 Despacho a Cliente' : '🏬 Retiro en Taller Matriz'}
+                                      </span>
+                                    </div>
+                                    {ot.client?.deliveryAddress && (
+                                      <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1.5">
+                                        <span>📍 Dirección Obra:</span>
+                                        <strong className="text-zinc-200">{ot.client.deliveryAddress}</strong>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Acciones Rápidas Superior */}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenOtPrintModal(ot)}
+                                      className="bg-zinc-900 hover:bg-zinc-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                      title="Imprimir Ficha Técnica de Taller para los Maestros (Sin precios de venta)"
+                                    >
+                                      <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
+                                      <span>🖨️ Ficha de Taller</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleScheduleOtInCalendar(ot)}
+                                      className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                      title="Agendar entrega o instalación en el calendario oficial"
+                                    >
+                                      <Icon name="calendar" className="w-3.5 h-3.5" />
+                                      <span>📅 Agendar Entrega</span>
+                                    </button>
+                                    {ot.client?.phone && (
+                                      <a
+                                        href={`https://wa.me/${(ot.client.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${ot.client.name}, le saludamos de Letreros Olivar SpA para informarle el avance de su trabajo (${ot.otFolio}).`)}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="bg-zinc-900 hover:bg-zinc-800 text-emerald-400 px-3 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
+                                      >
+                                        <Icon name="whatsapp" className="w-3.5 h-3.5" />
+                                        <span>WhatsApp</span>
+                                      </a>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteWorkOrder(ot.id)}
+                                      className="bg-red-950/20 hover:bg-red-600 text-red-400 hover:text-white p-2 rounded-xl text-xs border border-red-900/40 transition cursor-pointer"
+                                      title="Eliminar esta Orden de Trabajo"
+                                    >
+                                      <Icon name="trash" className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* FASES DE PRODUCCIÓN (BOTONES KANBAN 1-CLICK) */}
+                                <div className="bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+                                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                                    Estado del Trabajo en Taller:
+                                  </span>
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {[
+                                      { id: 'por_iniciar', label: '📥 Por Iniciar', activeClass: 'bg-amber-600 text-white' },
+                                      { id: 'diseno', label: '📐 Archivo & Medidas', activeClass: 'bg-indigo-600 text-white' },
+                                      { id: 'fabricacion', label: '⚡ En Fabricación', activeClass: 'bg-blue-600 text-white' },
+                                      { id: 'calidad', label: '🔍 Control de Calidad', activeClass: 'bg-purple-600 text-white' },
+                                      { id: 'completado', label: '✅ Terminado / Listo', activeClass: 'bg-emerald-600 text-white' }
+                                    ].map(st => (
+                                      <button
+                                        key={st.id}
+                                        type="button"
+                                        onClick={() => handleUpdateOtStage(ot.id, st.id)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                          ot.status === st.id ? st.activeClass + ' shadow-md' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                        }`}
+                                      >
+                                        <span>{st.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* REQUERIMIENTO PRINCIPAL: PUBLICACIÓN Y GESTIÓN DE MATERIALES */}
+                                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800/80 space-y-3">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-900 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-bold text-white font-heading">
+                                        📋 Publicación de Materiales para Maestros de Taller
+                                      </span>
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                        {readyMaterials} de {totalMaterials} preparados ({progressPercent}%)
+                                      </span>
+                                    </div>
+                                    <div className="w-full sm:w-48 bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-800">
+                                      <div
+                                        className={`h-full transition-all duration-300 ${progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-600'}`}
+                                        style={{ width: `${progressPercent}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Lista de Materiales Técnicos Calculados */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+                                    {(ot.materials || []).map(mat => (
+                                      <div
+                                        key={mat.id}
+                                        onClick={() => handleToggleMaterialCheck(ot.id, mat.id)}
+                                        className={`p-3 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                                          mat.checked ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-200' : 'bg-black border-zinc-800 hover:border-zinc-700 text-zinc-300'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={mat.checked}
+                                          onChange={() => {}}
+                                          className="mt-0.5 rounded text-emerald-600 focus:ring-0 cursor-pointer"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                              mat.category === 'Sustrato' ? 'bg-blue-600/20 text-blue-400' :
+                                              mat.category === 'Planchas' ? 'bg-purple-600/20 text-purple-400' :
+                                              mat.category === 'Estructura' ? 'bg-amber-600/20 text-amber-400' :
+                                              mat.category === 'Eléctrico' ? 'bg-yellow-600/20 text-yellow-400' :
+                                              'bg-zinc-800 text-zinc-400'
+                                            }`}>
+                                              {mat.category}
+                                            </span>
+                                            <strong className={`text-xs block truncate ${mat.checked ? 'line-through text-zinc-400' : 'text-white'}`}>
+                                              {mat.name}
+                                            </strong>
+                                          </div>
+                                          <p className="text-[11px] text-zinc-400 mt-1 font-mono">
+                                            ↳ {mat.spec}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* DETALLE TÉCNICO DE TRABAJOS DE LA COTIZACIÓN */}
+                                <div className="space-y-2">
+                                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
+                                    📐 Trabajos a Realizar ({ot.items?.length || 0} ítems):
+                                  </span>
+                                  <div className="divide-y divide-zinc-900 border border-zinc-900 rounded-xl overflow-hidden bg-black">
+                                    {(ot.items || []).map((it, i) => (
+                                      <div key={i} className="p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div>
+                                          <strong className="text-white text-sm block">{it.name}</strong>
+                                          {it.detail && <p className="text-zinc-400 mt-0.5 italic">{it.detail}</p>}
+                                          {it.selectedOptions && it.selectedOptions.length > 0 && (
+                                            <div className="text-[10px] text-red-400 mt-0.5">
+                                              Acabados: {it.selectedOptions.join(' • ')}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="text-right font-mono text-zinc-300">
+                                          <span className="font-bold text-white block">{it.quantity} {it.quantity === 1 ? 'unidad' : 'unidades'}</span>
+                                          {it.calcType === 'sqm' && it.width && it.height && (
+                                            <span className="text-[11px] text-zinc-400 block">{it.width}m × {it.height}m ({(it.width * it.height * it.quantity).toFixed(2)} m²)</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Responsable & Notas Técnicas */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs text-zinc-500 border-t border-zinc-900">
+                                  <div>
+                                    Responsable Asignado: <strong className="text-zinc-300">{ot.assignedTech || 'Taller Matriz (Olivar)'}</strong>
+                                  </div>
+                                  {ot.notes && (
+                                    <div className="italic text-zinc-400">
+                                      "{ot.notes}"
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                                {/* SUB-PESTAÑA: CALENDARIO DE ENTREGAS & TALLER */}
+                {intranetTab === 'calendario' && (
+                  <div className="space-y-6">
+                    {/* Header de Calendario */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                      <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/20 text-red-500 border border-red-500/30 text-xs font-bold mb-2">
+                          <Icon name="calendar" className="w-3.5 h-3.5" />
+                          AGENDA DE TALLER & DESPACHOS
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
+                          Calendario de Entregas, Instalaciones & Producción
+                        </h2>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          Planificación de cuadrillas en terreno, entregas a clientes y fabricación en taller. Sincronizado en tiempo real en la nube.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenNewCalModal()}
+                          className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs transition flex items-center gap-2 shadow-lg shadow-red-600/30"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>Agendar Nueva Actividad</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleSyncAllCloud}
+                          className="px-3.5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-bold transition flex items-center gap-1.5"
+                          title="Sincronizar agenda con la nube"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Sincronizar</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Contenido Principal: Grilla Mes + Lista Lateral */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                      
+                      {/* Columna Izquierda: Calendario Mensual (8 cols) */}
+                      <div className="lg:col-span-8 bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 sm:p-6 space-y-4">
+                        {/* Cabecera del Mes con Controles */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-lg font-black text-white capitalize">
+                              {currentCalDate.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentCalDate(new Date());
+                                setSelectedCalDay(new Date().toISOString().slice(0, 10));
+                              }}
+                              className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
+                            >
+                              Hoy
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentCalDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+                              }}
+                              className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition"
+                              title="Mes Anterior"
+                            >
+                              <Icon name="chevron-left" className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentCalDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+                              }}
+                              className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center transition"
+                              title="Mes Siguiente"
+                            >
+                              <Icon name="chevron-right" className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Rejilla de Días de la Semana */}
+                        <div className="grid grid-cols-7 gap-1 text-center font-bold text-xs text-zinc-400 py-2 border-b border-zinc-800">
+                          <div>Lun</div>
+                          <div>Mar</div>
+                          <div>Mié</div>
+                          <div>Jue</div>
+                          <div>Vie</div>
+                          <div className="text-red-400">Sáb</div>
+                          <div className="text-red-400">Dom</div>
+                        </div>
+
+                        {/* Días del Mes */}
+                        <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                          {(() => {
+                            const year = currentCalDate.getFullYear();
+                            const month = currentCalDate.getMonth();
+                            const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
+                            const daysInMonth = new Date(year, month + 1, 0).getDate();
+                            const todayStr = new Date().toISOString().slice(0, 10);
+                            const cells = [];
+
+                            for (let i = 0; i < firstDayIndex; i++) {
+                              cells.push(
+                                <div key={`empty-${i}`} className="min-h-[70px] sm:min-h-[85px] rounded-xl bg-zinc-950/30 border border-transparent p-1 opacity-20"></div>
+                              );
+                            }
+
+                            for (let d = 1; d <= daysInMonth; d++) {
+                              const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                              const isToday = dayStr === todayStr;
+                              const isSelected = dayStr === selectedCalDay;
+                              const dayEvents = workshopCalendar.filter(ev => ev.date === dayStr);
+
+                              cells.push(
+                                <div
+                                  key={dayStr}
+                                  onClick={() => setSelectedCalDay(isSelected ? null : dayStr)}
+                                  className={`min-h-[70px] sm:min-h-[85px] rounded-xl p-1.5 sm:p-2 cursor-pointer transition flex flex-col justify-between border ${
+                                    isSelected
+                                      ? 'bg-red-950/40 border-red-500 shadow-md ring-1 ring-red-500/50'
+                                      : isToday
+                                      ? 'bg-zinc-800/80 border-red-500/80'
+                                      : 'bg-zinc-950/70 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900/60'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className={`text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${
+                                      isToday ? 'bg-red-600 text-white font-black' : 'text-zinc-300'
+                                    }`}>
+                                      {d}
+                                    </span>
+                                    {dayEvents.length > 0 && (
+                                      <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-300">
+                                        {dayEvents.length}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-1 mt-1 overflow-hidden">
+                                    {dayEvents.slice(0, 2).map(ev => {
+                                      let badgeBg = 'bg-blue-600/30 text-blue-300 border-blue-500/40';
+                                      let iconStr = '🏗️';
+                                      if (ev.type === 'despacho') {
+                                        badgeBg = 'bg-emerald-600/30 text-emerald-300 border-emerald-500/40';
+                                        iconStr = '📦';
+                                      } else if (ev.type === 'produccion') {
+                                        badgeBg = 'bg-amber-600/30 text-amber-300 border-amber-500/40';
+                                        iconStr = '🏭';
+                                      } else if (ev.type === 'medicion') {
+                                        badgeBg = 'bg-purple-600/30 text-purple-300 border-purple-500/40';
+                                        iconStr = '📐';
+                                      }
+                                      return (
+                                        <div
+                                          key={ev.id}
+                                          className={`text-[9px] sm:text-[10px] font-semibold truncate px-1 py-0.5 rounded border ${badgeBg} ${
+                                            ev.status === 'completado' ? 'line-through opacity-60' : ''
+                                          }`}
+                                          title={`${ev.time} - ${ev.title} (${ev.client})`}
+                                        >
+                                          {iconStr} {ev.title}
+                                        </div>
+                                      );
+                                    })}
+                                    {dayEvents.length > 2 && (
+                                      <div className="text-[9px] text-zinc-500 font-bold pl-1">
+                                        +{dayEvents.length - 2} más...
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return cells;
+                          })()}
+                        </div>
+
+                        {/* Leyenda de Colores */}
+                        <div className="pt-3 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-[11px] text-zinc-400">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                              <span>🏗️ Instalación Terreno</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                              <span>📦 Despacho Cliente</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                              <span>🏭 Producción Taller</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                              <span>📐 Medición Técnica</span>
+                            </span>
+                          </div>
+
+                          {selectedCalDay && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenNewCalModal({ date: selectedCalDay })}
+                              className="text-xs font-bold text-red-500 hover:text-red-400 underline flex items-center gap-1"
+                            >
+                              <span>+ Agendar para el {selectedCalDay}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Columna Derecha: Lista de Tareas y Agenda (4 cols) */}
+                      <div className="lg:col-span-4 space-y-4">
+                        <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-heading font-black text-white text-sm flex items-center gap-2">
+                              <Icon name="clock" className="w-4 h-4 text-red-500" />
+                              <span>
+                                {selectedCalDay ? `Actividades del ${selectedCalDay}` : 'Próximas Actividades'}
+                              </span>
+                            </h3>
+                            {selectedCalDay && (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCalDay(null)}
+                                className="text-[11px] text-zinc-400 hover:text-white"
+                              >
+                                Ver Todas
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Filtros de Tipo y Estado */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <select
+                              value={calFilterType}
+                              onChange={(e) => setCalFilterType(e.target.value)}
+                              className="bg-black text-zinc-300 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none"
+                            >
+                              <option value="todos">Todos los Tipos</option>
+                              <option value="instalacion">🏗️ Instalaciones</option>
+                              <option value="despacho">📦 Despachos</option>
+                              <option value="produccion">🏭 Producción</option>
+                              <option value="medicion">📐 Mediciones</option>
+                            </select>
+
+                            <select
+                              value={calFilterStatus}
+                              onChange={(e) => setCalFilterStatus(e.target.value)}
+                              className="bg-black text-zinc-300 border border-zinc-800 rounded-xl px-2.5 py-1.5 text-xs focus:outline-none"
+                            >
+                              <option value="todos">Todos los Estados</option>
+                              <option value="pendiente">⏳ Pendientes</option>
+                              <option value="en_proceso">⚡ En Proceso</option>
+                              <option value="completado">✅ Completados</option>
+                            </select>
+                          </div>
+
+                          {/* Lista de Actividades */}
+                          <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                            {(() => {
+                              let list = workshopCalendar || [];
+                              if (selectedCalDay) {
+                                list = list.filter(ev => ev.date === selectedCalDay);
+                              }
+                              if (calFilterType !== 'todos') {
+                                list = list.filter(ev => ev.type === calFilterType);
+                              }
+                              if (calFilterStatus !== 'todos') {
+                                list = list.filter(ev => ev.status === calFilterStatus);
+                              }
+                              list.sort((a, b) => (a.date + ' ' + a.time).localeCompare(b.date + ' ' + b.time));
+
+                              if (list.length === 0) {
+                                return (
+                                  <div className="p-8 text-center text-zinc-500 text-xs">
+                                    No hay actividades registradas con los filtros seleccionados.
+                                  </div>
+                                );
+                              }
+
+                              return list.map(ev => {
+                                let badgeBg = 'bg-blue-600/20 text-blue-400 border-blue-500/30';
+                                let typeLabel = 'Instalación';
+                                if (ev.type === 'despacho') {
+                                  badgeBg = 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30';
+                                  typeLabel = 'Despacho';
+                                } else if (ev.type === 'produccion') {
+                                  badgeBg = 'bg-amber-600/20 text-amber-400 border-amber-500/30';
+                                  typeLabel = 'Producción';
+                                } else if (ev.type === 'medicion') {
+                                  badgeBg = 'bg-purple-600/20 text-purple-400 border-purple-500/30';
+                                  typeLabel = 'Medición';
+                                }
+
+                                return (
+                                  <div
+                                    key={ev.id}
+                                    className={`p-3.5 rounded-xl border bg-black/60 transition space-y-2.5 ${
+                                      ev.status === 'completado'
+                                        ? 'border-zinc-800/60 opacity-60'
+                                        : 'border-zinc-800 hover:border-zinc-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="space-y-1">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeBg}`}>
+                                            {typeLabel}
+                                          </span>
+                                          <span className="text-[11px] font-mono font-bold text-zinc-300">
+                                            📅 {ev.date} • 🕒 {ev.time}
+                                          </span>
+                                        </div>
+                                        <h4 className={`text-xs font-bold text-white ${ev.status === 'completado' ? 'line-through text-zinc-400' : ''}`}>
+                                          {ev.title}
+                                        </h4>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleCalEventStatus(ev.id)}
+                                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition ${
+                                          ev.status === 'completado'
+                                            ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/40'
+                                            : ev.status === 'en_proceso'
+                                            ? 'bg-amber-600/20 text-amber-400 border-amber-500/40'
+                                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
+                                        }`}
+                                        title="Cambiar estado"
+                                      >
+                                        {ev.status === 'completado' ? '✓ Listo' : ev.status === 'en_proceso' ? '⚡ Proceso' : '⏳ Pendiente'}
+                                      </button>
+                                    </div>
+
+                                    {ev.client && (
+                                      <div className="text-[11px] text-zinc-400 flex items-center justify-between gap-2">
+                                        <span className="truncate font-semibold text-zinc-300">🏢 {ev.client}</span>
+                                        {ev.phone && (
+                                          <a
+                                            href={`https://wa.me/${ev.phone.replace(/\D/g, '')}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-emerald-400 hover:underline flex items-center gap-1 flex-shrink-0"
+                                            title="Contactar por WhatsApp"
+                                          >
+                                            <Icon name="phone" className="w-3 h-3" />
+                                            <span>WhatsApp</span>
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {ev.address && (
+                                      <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+                                        <Icon name="map-pin" className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                        <a
+                                          href={`https://maps.google.com/?q=${encodeURIComponent(ev.address)}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="truncate hover:text-white hover:underline"
+                                          title="Ver en Google Maps"
+                                        >
+                                          {ev.address}
+                                        </a>
+                                      </div>
+                                    )}
+
+                                    {ev.correlative && (
+                                      <div className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                                        <span>Doc:</span>
+                                        <span className="text-red-400 font-bold">{ev.correlative}</span>
+                                      </div>
+                                    )}
+
+                                    {ev.notes && (
+                                      <p className="text-[11px] text-zinc-400 italic bg-zinc-950/60 p-2 rounded-lg border border-zinc-900">
+                                        "{ev.notes}"
+                                      </p>
+                                    )}
+
+                                    <div className="pt-2 border-t border-zinc-900 flex items-center justify-end gap-2 text-[11px]">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditCalEvent(ev)}
+                                        className="text-zinc-400 hover:text-white flex items-center gap-1"
+                                      >
+                                        <Icon name="edit" className="w-3 h-3" />
+                                        <span>Editar</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteCalEvent(ev.id)}
+                                        className="text-red-500 hover:text-red-400 flex items-center gap-1 ml-2"
+                                      >
+                                        <Icon name="trash" className="w-3 h-3" />
+                                        <span>Eliminar</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                )}
+
+
+                                </div>
+              )}
 
                 
               </div>
@@ -7479,6 +8304,40 @@
                 </div>
 
                 <form onSubmit={handleCreateManualOt} className="space-y-4 text-xs">
+                  {/* Selector rápido desde Maestra de Clientes */}
+                  <div className="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 space-y-1.5">
+                    <label className="block text-[11px] font-bold text-amber-400 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Icon name="users" className="w-3.5 h-3.5" />
+                        <span>Cargar desde Maestra de Clientes (Opcional):</span>
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-mono font-normal">{clientsMaster.length} registrados</span>
+                    </label>
+                    <select
+                      onChange={(e) => {
+                        const selClient = clientsMaster.find(c => c.id === e.target.value);
+                        if (selClient) {
+                          setManualOtForm(prev => ({
+                            ...prev,
+                            clientName: selClient.company ? `${selClient.name} (${selClient.company})` : selClient.name,
+                            clientPhone: selClient.phone || prev.clientPhone,
+                            deliveryAddress: selClient.address || prev.deliveryAddress
+                          }));
+                          showToast(`✅ Datos de ${selClient.name} cargados en la OT`);
+                        }
+                      }}
+                      defaultValue=""
+                      className="w-full bg-black text-zinc-200 px-3 py-2 rounded-lg border border-zinc-700 text-xs focus:border-amber-500 focus:outline-none"
+                    >
+                      <option value="">-- Seleccionar cliente existente para autocompletar --</option>
+                      {clientsMaster.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.company ? `(${c.company})` : ''} {c.rut ? `- RUT: ${c.rut}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-semibold text-zinc-300 mb-1">Nombre del Cliente / Empresa:</label>
                     <input
@@ -7764,6 +8623,29 @@
                     </div>
                   )}
 
+                  {/* Fotografías y Renders Adjuntos para Taller */}
+                  {selectedOtForPrint.images && selectedOtForPrint.images.length > 0 && (
+                    <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded">
+                      <h2 className="font-bold text-xs uppercase tracking-wider text-black mb-2 border-b border-gray-300 pb-1">
+                        3. Fotografías de Terreno / Boceto de Referencia ({selectedOtForPrint.images.length})
+                      </h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {selectedOtForPrint.images.map((img, idx) => (
+                          <div key={idx} className="border border-gray-300 rounded p-1 bg-white flex flex-col">
+                            <div className="aspect-video w-full overflow-hidden rounded bg-black flex items-center justify-center">
+                              <img src={img.data} alt={img.caption || `Referencia ${idx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                            {img.caption && (
+                              <span className="text-[9px] text-gray-700 mt-1 truncate font-medium">
+                                {img.caption}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Firmas y Recepción */}
                   <div className="grid grid-cols-3 gap-6 pt-6 mt-6 border-t border-gray-300 text-center text-[10px]">
                     <div>
@@ -7999,6 +8881,29 @@
                       <span className="text-[9px] text-zinc-500 font-bold">{companyInfo.name}</span>
                     </div>
                   </div>
+
+                  {/* Fotografías y Renders del Proyecto Adjuntos */}
+                  {currentQuoteToPrint.images && currentQuoteToPrint.images.length > 0 && (
+                    <div className="pt-2 border-t border-zinc-200">
+                      <span className="text-[9px] uppercase font-bold text-zinc-600 tracking-wider block mb-1">
+                        REFERENCIAS VISUALES Y FOTOGRAFÍAS ADJUNTAS ({currentQuoteToPrint.images.length}):
+                      </span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {currentQuoteToPrint.images.map((img, idx) => (
+                          <div key={idx} className="border border-zinc-200 rounded p-1 bg-zinc-50 flex flex-col">
+                            <div className="aspect-video w-full overflow-hidden rounded bg-black flex items-center justify-center">
+                              <img src={img.data} alt={img.caption || `Referencia ${idx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                            {img.caption && (
+                              <span className="text-[8px] text-zinc-700 mt-0.5 truncate font-medium">
+                                {img.caption}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                 </div>
               </div>
