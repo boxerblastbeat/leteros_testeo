@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -109,7 +109,47 @@
   <!-- React 18 & Babel Standalone -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Google Firebase App & Firestore (Auto-sincronización en segundo plano) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAhr06vE734LtX2ClAmVlAgZUrpPNbBCoc",
+      authDomain: "letreros-olivar.firebaseapp.com",
+      projectId: "letreros-olivar",
+      storageBucket: "letreros-olivar.firebasestorage.app",
+      messagingSenderId: "347836227863",
+      appId: "1:347836227863:web:4f107fde846416e32b5752"
+    };
+    try {
+      firebase.initializeApp(firebaseConfig);
+      window.db = firebase.firestore();
+      
+      // Auto-migración en segundo plano de cualquier cotización guardada localmente
+      const possibleKeys = ['olivar_quotes_history', 'letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'];
+      possibleKeys.forEach(function(k) {
+        try {
+          var raw = localStorage.getItem(k);
+          if (raw) {
+            var list = JSON.parse(raw);
+            if (Array.isArray(list)) {
+              list.forEach(function(q, idx) {
+                if (q) {
+                  var docId = (q.correlative && q.correlative.trim()) ? q.correlative.trim() : ('COT-RECUP-' + (idx + 101));
+                  var clean = JSON.parse(JSON.stringify(q, function(k, v) { return v === undefined ? '' : v; }));
+                  clean.timestamp = clean.timestamp || Date.now();
+                  clean.correlative = docId;
+                  window.db.collection('quotes').doc(docId).set(clean, { merge: true });
+                }
+              });
+            }
+          }
+        } catch(e) {}
+      });
+    } catch(e) { console.warn("Firebase error:", e); }
+  </script>
 
   <style>
     body {
