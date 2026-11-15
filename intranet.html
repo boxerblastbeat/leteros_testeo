@@ -163,10 +163,10 @@
       body * {
         visibility: hidden;
       }
-      #print-area, #print-area * {
+      #print-area, #print-area *, #ot-print-area, #ot-print-area * {
         visibility: visible;
       }
-      #print-area {
+      #print-area, #ot-print-area {
         position: absolute;
         left: 0;
         top: 0;
@@ -824,7 +824,36 @@
               }
             }
           }, err => console.warn('Firestore calendar error:', err));
-        return () => unsubCal();
+
+        // Auto-migración y sincronización de Órdenes de Trabajo (Taller & Producción)
+        try {
+          const localOrders = localStorage.getItem('olivar_work_orders');
+          if (localOrders) {
+            const parsed = JSON.parse(localOrders);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              window.db.collection('system').doc('work_orders').set({
+                orders: parsed,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+              }, { merge: true }).catch(() => {});
+            }
+          }
+        } catch(e) {}
+
+        const unsubOrders = window.db.collection('system').doc('work_orders')
+          .onSnapshot(snap => {
+            if (snap.exists && snap.data().orders) {
+              const cloudOrders = snap.data().orders;
+              if (Array.isArray(cloudOrders)) {
+                setWorkOrders(cloudOrders);
+                try { localStorage.setItem('olivar_work_orders', JSON.stringify(cloudOrders)); } catch(e) {}
+              }
+            }
+          }, err => console.warn('Firestore work_orders error:', err));
+
+        return () => {
+          unsubCal();
+          unsubOrders();
+        };
       }, []);
 
       // Función manual para sincronizar / forzar refresco del historial y calendario
@@ -861,6 +890,13 @@
           if (localCal) {
             window.db.collection('system').doc('workshop_calendar').set({
               events: JSON.parse(localCal),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+          }
+          const localOrders = localStorage.getItem('olivar_work_orders');
+          if (localOrders) {
+            window.db.collection('system').doc('work_orders').set({
+              orders: JSON.parse(localOrders),
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
           }
@@ -1004,6 +1040,75 @@
       const [showCalModal, setShowCalModal] = useState(false);
       const [calFilterType, setCalFilterType] = useState('todos');
       const [calFilterStatus, setCalFilterStatus] = useState('todos');
+
+      // === ESTADOS PARA TALLER & PRODUCCIÓN (ORDENES DE TRABAJO - OT) ===
+      const [workOrders, setWorkOrders] = useState(() => {
+        const saved = localStorage.getItem('olivar_work_orders');
+        if (saved) {
+          try { return JSON.parse(saved); } catch(e) {}
+        }
+        return [
+          {
+            id: 'ot-demo-101',
+            otFolio: 'OT-2026-0101',
+            correlative: 'COT-2026-0101',
+            numericFolio: 101,
+            createdAt: '14/11/2026',
+            createdTimestamp: Date.now() - 86400000,
+            deadline: '2026-11-20',
+            status: 'fabricacion',
+            client: {
+              name: 'ADMIN. DE SUPERMERCADOS HIPER LIMITADA',
+              documentId: '76.123.456-7',
+              phone: '+56 9 5158 5884',
+              email: 'contacto@lider.cl',
+              deliveryMethod: 'instalacion',
+              deliveryAddress: 'Av. Libertador Bernardo O\'Higgins #1240, Rancagua'
+            },
+            items: [
+              {
+                id: 'item-demo-1',
+                name: 'Caja de Luz Backlight Fachada',
+                calcType: 'sqm',
+                width: 3.5,
+                height: 1.2,
+                quantity: 1,
+                unitPiecePrice: 485000,
+                subtotal: 485000,
+                detail: 'Caja de luz con perfil de aluminio 12cm, módulos LED blanco frío e instalación con escala en fachada principal'
+              }
+            ],
+            materials: [
+              { id: 'm-1', category: 'Sustrato', name: 'Lona Backlight traslúcida alta resolución', spec: '4.20 m² (1 ud de 3.5m × 1.2m + 5cm demasía tensado)', checked: true },
+              { id: 'm-2', category: 'Estructura', name: 'Perfil de Aluminio para Caja de Luz (12 cm)', spec: '~9.4 metros lineales + esquineros', checked: true },
+              { id: 'm-3', category: 'Estructura', name: 'Bastidor interior fierro cuadrado 20×20', spec: '~11.2 metros lineales estructurado con travesaño central', checked: false },
+              { id: 'm-4', category: 'Eléctrico', name: 'Módulos LED Inyección 12V Blanco Frío (IP67)', spec: '100 módulos LED alta eficiencia', checked: false },
+              { id: 'm-5', category: 'Eléctrico', name: 'Fuente de Poder conmutada 12V 150W IP67', spec: '1 unidad exterior estanca', checked: false },
+              { id: 'm-6', category: 'Instalación', name: 'Kit Anclaje a Muro (Pernos 3/8 y tarugos)', spec: '6 fijaciones de alta resistencia', checked: false }
+            ],
+            assignedTech: 'Taller Matriz (Olivar) - Maestro Juan',
+            priority: 'Alta',
+            notes: 'Coordinar grúa o andamio con cliente para día de instalación.'
+          }
+        ];
+      });
+      const [otFilterStatus, setOtFilterStatus] = useState('todos');
+      const [otSearch, setOtSearch] = useState('');
+      const [selectedOtForPrint, setSelectedOtForPrint] = useState(null);
+      const [showOtPrintModal, setShowOtPrintModal] = useState(false);
+      const [showNewManualOtModal, setShowNewManualOtModal] = useState(false);
+      const [manualOtForm, setManualOtForm] = useState({
+        clientName: '',
+        clientPhone: '',
+        deliveryMethod: 'retiro',
+        deliveryAddress: '',
+        workName: '',
+        width: '',
+        height: '',
+        quantity: '1',
+        deadline: '',
+        notes: ''
+      });
       // Estados para borrado protegido de cotizaciones con PIN
       const [quoteToDelete, setQuoteToDelete] = useState(null);
       const [deletePinInput, setDeletePinInput] = useState('');
@@ -2181,6 +2286,405 @@
         setQuoteToDelete(null);
         setDeletePinInput('');
         showToast('🗑️ Cotización ' + correlative + ' eliminada permanentemente.');
+      };
+
+      // === FUNCIONES PARA GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) ===
+      const saveWorkOrdersList = (newOrders) => {
+        setWorkOrders(newOrders);
+        try {
+          localStorage.setItem('olivar_work_orders', JSON.stringify(newOrders));
+          if (window.db) {
+            window.db.collection('system').doc('work_orders').set({
+              orders: newOrders,
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).catch(() => {});
+          }
+        } catch(e) {}
+      };
+
+      // Extracción y cálculo automático de materiales técnicos de taller
+      const generateMaterialsList = (items = [], deliveryMethod = '') => {
+        const materials = [];
+        let matIdCounter = 1;
+
+        (items || []).forEach((item, idx) => {
+          const nameLower = (item.name || '').toLowerCase();
+          const detailLower = (item.detail || '').toLowerCase();
+          const layers = Array.isArray(item.compositionLayers) ? item.compositionLayers.join(' ').toLowerCase() : '';
+          const options = Array.isArray(item.selectedOptions) ? item.selectedOptions.join(' ').toLowerCase() : '';
+          const allText = `${nameLower} ${detailLower} ${layers} ${options}`;
+
+          const w = parseFloat(item.width) || 0;
+          const h = parseFloat(item.height) || 0;
+          const qty = parseInt(item.quantity, 10) || 1;
+          const isSqm = w > 0 && h > 0;
+          const totalArea = isSqm ? (w * h * qty) : qty;
+          const perimeter = isSqm ? (2 * (w + h) * qty) : 0;
+
+          // 1. Sustratos y Planchas
+          if (allText.includes('backlight') || allText.includes('caja de luz') || allText.includes('traslúcid')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Sustrato',
+              name: `Lona Backlight traslúcida alta resolución`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} ud de ${w}m × ${h}m + 5cm demasía para tensado)` : `${qty} unidad(es)`,
+              checked: false
+            });
+          } else if (allText.includes('frontlight') || allText.includes('lienzo') || allText.includes('pendón') || allText.includes('banner')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Sustrato',
+              name: `Lona Frontlight 13oz / Banner 510g`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} ud de ${w}m × ${h}m con dobladillo y ojetillos)` : `${qty} unidad(es)`,
+              checked: false
+            });
+          }
+
+          if (allText.includes('acrílico') || allText.includes('acrilico')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Plancha de Acrílico (Corte Láser)`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} paños de ${w}m × ${h}m - espesor 3mm a 5mm)` : `${qty} pieza(s)`,
+              checked: false
+            });
+          }
+
+          if (allText.includes('trovicel') || allText.includes('pvc') || allText.includes('sintra')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Plancha Trovicel / PVC Espumado`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} paños de ${w}m × ${h}m)` : `${qty} unidad(es)`,
+              checked: false
+            });
+          }
+
+          if (allText.includes('aluminio compuesto') || allText.includes('acm') || allText.includes('alucobond')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Planchas ACM Aluminio Compuesto (Corte CNC Router)`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m²` : `${qty} pieza(s)`,
+              checked: false
+            });
+          }
+
+          if (allText.includes('vinilo') || allText.includes('adhesivo') || allText.includes('laminado') || allText.includes('rotulad')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Impresión',
+              name: `Vinilo Adhesivo Ecosolvente + Laminado Protección UV`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² con demasía de montaje` : `${qty} unidad(es)`,
+              checked: false
+            });
+          }
+
+          if (allText.includes('volumétrica') || allText.includes('corpóre') || allText.includes('3d')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Corpóreos',
+              name: `Cantos / Tiras para armado de letras volumétricas (Canto ACM o PVC)`,
+              spec: `${qty} letras / piezas tridimensionales`,
+              checked: false
+            });
+          }
+
+          // 2. Estructura y Perfilería
+          if (allText.includes('perfil') || allText.includes('caja de luz') || allText.includes('aluminio')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Estructura',
+              name: `Perfil de Aluminio para Caja de Luz (10 a 14 cm)`,
+              spec: perimeter > 0 ? `~${perimeter.toFixed(1)} metros lineales + 4 esquineros de unión` : 'Barras de perfil según diseño',
+              checked: false
+            });
+          }
+
+          if (allText.includes('bastidor de fierro') || allText.includes('fierro') || allText.includes('metal')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Estructura',
+              name: `Fierro Cuadrado Estructural 20×20 / 30×30 (Antióxido + Soldadura)`,
+              spec: perimeter > 0 ? `~${(perimeter * 1.2).toFixed(1)} metros lineales (incluye travesaños y refuerzos)` : 'Barras estructurales',
+              checked: false
+            });
+          }
+
+          if (allText.includes('bastidor de madera') || allText.includes('madera')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Estructura',
+              name: `Listones Pino Cepillado 2×1 / 2×2`,
+              spec: perimeter > 0 ? `~${perimeter.toFixed(1)} metros lineales` : 'Listones pino',
+              checked: false
+            });
+          }
+
+          if (allText.includes('espaciadores') || allText.includes('fijaciones') || allText.includes('distanciadores')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Herrajes',
+              name: `Espaciadores Metálicos Inox para Muro`,
+              spec: `${qty * 4} unidades con tarugos y tornillos`,
+              checked: false
+            });
+          }
+
+          // 3. Iluminación & Eléctrico
+          if (allText.includes('led') || allText.includes('iluminaci') || allText.includes('luz') || allText.includes('backlight')) {
+            const estimatedLeds = Math.max(12, Math.round((totalArea || 1) * 24));
+            const estimatedWatts = Math.ceil((estimatedLeds * 1.5) / 50) * 50 || 60;
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Eléctrico',
+              name: `Módulos LED Inyección 12V Blanco Frío / Cálido (IP67)`,
+              spec: `Aprox. ${estimatedLeds} módulos LED de alta luminosidad`,
+              checked: false
+            });
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Eléctrico',
+              name: `Fuente de Poder conmutada 12V (IP67 exterior)`,
+              spec: `1 unidad de ${estimatedWatts}W o superior`,
+              checked: false
+            });
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Eléctrico',
+              name: `Cable Paralelo Bipolar 2×18 AWG + Terminales`,
+              spec: `Cableado interior de distribución estanco`,
+              checked: false
+            });
+          }
+
+          // Si no coincidió con ninguna regla específica, agregar ítem general
+          if (materials.filter(m => m.id.startsWith(`mat-${idx}-`)).length === 0) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'General',
+              name: item.name || 'Trabajo Especial de Taller',
+              spec: `${qty} ud ${isSqm ? `(${w}m × ${h}m)` : ''} ${item.detail ? `| ${item.detail}` : ''}`,
+              checked: false
+            });
+          }
+        });
+
+        // Material de Montaje o Instalación en terreno
+        if (deliveryMethod === 'instalacion') {
+          materials.push({
+            id: `mat-inst-${matIdCounter++}`,
+            category: 'Instalación',
+            name: `Kit de Anclaje a Muro / Estructura en Terreno`,
+            spec: `Pernos de anclaje expansivos 3/8, tarugos y pernos broca según superficie de fachada`,
+            checked: false
+          });
+        }
+
+        return materials;
+      };
+
+      // 1-Click: Aprobar cotización y enviar a Taller (Generar OT)
+      const handleApproveAndSendToWorkshop = (quote) => {
+        if (!quote) return;
+        const correlative = quote.correlative;
+
+        // 1. Actualizar estado de la cotización a "Aprobada"
+        const updatedHistory = quoteHistory.map(q => {
+          if (q.correlative === correlative) {
+            return { ...q, status: 'Aprobada' };
+          }
+          return q;
+        });
+        setQuoteHistory(updatedHistory);
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+          if (window.db) {
+            window.db.collection('quotes').doc(correlative).set({ status: 'Aprobada' }, { merge: true });
+          }
+        } catch(e) {}
+
+        // 2. Verificar si ya existe una OT para este correlativo
+        const existingOt = workOrders.find(o => o.correlative === correlative);
+        if (existingOt) {
+          showToast(`🏭 La OT para ${correlative} ya existe en el Taller.`);
+          setIntranetTab('taller');
+          setOtSearch(correlative);
+          return;
+        }
+
+        // 3. Crear nueva OT
+        const otFolio = 'OT-' + correlative.replace('COT-', '');
+        const materials = generateMaterialsList(quote.items, quote.client?.deliveryMethod);
+
+        // Calcular fecha de entrega sugerida (5 días hábiles a partir de hoy)
+        const deadlineDate = new Date();
+        deadlineDate.setDate(deadlineDate.getDate() + 5);
+        const deadlineStr = deadlineDate.toISOString().slice(0, 10);
+
+        const newOt = {
+          id: 'ot-' + Date.now(),
+          otFolio: otFolio,
+          correlative: correlative,
+          numericFolio: quote.numericCorrelative || parseInt(correlative.replace(/\D/g, ''), 10) || 101,
+          createdAt: new Date().toLocaleDateString('es-CL'),
+          createdTimestamp: Date.now(),
+          deadline: deadlineStr,
+          status: 'por_iniciar',
+          client: {
+            name: quote.client?.name || 'Cliente Particular',
+            documentId: quote.client?.documentId || '',
+            phone: quote.client?.phone || '',
+            email: quote.client?.email || '',
+            deliveryMethod: quote.client?.deliveryMethod || 'retiro',
+            deliveryAddress: quote.client?.deliveryAddress || ''
+          },
+          items: quote.items || [],
+          materials: materials,
+          assignedTech: 'Taller Matriz (Olivar)',
+          priority: 'Normal',
+          notes: quote.client?.comments || '',
+          totals: quote.totals || {}
+        };
+
+        const updatedOrders = [newOt, ...workOrders];
+        saveWorkOrdersList(updatedOrders);
+        showToast(`🎉 Cotización ${correlative} APROBADA y enviada a Taller (${otFolio})`);
+        setIntranetTab('taller');
+        setOtSearch(correlative);
+      };
+
+      const handleUpdateOtStage = (otId, newStage) => {
+        const updated = workOrders.map(o => {
+          if (o.id === otId) {
+            return { ...o, status: newStage };
+          }
+          return o;
+        });
+        saveWorkOrdersList(updated);
+        const stageLabels = {
+          por_iniciar: '📥 Por Iniciar',
+          diseno: '📐 Archivo & Medidas',
+          fabricacion: '⚡ En Fabricación',
+          calidad: '🔍 Control de Calidad',
+          completado: '✅ Terminado / Listo para Entrega'
+        };
+        showToast(`Estado de OT actualizado a ${stageLabels[newStage] || newStage}`);
+      };
+
+      const handleToggleMaterialCheck = (otId, matId) => {
+        const updated = workOrders.map(o => {
+          if (o.id === otId) {
+            const nextMats = (o.materials || []).map(m => {
+              if (m.id === matId) {
+                return { ...m, checked: !m.checked };
+              }
+              return m;
+            });
+            return { ...o, materials: nextMats };
+          }
+          return o;
+        });
+        saveWorkOrdersList(updated);
+      };
+
+      const handleDeleteWorkOrder = (otId) => {
+        if (!window.confirm('¿Seguro que deseas eliminar esta Orden de Trabajo del Taller?')) return;
+        const updated = workOrders.filter(o => o.id !== otId);
+        saveWorkOrdersList(updated);
+        showToast('🗑️ Orden de Trabajo eliminada.');
+      };
+
+      const handleOpenOtPrintModal = (ot) => {
+        setSelectedOtForPrint(ot);
+        setShowOtPrintModal(true);
+      };
+
+      const handleCloseOtPrintModal = () => {
+        setShowOtPrintModal(false);
+        setSelectedOtForPrint(null);
+      };
+
+      const handleScheduleOtInCalendar = (ot) => {
+        if (!ot) return;
+        handleOpenNewCalModal({
+          title: `${ot.otFolio}: ${ot.items && ot.items[0] ? ot.items[0].name : 'Trabajo de Taller'}`,
+          client: ot.client?.name || '',
+          phone: ot.client?.phone || '',
+          address: ot.client?.deliveryAddress || '',
+          correlative: ot.correlative,
+          type: ot.client?.deliveryMethod === 'instalacion' ? 'instalacion' : ot.client?.deliveryMethod === 'entrega' ? 'despacho' : 'produccion'
+        });
+        setIntranetTab('calendario');
+      };
+
+      const handleCreateManualOt = (e) => {
+        e.preventDefault();
+        if (!manualOtForm.clientName.trim() || !manualOtForm.workName.trim()) {
+          alert('Por favor ingresa el nombre del cliente y el trabajo a fabricar.');
+          return;
+        }
+
+        const year = new Date().getFullYear();
+        const randFolio = Math.floor(1000 + Math.random() * 9000);
+        const otFolio = `OT-${year}-${randFolio}`;
+        const w = parseFloat(manualOtForm.width) || 0;
+        const h = parseFloat(manualOtForm.height) || 0;
+        const qty = parseInt(manualOtForm.quantity, 10) || 1;
+
+        const manualItem = {
+          id: 'manual-item-' + Date.now(),
+          name: manualOtForm.workName,
+          calcType: w > 0 && h > 0 ? 'sqm' : 'unit',
+          width: w > 0 ? w : null,
+          height: h > 0 ? h : null,
+          quantity: qty,
+          unitLabel: w > 0 && h > 0 ? 'm²' : 'ud',
+          detail: manualOtForm.notes || '',
+          selectedOptions: []
+        };
+
+        const materials = generateMaterialsList([manualItem], manualOtForm.deliveryMethod);
+
+        const newOt = {
+          id: 'ot-manual-' + Date.now(),
+          otFolio: otFolio,
+          correlative: 'DIRECTO-TALLER',
+          numericFolio: randFolio,
+          createdAt: new Date().toLocaleDateString('es-CL'),
+          createdTimestamp: Date.now(),
+          deadline: manualOtForm.deadline || new Date().toISOString().slice(0, 10),
+          status: 'por_iniciar',
+          client: {
+            name: manualOtForm.clientName,
+            documentId: '',
+            phone: manualOtForm.clientPhone,
+            deliveryMethod: manualOtForm.deliveryMethod,
+            deliveryAddress: manualOtForm.deliveryAddress
+          },
+          items: [manualItem],
+          materials: materials,
+          assignedTech: 'Taller Matriz (Olivar)',
+          priority: 'Normal',
+          notes: manualOtForm.notes
+        };
+
+        const updatedOrders = [newOt, ...workOrders];
+        saveWorkOrdersList(updatedOrders);
+        setShowNewManualOtModal(false);
+        setManualOtForm({
+          clientName: '',
+          clientPhone: '',
+          deliveryMethod: 'retiro',
+          deliveryAddress: '',
+          workName: '',
+          width: '',
+          height: '',
+          quantity: '1',
+          deadline: '',
+          notes: ''
+        });
+        showToast(`🎉 Orden de Trabajo ${otFolio} creada exitosamente en Taller.`);
       };
       const handleSendWhatsAppQuote = (quote) => {
         const q = quote || {
@@ -3673,6 +4177,17 @@
 
                         <button
                           type="button"
+                          onClick={() => setIntranetTab('taller')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                            intranetTab === 'taller' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                          }`}
+                        >
+                          <Icon name="tool" className="w-4 h-4" />
+                          <span>🏭 Taller & OT ({workOrders.filter(o => o.status !== 'completado').length})</span>
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => setIntranetTab('calendario')}
                           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                             intranetTab === 'calendario' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 ring-2 ring-red-500/50' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
@@ -4924,7 +5439,37 @@
                               </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                                                            <button
+                              {/* Botón: Aprobar y Crear OT / Ver en Taller */}
+                              {(() => {
+                                const existingOt = workOrders.find(o => o.correlative === q.correlative);
+                                if (existingOt) {
+                                  return (
+                                    <button
+                                      onClick={() => {
+                                        setIntranetTab('taller');
+                                        setOtSearch(q.correlative);
+                                      }}
+                                      className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                      title="Ver Orden de Trabajo activa en Taller"
+                                    >
+                                      <Icon name="tool" className="w-3.5 h-3.5" />
+                                      <span>🏭 Ver en Taller ({existingOt.otFolio})</span>
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => handleApproveAndSendToWorkshop(q)}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50"
+                                    title="Aprobar esta cotización y enviar ficha técnica a Taller"
+                                  >
+                                    <Icon name="check" className="w-3.5 h-3.5" />
+                                    <span>✅ Aprobar y Crear OT</span>
+                                  </button>
+                                );
+                              })()}
+
+                              <button
                                 onClick={() => {
                                   handleOpenNewCalModal({
                                     title: `${q.client && q.client.deliveryMethod === 'instalacion' ? 'Instalación' : 'Entrega'} ${q.correlative}`,
@@ -4986,6 +5531,374 @@
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* SUB-PESTAÑA: GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) */}
+                {intranetTab === 'taller' && (
+                  <div className="space-y-6">
+                    {/* Header de Taller */}
+                    <div className="p-6 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+                      <div>
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold mb-2">
+                          <Icon name="tool" className="w-3.5 h-3.5" />
+                          ÁREA TÉCNICA & PRODUCCIÓN
+                        </div>
+                        <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
+                          Gestión de Taller & Órdenes de Trabajo (OT)
+                        </h2>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          Seguimiento de pedidos aprobados, publicación y checklist de materiales, corte CNC, armado y control de calidad.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowNewManualOtModal(true)}
+                          className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition shadow-lg shadow-red-600/30 cursor-pointer"
+                        >
+                          <Icon name="plus" className="w-4 h-4" />
+                          <span>+ Nueva OT de Taller</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSyncAllCloud}
+                          className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition cursor-pointer"
+                          title="Forzar actualización en tiempo real desde Firebase"
+                        >
+                          <Icon name="refresh" className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Sincronizar</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Resumen de Métricas de Producción */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Total OTs Activas</span>
+                          <span className="text-xl font-black text-white font-mono mt-0.5 block">{workOrders.length}</span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 font-bold">🏭</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">📥 Por Iniciar</span>
+                          <span className="text-xl font-black text-amber-400 font-mono mt-0.5 block">
+                            {workOrders.filter(o => o.status === 'por_iniciar').length}
+                          </span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">⏳</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">⚡ En Fabricación</span>
+                          <span className="text-xl font-black text-blue-400 font-mono mt-0.5 block">
+                            {workOrders.filter(o => o.status === 'fabricacion' || o.status === 'diseno').length}
+                          </span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">⚙️</div>
+                      </div>
+                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">✅ Listas / Calidad</span>
+                          <span className="text-xl font-black text-emerald-400 font-mono mt-0.5 block">
+                            {workOrders.filter(o => o.status === 'completado' || o.status === 'calidad').length}
+                          </span>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">🏆</div>
+                      </div>
+                    </div>
+
+                    {/* Filtros y Buscador */}
+                    <div className="p-4 rounded-xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { id: 'todos', label: 'Todas las OTs' },
+                          { id: 'por_iniciar', label: '📥 Por Iniciar' },
+                          { id: 'diseno', label: '📐 Archivo & Medidas' },
+                          { id: 'fabricacion', label: '⚡ En Fabricación' },
+                          { id: 'calidad', label: '🔍 Control Calidad' },
+                          { id: 'completado', label: '✅ Terminadas' }
+                        ].map(tab => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setOtFilterStatus(tab.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                              otFilterStatus === tab.id ? 'bg-red-600 text-white shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="relative w-full md:w-64">
+                        <input
+                          type="text"
+                          placeholder="Buscar OT, cotización, cliente..."
+                          value={otSearch}
+                          onChange={(e) => setOtSearch(e.target.value)}
+                          className="w-full bg-zinc-900 text-white text-xs pl-8 pr-3 py-2 rounded-xl border border-zinc-700 focus:border-red-600 focus:outline-none"
+                        />
+                        <div className="absolute left-2.5 top-2.5 text-zinc-500">
+                          <Icon name="search" className="w-3.5 h-3.5" />
+                        </div>
+                        {otSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setOtSearch('')}
+                            className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* LISTA / TARJETAS DE ÓRDENES DE TRABAJO */}
+                    {(() => {
+                      const searchLower = (otSearch || '').toLowerCase().trim();
+                      const filteredWorkOrders = workOrders.filter(ot => {
+                        const matchStatus = otFilterStatus === 'todos' || ot.status === otFilterStatus;
+                        const matchSearch = !searchLower ||
+                          (ot.otFolio || '').toLowerCase().includes(searchLower) ||
+                          (ot.correlative || '').toLowerCase().includes(searchLower) ||
+                          (ot.client?.name || '').toLowerCase().includes(searchLower) ||
+                          (ot.items || []).some(it => (it.name || '').toLowerCase().includes(searchLower)) ||
+                          (ot.materials || []).some(m => (m.name || '').toLowerCase().includes(searchLower));
+                        return matchStatus && matchSearch;
+                      });
+
+                      if (filteredWorkOrders.length === 0) {
+                        return (
+                          <div className="p-12 text-center bg-black border border-zinc-800 rounded-2xl text-zinc-500 space-y-3">
+                            <div className="text-3xl">🏭</div>
+                            <p className="text-sm font-semibold text-zinc-400">No hay órdenes de trabajo en este estado o filtro.</p>
+                            <p className="text-xs text-zinc-600">
+                              Para enviar trabajos aquí, ve a <strong>Historial Emitidas</strong> y presiona <strong>"✅ Aprobar y Crear OT"</strong> en cualquier cotización.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-6">
+                          {filteredWorkOrders.map(ot => {
+                            const totalMaterials = (ot.materials || []).length;
+                            const readyMaterials = (ot.materials || []).filter(m => m.checked).length;
+                            const progressPercent = totalMaterials > 0 ? Math.round((readyMaterials / totalMaterials) * 100) : 0;
+
+                            return (
+                              <div key={ot.id} className="p-6 rounded-2xl bg-black border border-zinc-800/90 shadow-xl space-y-5 hover:border-zinc-700 transition">
+                                {/* Encabezado de la Tarjeta OT */}
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                      <span className="text-lg font-black font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/40 px-3 py-1 rounded-xl">
+                                        {ot.otFolio || `OT-${ot.numericFolio}`}
+                                      </span>
+                                      <span className="text-xs font-mono font-bold text-red-400 bg-red-950/30 border border-red-900/40 px-2.5 py-1 rounded-lg">
+                                        Cotización: {ot.correlative}
+                                      </span>
+                                      <span className="text-xs text-zinc-400">
+                                        📅 Ingreso: {ot.createdAt}
+                                      </span>
+                                      <span className="text-xs text-amber-400 font-semibold bg-amber-950/30 border border-amber-900/40 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                                        ⏰ Entrega Prometida: {ot.deadline || 'Por coordinar'}
+                                      </span>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                                      <span className="text-white font-bold text-base">{ot.client?.name}</span>
+                                      {ot.client?.documentId && <span className="text-xs text-zinc-400 font-mono">RUT: {ot.client.documentId}</span>}
+                                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-400 border border-blue-500/30">
+                                        {ot.client?.deliveryMethod === 'instalacion' ? '🏗️ Requiere Instalación en Terreno' : ot.client?.deliveryMethod === 'entrega' ? '📦 Despacho a Cliente' : '🏬 Retiro en Taller Matriz'}
+                                      </span>
+                                    </div>
+                                    {ot.client?.deliveryAddress && (
+                                      <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1.5">
+                                        <span>📍 Dirección Obra:</span>
+                                        <strong className="text-zinc-200">{ot.client.deliveryAddress}</strong>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Acciones Rápidas Superior */}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenOtPrintModal(ot)}
+                                      className="bg-zinc-900 hover:bg-zinc-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                      title="Imprimir Ficha Técnica de Taller para los Maestros (Sin precios de venta)"
+                                    >
+                                      <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
+                                      <span>🖨️ Ficha de Taller</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleScheduleOtInCalendar(ot)}
+                                      className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                      title="Agendar entrega o instalación en el calendario oficial"
+                                    >
+                                      <Icon name="calendar" className="w-3.5 h-3.5" />
+                                      <span>📅 Agendar Entrega</span>
+                                    </button>
+                                    {ot.client?.phone && (
+                                      <a
+                                        href={`https://wa.me/${(ot.client.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${ot.client.name}, le saludamos de Letreros Olivar SpA para informarle el avance de su trabajo (${ot.otFolio}).`)}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="bg-zinc-900 hover:bg-zinc-800 text-emerald-400 px-3 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
+                                      >
+                                        <Icon name="whatsapp" className="w-3.5 h-3.5" />
+                                        <span>WhatsApp</span>
+                                      </a>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteWorkOrder(ot.id)}
+                                      className="bg-red-950/20 hover:bg-red-600 text-red-400 hover:text-white p-2 rounded-xl text-xs border border-red-900/40 transition cursor-pointer"
+                                      title="Eliminar esta Orden de Trabajo"
+                                    >
+                                      <Icon name="trash" className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* FASES DE PRODUCCIÓN (BOTONES KANBAN 1-CLICK) */}
+                                <div className="bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+                                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                                    Estado del Trabajo en Taller:
+                                  </span>
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {[
+                                      { id: 'por_iniciar', label: '📥 Por Iniciar', activeClass: 'bg-amber-600 text-white' },
+                                      { id: 'diseno', label: '📐 Archivo & Medidas', activeClass: 'bg-indigo-600 text-white' },
+                                      { id: 'fabricacion', label: '⚡ En Fabricación', activeClass: 'bg-blue-600 text-white' },
+                                      { id: 'calidad', label: '🔍 Control de Calidad', activeClass: 'bg-purple-600 text-white' },
+                                      { id: 'completado', label: '✅ Terminado / Listo', activeClass: 'bg-emerald-600 text-white' }
+                                    ].map(st => (
+                                      <button
+                                        key={st.id}
+                                        type="button"
+                                        onClick={() => handleUpdateOtStage(ot.id, st.id)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                                          ot.status === st.id ? st.activeClass + ' shadow-md' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                                        }`}
+                                      >
+                                        <span>{st.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* REQUERIMIENTO PRINCIPAL: PUBLICACIÓN Y GESTIÓN DE MATERIALES */}
+                                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800/80 space-y-3">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-900 pb-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-bold text-white font-heading">
+                                        📋 Publicación de Materiales para Maestros de Taller
+                                      </span>
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                        {readyMaterials} de {totalMaterials} preparados ({progressPercent}%)
+                                      </span>
+                                    </div>
+                                    <div className="w-full sm:w-48 bg-zinc-900 rounded-full h-2 overflow-hidden border border-zinc-800">
+                                      <div
+                                        className={`h-full transition-all duration-300 ${progressPercent === 100 ? 'bg-emerald-500' : 'bg-red-600'}`}
+                                        style={{ width: `${progressPercent}%` }}
+                                      ></div>
+                                    </div>
+                                  </div>
+
+                                  {/* Lista de Materiales Técnicos Calculados */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+                                    {(ot.materials || []).map(mat => (
+                                      <div
+                                        key={mat.id}
+                                        onClick={() => handleToggleMaterialCheck(ot.id, mat.id)}
+                                        className={`p-3 rounded-xl border cursor-pointer transition flex items-start gap-3 ${
+                                          mat.checked ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-200' : 'bg-black border-zinc-800 hover:border-zinc-700 text-zinc-300'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={mat.checked}
+                                          onChange={() => {}}
+                                          className="mt-0.5 rounded text-emerald-600 focus:ring-0 cursor-pointer"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                              mat.category === 'Sustrato' ? 'bg-blue-600/20 text-blue-400' :
+                                              mat.category === 'Planchas' ? 'bg-purple-600/20 text-purple-400' :
+                                              mat.category === 'Estructura' ? 'bg-amber-600/20 text-amber-400' :
+                                              mat.category === 'Eléctrico' ? 'bg-yellow-600/20 text-yellow-400' :
+                                              'bg-zinc-800 text-zinc-400'
+                                            }`}>
+                                              {mat.category}
+                                            </span>
+                                            <strong className={`text-xs block truncate ${mat.checked ? 'line-through text-zinc-400' : 'text-white'}`}>
+                                              {mat.name}
+                                            </strong>
+                                          </div>
+                                          <p className="text-[11px] text-zinc-400 mt-1 font-mono">
+                                            ↳ {mat.spec}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* DETALLE TÉCNICO DE TRABAJOS DE LA COTIZACIÓN */}
+                                <div className="space-y-2">
+                                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">
+                                    📐 Trabajos a Realizar ({ot.items?.length || 0} ítems):
+                                  </span>
+                                  <div className="divide-y divide-zinc-900 border border-zinc-900 rounded-xl overflow-hidden bg-black">
+                                    {(ot.items || []).map((it, i) => (
+                                      <div key={i} className="p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                        <div>
+                                          <strong className="text-white text-sm block">{it.name}</strong>
+                                          {it.detail && <p className="text-zinc-400 mt-0.5 italic">{it.detail}</p>}
+                                          {it.selectedOptions && it.selectedOptions.length > 0 && (
+                                            <div className="text-[10px] text-red-400 mt-0.5">
+                                              Acabados: {it.selectedOptions.join(' • ')}
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="text-right font-mono text-zinc-300">
+                                          <span className="font-bold text-white block">{it.quantity} {it.quantity === 1 ? 'unidad' : 'unidades'}</span>
+                                          {it.calcType === 'sqm' && it.width && it.height && (
+                                            <span className="text-[11px] text-zinc-400 block">{it.width}m × {it.height}m ({(it.width * it.height * it.quantity).toFixed(2)} m²)</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Responsable & Notas Técnicas */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs text-zinc-500 border-t border-zinc-900">
+                                  <div>
+                                    Responsable Asignado: <strong className="text-zinc-300">{ot.assignedTech || 'Taller Matriz (Olivar)'}</strong>
+                                  </div>
+                                  {ot.notes && (
+                                    <div className="italic text-zinc-400">
+                                      "{ot.notes}"
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -6536,6 +7449,340 @@
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL: NUEVA ORDEN DE TRABAJO MANUAL (TALLER) */}
+          {showNewManualOtModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-bold">
+                      <Icon name="tool" className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-black text-white text-base">
+                        Nueva Orden de Trabajo de Taller (Manual)
+                      </h3>
+                      <p className="text-[11px] text-zinc-400">Ingreso directo a producción sin cotización previa</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewManualOtModal(false)}
+                    className="text-zinc-500 hover:text-white"
+                  >
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateManualOt} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 mb-1">Nombre del Cliente / Empresa:</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Transportes Rancagua SpA"
+                      value={manualOtForm.clientName}
+                      onChange={(e) => setManualOtForm({ ...manualOtForm, clientName: e.target.value })}
+                      className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Teléfono de Contacto:</label>
+                      <input
+                        type="text"
+                        placeholder="+56 9 ..."
+                        value={manualOtForm.clientPhone}
+                        onChange={(e) => setManualOtForm({ ...manualOtForm, clientPhone: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Fecha Entrega / Plazo:</label>
+                      <input
+                        type="date"
+                        value={manualOtForm.deadline}
+                        onChange={(e) => setManualOtForm({ ...manualOtForm, deadline: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 mb-1">Trabajo / Producto a Fabricar:</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Caja de Luz Backlight 3x1m con iluminación LED"
+                      value={manualOtForm.workName}
+                      onChange={(e) => setManualOtForm({ ...manualOtForm, workName: e.target.value })}
+                      className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Ancho (m):</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="3.00"
+                        value={manualOtForm.width}
+                        onChange={(e) => setManualOtForm({ ...manualOtForm, width: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Alto (m):</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        placeholder="1.00"
+                        value={manualOtForm.height}
+                        onChange={(e) => setManualOtForm({ ...manualOtForm, height: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Cantidad:</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={manualOtForm.quantity}
+                        onChange={(e) => setManualOtForm({ ...manualOtForm, quantity: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Modalidad de Entrega:</label>
+                      <select
+                        value={manualOtForm.deliveryMethod}
+                        onChange={(e) => setManualOtForm({ ...manualOtForm, deliveryMethod: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                      >
+                        <option value="retiro">🏬 Retiro en Taller (Olivar)</option>
+                        <option value="entrega">📦 Despacho a Cliente</option>
+                        <option value="instalacion">🏗️ Instalación en Terreno</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-300 mb-1">Dirección de Entrega / Obra:</label>
+                      <input
+                        type="text"
+                        placeholder="Calle, Número, Comuna..."
+                        value={manualOtForm.deliveryAddress}
+                        onChange={(e) => setManualOtForm({ ...manualOtForm, deliveryAddress: e.target.value })}
+                        className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-300 mb-1">Notas Técnicas para Taller:</label>
+                    <textarea
+                      rows="2"
+                      placeholder="Espesor de acrílico, color de LEDs, tipo de estructura, fijaciones..."
+                      value={manualOtForm.notes}
+                      onChange={(e) => setManualOtForm({ ...manualOtForm, notes: e.target.value })}
+                      className="w-full bg-black text-white px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-2 border-t border-zinc-900">
+                    <button
+                      type="button"
+                      onClick={() => setShowNewManualOtModal(false)}
+                      className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black shadow-lg shadow-red-600/30"
+                    >
+                      Crear OT y Publicar Materiales
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODAL / FICHA TÉCNICA DE TALLER & PRODUCCIÓN (IMPRESIÓN OFICIAL) */}
+          {/* ============================================================== */}
+          {showOtPrintModal && selectedOtForPrint && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+              <div className="bg-white text-black rounded-2xl w-full max-w-4xl my-4 overflow-hidden shadow-2xl flex flex-col">
+                {/* Barra de control en pantalla (no se imprime) */}
+                <div className="bg-zinc-950 text-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print border-b border-zinc-800">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="font-bold text-xs sm:text-sm font-heading">
+                      Ficha Técnica de Taller ({selectedOtForPrint.otFolio})
+                    </span>
+                    <span className="text-[10px] text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 font-mono">
+                      Ref Cotización: {selectedOtForPrint.correlative}
+                    </span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono">
+                      🔒 Sin Precios de Venta (Solo Técnica)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/30 transition cursor-pointer"
+                    >
+                      <Icon name="printer" className="w-3.5 h-3.5" />
+                      <span>Imprimir Ficha OT</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseOtPrintModal}
+                      className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+
+                {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) */}
+                <div id="ot-print-area" className="p-8 bg-white text-black font-sans text-xs leading-relaxed">
+                  {/* Cabecera */}
+                  <div className="flex justify-between items-start border-b-2 border-red-600 pb-4 mb-4">
+                    <div>
+                      <h1 className="text-2xl font-black text-red-600 font-heading tracking-wider">LETREROS OLIVAR SpA</h1>
+                      <p className="text-xs text-gray-600 font-semibold uppercase">Taller de Fabricación Gráfica, Estructuras & Publicidad</p>
+                      <p className="text-[10px] text-gray-500">RUT: 77.892.486-5 • Fono: +56 9 5158 5884 • Olivar / Rancagua</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="inline-block bg-black text-white px-3 py-1 font-mono font-black text-sm rounded mb-1">
+                        ORDEN DE TRABAJO: {selectedOtForPrint.otFolio}
+                      </div>
+                      <p className="text-[10px] text-gray-600 font-mono font-bold">Ref Cotización: {selectedOtForPrint.correlative}</p>
+                      <p className="text-[10px] text-gray-500">Fecha Emisión: {selectedOtForPrint.createdAt}</p>
+                      <p className="text-[11px] text-red-600 font-bold">FECHA ENTREGA: {selectedOtForPrint.deadline || 'Coordinada con Taller'}</p>
+                    </div>
+                  </div>
+
+                  {/* Datos Cliente & Despacho */}
+                  <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded border border-gray-200 mb-4 text-[11px]">
+                    <div>
+                      <span className="font-bold text-gray-700 block uppercase text-[9px]">Cliente / Razón Social:</span>
+                      <strong className="text-sm text-black block">{selectedOtForPrint.client?.name}</strong>
+                      <p className="text-gray-600">RUT: {selectedOtForPrint.client?.documentId || 'S/RUT'}</p>
+                      <p className="text-gray-600">Contacto: {selectedOtForPrint.client?.phone || 'S/Fono'}</p>
+                    </div>
+                    <div>
+                      <span className="font-bold text-gray-700 block uppercase text-[9px]">Modalidad & Lugar de Entrega:</span>
+                      <strong className="text-black block">
+                        {selectedOtForPrint.client?.deliveryMethod === 'instalacion' ? '🏗️ INSTALACIÓN EN TERRENO' : selectedOtForPrint.client?.deliveryMethod === 'entrega' ? '📦 DESPACHO A CLIENTE' : '🏬 RETIRO EN TALLER OLIVAR'}
+                      </strong>
+                      {selectedOtForPrint.client?.deliveryAddress && (
+                        <p className="text-gray-700 mt-1"><strong>Dirección:</strong> {selectedOtForPrint.client.deliveryAddress}</p>
+                      )}
+                      <p className="text-gray-600 mt-0.5">Responsable: <strong>{selectedOtForPrint.assignedTech || 'Taller Matriz (Olivar)'}</strong></p>
+                    </div>
+                  </div>
+
+                  {/* Tabla de Trabajos / Medidas */}
+                  <div className="mb-4">
+                    <h2 className="font-bold text-xs uppercase tracking-wider text-black mb-1 border-b border-gray-300 pb-1">
+                      1. Trabajos a Fabricar y Medidas Técnicas
+                    </h2>
+                    <table className="w-full text-left border-collapse text-[11px] mt-1">
+                      <thead>
+                        <tr className="bg-gray-100 border-b border-gray-300 text-gray-700 uppercase text-[9px]">
+                          <th className="py-1.5 px-2 text-center">Cant.</th>
+                          <th className="py-1.5 px-2">Medidas / Superficie</th>
+                          <th className="py-1.5 px-2">Descripción del Producto / Estructura</th>
+                          <th className="py-1.5 px-2">Acabados & Componentes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {(selectedOtForPrint.items || []).map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="py-2 px-2 font-bold font-mono text-center">{item.quantity}</td>
+                            <td className="py-2 px-2 font-mono whitespace-nowrap">
+                              {item.calcType === 'sqm' && item.width && item.height ? `${item.width}m × ${item.height}m (${(item.width * item.height * item.quantity).toFixed(2)} m²)` : item.unitLabel || '1 ud'}
+                            </td>
+                            <td className="py-2 px-2">
+                              <strong className="text-black block">{item.name}</strong>
+                              {item.detail && <p className="text-[10px] text-gray-600 italic mt-0.5">{item.detail}</p>}
+                            </td>
+                            <td className="py-2 px-2 text-[10px] text-gray-700">
+                              {item.selectedOptions && item.selectedOptions.length > 0 ? item.selectedOptions.join(', ') : 'Estándar'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Tabla de Materiales Requeridos para Bodega / Taller */}
+                  <div className="mb-6">
+                    <h2 className="font-bold text-xs uppercase tracking-wider text-black mb-1 border-b border-gray-300 pb-1">
+                      2. Lista y Checklist de Materiales Extraídos para Fabricación
+                    </h2>
+                    <table className="w-full text-left border-collapse text-[11px] mt-1">
+                      <thead>
+                        <tr className="bg-gray-100 border-b border-gray-300 text-gray-700 uppercase text-[9px]">
+                          <th className="py-1.5 px-2 text-center w-8">Check</th>
+                          <th className="py-1.5 px-2">Categoría</th>
+                          <th className="py-1.5 px-2">Material / Insumo</th>
+                          <th className="py-1.5 px-2">Especificación Técnica & Medidas</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {(selectedOtForPrint.materials || []).map((mat, idx) => (
+                          <tr key={idx}>
+                            <td className="py-1.5 px-2 text-center">
+                              <div className="w-4 h-4 border border-black mx-auto"></div>
+                            </td>
+                            <td className="py-1.5 px-2 font-bold uppercase text-[9px] text-gray-600">{mat.category}</td>
+                            <td className="py-1.5 px-2 font-semibold text-black">{mat.name}</td>
+                            <td className="py-1.5 px-2 font-mono text-[10px] text-gray-700">{mat.spec}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {selectedOtForPrint.notes && (
+                    <div className="mb-6 p-2.5 bg-gray-50 border border-gray-200 rounded text-[11px]">
+                      <strong>Notas de Producción / Montaje:</strong> {selectedOtForPrint.notes}
+                    </div>
+                  )}
+
+                  {/* Firmas y Recepción */}
+                  <div className="grid grid-cols-3 gap-6 pt-6 mt-6 border-t border-gray-300 text-center text-[10px]">
+                    <div>
+                      <div className="border-b border-black h-10 mb-1"></div>
+                      <strong>Firma Maestro Fabricador</strong>
+                      <p className="text-gray-500">Taller y Estructuras</p>
+                    </div>
+                    <div>
+                      <div className="border-b border-black h-10 mb-1"></div>
+                      <strong>Control de Calidad</strong>
+                      <p className="text-gray-500">Inspección Final</p>
+                    </div>
+                    <div>
+                      <div className="border-b border-black h-10 mb-1"></div>
+                      <strong>Recepción Conforme Cliente</strong>
+                      <p className="text-gray-500">Despacho / Instalación</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
