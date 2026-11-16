@@ -232,50 +232,50 @@
 
     // --- TARIFARIO OFICIAL DE TALLER (Fuente: Planilla Excel Taller Letreros Olivar) ---
     const DEFAULT_WORKSHOP_MATERIALS = [
-      // Acrílicos y Placas Rígidas
-      { id: 'mat-1', name: 'Acrílico Blanco 3mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 70000, pricePerSqm: 25000, unit: 'm²' },
-      { id: 'mat-2', name: 'Acrílico Transparente 3mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 70000, pricePerSqm: 25000, unit: 'm²' },
-      { id: 'mat-3', name: 'Acrílico Transparente 5mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 121000, pricePerSqm: 45000, unit: 'm²' },
-      { id: 'mat-4', name: 'Aluminio Compuesto 3mm (ACM)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 68000, pricePerSqm: 32000, unit: 'm²' },
-      { id: 'mat-5', name: 'PVC Espumado 3mm (Trovicel)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 120000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-6', name: 'PVC Espumado 5mm (Trovicel)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 0, pricePerSqm: 22000, unit: 'm²' },
-      { id: 'mat-7', name: 'PVC Espumado 10mm (Trovicel)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 35000, pricePerSqm: 35000, unit: 'm²' },
-      { id: 'mat-8', name: 'Foam Board 5mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', cost: 218000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-9', name: 'Lata Galvanizada 0.8mm', category: 'Acrílicos y Rígidos', format: '1.0x3.0', cost: 24000, pricePerSqm: 24000, unit: 'm²' },
-      { id: 'mat-10', name: 'Lata Galvanizada 1mm', category: 'Acrílicos y Rígidos', format: '1.0x3.0', cost: 28000, pricePerSqm: 28000, unit: 'm²' },
+      // Acrílicos y Placas Rígidas (Planchas Estándar 1.22m × 2.44m / Lata 1.00m × 3.00m)
+      { id: 'mat-1', name: 'Acrílico Blanco 3mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 70000, pricePerSqm: 25000, unit: 'm²' },
+      { id: 'mat-2', name: 'Acrílico Transparente 3mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 70000, pricePerSqm: 25000, unit: 'm²' },
+      { id: 'mat-3', name: 'Acrílico Transparente 5mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 121000, pricePerSqm: 45000, unit: 'm²' },
+      { id: 'mat-4', name: 'Aluminio Compuesto 3mm (ACM)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 68000, pricePerSqm: 32000, unit: 'm²' },
+      { id: 'mat-5', name: 'PVC Espumado 3mm (Trovicel)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 120000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-6', name: 'PVC Espumado 5mm (Trovicel)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 0, pricePerSqm: 22000, unit: 'm²' },
+      { id: 'mat-7', name: 'PVC Espumado 10mm (Trovicel)', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 35000, pricePerSqm: 35000, unit: 'm²' },
+      { id: 'mat-8', name: 'Foam Board 5mm', category: 'Acrílicos y Rígidos', format: '1.22x2.44', sheetW: 2.44, sheetH: 1.22, cost: 218000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-9', name: 'Lata Galvanizada 0.8mm', category: 'Acrílicos y Rígidos', format: '1.0x3.0', sheetW: 3.00, sheetH: 1.00, cost: 24000, pricePerSqm: 24000, unit: 'm²' },
+      { id: 'mat-10', name: 'Lata Galvanizada 1mm', category: 'Acrílicos y Rígidos', format: '1.0x3.0', sheetW: 3.00, sheetH: 1.00, cost: 28000, pricePerSqm: 28000, unit: 'm²' },
 
       // Telas PVC & Banners
-      { id: 'mat-11', name: 'Tela PVC 340gr (1.10m)', category: 'Telas PVC & Banners', format: '1.10x50', cost: 66000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-12', name: 'Tela PVC 340gr (1.60m)', category: 'Telas PVC & Banners', format: '1.60x50', cost: 96000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-13', name: 'Tela PVC 340gr (2.20m)', category: 'Telas PVC & Banners', format: '2.20x50', cost: 141000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-14', name: 'Tela PVC Mate 380gr (1.10m)', category: 'Telas PVC & Banners', format: '1.10x50', cost: 75000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-15', name: 'Tela PVC Mate 380gr (1.60m)', category: 'Telas PVC & Banners', format: '1.60x50', cost: 109000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-16', name: 'Tela PVC 380gr (3.20m Gran Formato)', category: 'Telas PVC & Banners', format: '3.20x50', cost: 215000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-17', name: 'Tela PVC 440gr Reforzada (1.10m)', category: 'Telas PVC & Banners', format: '1.10x50', cost: 79000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-18', name: 'Tela PVC 440gr Reforzada (1.60m)', category: 'Telas PVC & Banners', format: '1.60x50', cost: 115000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-19', name: 'Tela PVC Reverso Negro (Blackout 3.20m)', category: 'Telas PVC & Banners', format: '3.20x50', cost: 167000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-11', name: 'Tela PVC 340gr (1.10m)', category: 'Telas PVC & Banners', format: '1.10x50', rollW: 1.10, cost: 66000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-12', name: 'Tela PVC 340gr (1.60m)', category: 'Telas PVC & Banners', format: '1.60x50', rollW: 1.60, cost: 96000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-13', name: 'Tela PVC 340gr (2.20m)', category: 'Telas PVC & Banners', format: '2.20x50', rollW: 2.20, cost: 141000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-14', name: 'Tela PVC Mate 380gr (1.10m)', category: 'Telas PVC & Banners', format: '1.10x50', rollW: 1.10, cost: 75000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-15', name: 'Tela PVC Mate 380gr (1.60m)', category: 'Telas PVC & Banners', format: '1.60x50', rollW: 1.60, cost: 109000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-16', name: 'Tela PVC 380gr (3.20m Gran Formato)', category: 'Telas PVC & Banners', format: '3.20x50', rollW: 3.20, cost: 215000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-17', name: 'Tela PVC 440gr Reforzada (1.10m)', category: 'Telas PVC & Banners', format: '1.10x50', rollW: 1.10, cost: 79000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-18', name: 'Tela PVC 440gr Reforzada (1.60m)', category: 'Telas PVC & Banners', format: '1.60x50', rollW: 1.60, cost: 115000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-19', name: 'Tela PVC Reverso Negro (Blackout 3.20m)', category: 'Telas PVC & Banners', format: '3.20x50', rollW: 3.20, cost: 167000, pricePerSqm: 14000, unit: 'm²' },
 
       // Vinilos y Adhesivos
-      { id: 'mat-20', name: 'Vinilo Alta Adherencia 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', cost: 97000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-21', name: 'Vinilo Alta Adherencia 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', cost: 82000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-22', name: 'Adhesivo 100 Micrones 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', cost: 73000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-23', name: 'Adhesivo 100 Micrones 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', cost: 87000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-24', name: 'Adhesivo 80 Micrones 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', cost: 58000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-25', name: 'Adhesivo 80 Micrones 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', cost: 67000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-26', name: 'Adhesivo Reflectante 1.24m', category: 'Vinilos & Adhesivos', format: '1.24x45', cost: 170000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-27', name: 'Adhesivo Reflectante 0.61m', category: 'Vinilos & Adhesivos', format: '0.61x45', cost: 85000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-28', name: 'Adhesivo Transparente Glossy 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', cost: 77000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-29', name: 'Adhesivo Transparente Glossy 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', cost: 90000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-30', name: 'Papel Sintético 200 Micrones 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', cost: 86000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-31', name: 'Papel Sintético 200 Micrones 0.941m', category: 'Vinilos & Adhesivos', format: '0.941x50', cost: 73000, pricePerSqm: 14000, unit: 'm²' },
-      { id: 'mat-32', name: 'Laminado Glossy 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', cost: 65000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-33', name: 'Laminado Glossy 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', cost: 77000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-34', name: 'Laminado Glossy 1.52m', category: 'Vinilos & Adhesivos', format: '1.52x50', cost: 92000, pricePerSqm: 18000, unit: 'm²' },
-      { id: 'mat-35', name: 'Dusted / Empavonado 1.22m', category: 'Vinilos & Adhesivos', format: '1.22x50', cost: 278000, pricePerSqm: 21000, unit: 'm²' },
-      { id: 'mat-36', name: 'Window Vision (Microperforado) 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', cost: 253000, pricePerSqm: 21000, unit: 'm²' },
-      { id: 'mat-37', name: 'Imantado Vehicular 0.61m', category: 'Vinilos & Adhesivos', format: '0.61x50', cost: 118000, pricePerSqm: 8000, unit: 'm²' },
-      { id: 'mat-38', name: 'Vinilo Decorativo 0.61m', category: 'Vinilos & Adhesivos', format: '0.61x50', cost: 80000, pricePerSqm: 5000, unit: 'm²' },
-      { id: 'mat-39', name: 'Papel Transfer 0.305m', category: 'Vinilos & Adhesivos', format: '0.305x91.44', cost: 66000, pricePerSqm: 12000, unit: 'm²' },
+      { id: 'mat-20', name: 'Vinilo Alta Adherencia 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', rollW: 1.27, cost: 97000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-21', name: 'Vinilo Alta Adherencia 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', rollW: 1.07, cost: 82000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-22', name: 'Adhesivo 100 Micrones 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', rollW: 1.27, cost: 73000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-23', name: 'Adhesivo 100 Micrones 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', rollW: 1.07, cost: 87000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-24', name: 'Adhesivo 80 Micrones 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', rollW: 1.27, cost: 58000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-25', name: 'Adhesivo 80 Micrones 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', rollW: 1.07, cost: 67000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-26', name: 'Adhesivo Reflectante 1.24m', category: 'Vinilos & Adhesivos', format: '1.24x45', rollW: 1.24, cost: 170000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-27', name: 'Adhesivo Reflectante 0.61m', category: 'Vinilos & Adhesivos', format: '0.61x45', rollW: 0.61, cost: 85000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-28', name: 'Adhesivo Transparente Glossy 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', rollW: 1.07, cost: 77000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-29', name: 'Adhesivo Transparente Glossy 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', rollW: 1.27, cost: 90000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-30', name: 'Papel Sintético 200 Micrones 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', rollW: 1.07, cost: 86000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-31', name: 'Papel Sintético 200 Micrones 0.941m', category: 'Vinilos & Adhesivos', format: '0.941x50', rollW: 0.941, cost: 73000, pricePerSqm: 14000, unit: 'm²' },
+      { id: 'mat-32', name: 'Laminado Glossy 1.07m', category: 'Vinilos & Adhesivos', format: '1.07x50', rollW: 1.07, cost: 65000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-33', name: 'Laminado Glossy 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', rollW: 1.27, cost: 77000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-34', name: 'Laminado Glossy 1.52m', category: 'Vinilos & Adhesivos', format: '1.52x50', rollW: 1.52, cost: 92000, pricePerSqm: 18000, unit: 'm²' },
+      { id: 'mat-35', name: 'Dusted / Empavonado 1.22m', category: 'Vinilos & Adhesivos', format: '1.22x50', rollW: 1.22, cost: 278000, pricePerSqm: 21000, unit: 'm²' },
+      { id: 'mat-36', name: 'Window Vision (Microperforado) 1.27m', category: 'Vinilos & Adhesivos', format: '1.27x50', rollW: 1.27, cost: 253000, pricePerSqm: 21000, unit: 'm²' },
+      { id: 'mat-37', name: 'Imantado Vehicular 0.61m', category: 'Vinilos & Adhesivos', format: '0.61x50', rollW: 0.61, cost: 118000, pricePerSqm: 8000, unit: 'm²' },
+      { id: 'mat-38', name: 'Vinilo Decorativo 0.61m', category: 'Vinilos & Adhesivos', format: '0.61x50', rollW: 0.61, cost: 80000, pricePerSqm: 5000, unit: 'm²' },
+      { id: 'mat-39', name: 'Papel Transfer 0.305m', category: 'Vinilos & Adhesivos', format: '0.305x91.44', rollW: 0.305, cost: 66000, pricePerSqm: 12000, unit: 'm²' },
 
       // Cajas de Luz, Letreros & Rollers
       { id: 'mat-40', name: 'Cajón Luminoso Galvanizado', category: 'Letreros & Cajas de Luz', format: 'A medida', cost: 100000, pricePerSqm: 180000, unit: 'm²' },
@@ -294,6 +294,401 @@
       { id: 'con-8', name: 'Tubo LED 1.20m', format: 'Unidad', cost: 4500, price: 6500, unit: 'unidad' },
       { id: 'con-9', name: 'Tubo LED 0.60m', format: 'Unidad', cost: 3500, price: 4500, unit: 'unidad' }
     ];
+
+    // --- MOTOR DE CUBICACIÓN TÉCNICA Y NESTING / PATRÓN DE CORTE PARA TALLER ---
+    const calculateWorkshopCubicationAndNesting = (items = []) => {
+      const rigidGroups = {};
+      const flexibleRolls = {};
+      let totalPiecesCount = 0;
+      let totalAreaSqm = 0;
+
+      (items || []).forEach((item, itemIdx) => {
+        const w = parseFloat(item.width) || 0;
+        const h = parseFloat(item.height) || 0;
+        const qty = parseInt(item.quantity, 10) || 1;
+        const nameLower = (item.name || '').toLowerCase();
+        const detailLower = (item.detail || '').toLowerCase();
+        const compLower = Array.isArray(item.compositionLayers) ? item.compositionLayers.join(' ').toLowerCase() : '';
+        const allText = `${nameLower} ${detailLower} ${compLower}`;
+
+        if (w > 0 && h > 0) {
+          totalPiecesCount += qty;
+          const pieceArea = w * h;
+          totalAreaSqm += (pieceArea * qty);
+
+          // Detectar Sustrato Rígido y Dimensiones Oficiales
+          let isRigid = false;
+          let matKey = '';
+          let matLabel = '';
+          let sheetW = 2.44;
+          let sheetH = 1.22;
+
+          if (allText.includes('lata') || allText.includes('galvanizad')) {
+            isRigid = true;
+            matKey = 'lata_galvanizada';
+            matLabel = 'Lata Galvanizada 0.8mm';
+            sheetW = 3.00;
+            sheetH = 1.00; // Plancha 300x100 cm
+          } else if (allText.includes('acrílico') || allText.includes('acrilico')) {
+            isRigid = true;
+            matKey = 'acrilico';
+            matLabel = 'Acrílico (Corte Láser / Router)';
+            sheetW = 2.44;
+            sheetH = 1.22; // Plancha 1.22x2.44 m
+          } else if (allText.includes('trovicel') || allText.includes('pvc espumado') || allText.includes('sintra')) {
+            isRigid = true;
+            matKey = 'trovicel';
+            matLabel = 'PVC Espumado (Trovicel 3mm/5mm)';
+            sheetW = 2.44;
+            sheetH = 1.22; // Plancha 1.22x2.44 m
+          } else if (allText.includes('foam') || allText.includes('cartón pluma')) {
+            isRigid = true;
+            matKey = 'foam_board';
+            matLabel = 'Foam Board 5mm';
+            sheetW = 2.44;
+            sheetH = 1.22; // Plancha 1.22x2.44 m
+          } else if (allText.includes('acm') || allText.includes('aluminio compuesto')) {
+            isRigid = true;
+            matKey = 'acm';
+            matLabel = 'Aluminio Compuesto (ACM 3mm)';
+            sheetW = 2.44;
+            sheetH = 1.22; // Plancha 1.22x2.44 m
+          }
+
+          if (isRigid) {
+            if (!rigidGroups[matKey]) {
+              rigidGroups[matKey] = {
+                key: matKey,
+                name: matLabel,
+                sheetW,
+                sheetH,
+                sheetArea: sheetW * sheetH,
+                cuts: []
+              };
+            }
+            rigidGroups[matKey].cuts.push({
+              itemIndex: itemIdx + 1,
+              name: item.name,
+              w,
+              h,
+              qty,
+              unitArea: pieceArea,
+              totalArea: pieceArea * qty
+            });
+          }
+
+          // Detectar Insumos en Bobina (Vinilos, Laminados, Lonas)
+          if (allText.includes('vinilo') || allText.includes('adhesivo') || compLower.includes('adhesivo')) {
+            const rollKey = 'vinilo_adhesivo';
+            if (!flexibleRolls[rollKey]) {
+              flexibleRolls[rollKey] = {
+                name: 'Vinilo Adhesivo Impreso (1440dpi)',
+                category: 'Bobina / Plotter',
+                rollW: 1.27,
+                usableW: 1.24,
+                totalArea: 0,
+                pieces: []
+              };
+            }
+            flexibleRolls[rollKey].totalArea += (pieceArea * qty);
+            flexibleRolls[rollKey].pieces.push({ name: item.name, w, h, qty });
+          }
+
+          if (allText.includes('laminado') || compLower.includes('laminado')) {
+            const rollKey = 'laminado_uv';
+            if (!flexibleRolls[rollKey]) {
+              flexibleRolls[rollKey] = {
+                name: 'Termolaminado de Protección UV',
+                category: 'Bobina / Laminadora',
+                rollW: 1.27,
+                usableW: 1.24,
+                totalArea: 0,
+                pieces: []
+              };
+            }
+            flexibleRolls[rollKey].totalArea += (pieceArea * qty);
+            flexibleRolls[rollKey].pieces.push({ name: item.name, w, h, qty });
+          }
+
+          if (allText.includes('tela') || allText.includes('banner') || allText.includes('lona') || allText.includes('frontlight') || allText.includes('backlight')) {
+            const rollKey = 'tela_pvc';
+            if (!flexibleRolls[rollKey]) {
+              flexibleRolls[rollKey] = {
+                name: 'Tela PVC Frontlight / Banner 13oz',
+                category: 'Bobina / Gran Formato',
+                rollW: w <= 1.55 ? 1.60 : 3.20,
+                usableW: w <= 1.55 ? 1.55 : 3.15,
+                totalArea: 0,
+                pieces: []
+              };
+            }
+            flexibleRolls[rollKey].totalArea += (pieceArea * qty);
+            flexibleRolls[rollKey].pieces.push({ name: item.name, w, h, qty });
+          }
+        }
+      });
+
+      // Procesar sustratos rígidos y calcular patrones de corte (Nesting 2D)
+      const rigidResults = Object.values(rigidGroups).map(group => {
+        const { sheetW, sheetH, sheetArea, cuts } = group;
+        let totalGroupArea = 0;
+        let totalGroupPieces = 0;
+
+        const cutPatterns = cuts.map(cut => {
+          totalGroupArea += cut.totalArea;
+          totalGroupPieces += cut.qty;
+
+          // Orientación A (Sin rotar: cut.w a lo largo de sheetW)
+          const colsA = Math.floor(sheetW / cut.w) || 0;
+          const rowsA = Math.floor(sheetH / cut.h) || 0;
+          const fitA = colsA * rowsA;
+
+          // Orientación B (Rotado 90°: cut.h a lo largo de sheetW)
+          const colsB = Math.floor(sheetW / cut.h) || 0;
+          const rowsB = Math.floor(sheetH / cut.w) || 0;
+          const fitB = colsB * rowsB;
+
+          const isRotated = fitB > fitA;
+          const bestCols = isRotated ? colsB : colsA;
+          const bestRows = isRotated ? rowsB : rowsA;
+          const pieceW = isRotated ? cut.h : cut.w;
+          const pieceH = isRotated ? cut.w : cut.h;
+          const piecesPerSheet = Math.max(bestCols * bestRows, 1);
+          const fullSheetsNeeded = Math.ceil(cut.qty / piecesPerSheet);
+
+          const sheetUsefulArea = piecesPerSheet * (cut.w * cut.h);
+          const utilization = Math.min(100, (sheetUsefulArea / sheetArea) * 100);
+          const wastePercent = Math.max(0, 100 - utilization);
+
+          return {
+            ...cut,
+            isRotated,
+            cols: bestCols,
+            rows: bestRows,
+            pieceW,
+            pieceH,
+            piecesPerSheet,
+            fullSheetsNeeded,
+            utilization,
+            wastePercent,
+            wasteX: Math.max(0, sheetW - (bestCols * pieceW)),
+            wasteY: Math.max(0, sheetH - (bestRows * pieceH))
+          };
+        });
+
+        const totalSheetsGroup = Math.max(
+          Math.ceil((totalGroupArea * 1.05) / sheetArea),
+          cutPatterns.length === 1 ? cutPatterns[0].fullSheetsNeeded : Math.ceil(totalGroupArea / sheetArea)
+        );
+
+        return {
+          ...group,
+          totalGroupArea,
+          totalGroupPieces,
+          totalSheetsGroup: Math.max(totalSheetsGroup, 1),
+          cutPatterns,
+          primaryPattern: cutPatterns[0] || null
+        };
+      });
+
+      // Procesar bobinas flexibles y calcular metros lineales requeridos
+      const flexibleResults = Object.values(flexibleRolls).map(roll => {
+        const linearMeters = ((roll.totalArea / (roll.usableW || 1.24)) * 1.08).toFixed(1);
+        return {
+          ...roll,
+          linearMeters: parseFloat(linearMeters)
+        };
+      });
+
+      return {
+        rigidMaterials: rigidResults,
+        flexibleMaterials: flexibleResults,
+        totalPiecesCount,
+        totalAreaSqm
+      };
+    };
+
+    // --- COMPONENTE VECTORIAL SVG: PLANO / MAPA DE CORTE EN PLANCHA (NESTING VISUAL) ---
+    const CuttingNestingDiagram = ({ pattern, sheetW, sheetH, title }) => {
+      if (!pattern || !pattern.cols || !pattern.rows) return null;
+
+      const svgW = 560;
+      const svgH = 200;
+      const padLeft = 45;
+      const padTop = 30;
+      const drawW = svgW - padLeft - 20;
+      const drawH = svgH - padTop - 25;
+
+      const scaleX = drawW / sheetW;
+      const scaleY = drawH / sheetH;
+
+      const rectW = pattern.pieceW * scaleX;
+      const rectH = pattern.pieceH * scaleY;
+
+      const rects = [];
+      for (let r = 0; r < pattern.rows; r++) {
+        for (let c = 0; c < pattern.cols; c++) {
+          const x = padLeft + (c * rectW);
+          const y = padTop + (r * rectH);
+          const isFirst = (r === 0 && c === 0);
+          rects.push({ x, y, isFirst, index: (r * pattern.cols) + c + 1 });
+        }
+      }
+
+      const cutsTotalW = pattern.cols * rectW;
+      const cutsTotalH = pattern.rows * rectH;
+      const wasteW = drawW - cutsTotalW;
+      const wasteH = drawH - cutsTotalH;
+
+      return (
+        <div className="border-2 border-black rounded-xl p-3 bg-white text-black my-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-300 pb-1.5 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black text-black uppercase font-heading">
+                🗺️ Plano de Corte: {title || pattern.name}
+              </span>
+              <span className="text-[10px] font-mono bg-black text-white px-2 py-0.5 rounded font-bold">
+                Plancha {sheetW}m × {sheetH}m
+              </span>
+            </div>
+            <div className="text-[11px] font-mono font-bold text-gray-800">
+              Patrón: {pattern.piecesPerSheet} piezas/plancha ({pattern.cols} col × {pattern.rows} filas) • Aprovechamiento: {pattern.utilization.toFixed(1)}%
+            </div>
+          </div>
+
+          <div className="w-full overflow-x-auto bg-gray-50 border border-gray-300 rounded p-1">
+            <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto max-h-56 font-sans">
+              {/* Cota Superior: Largo Plancha */}
+              <line x1={padLeft} y1="14" x2={padLeft + drawW} y2="14" stroke="#000" strokeWidth="1.5" />
+              <line x1={padLeft} y1="9" x2={padLeft} y2="19" stroke="#000" strokeWidth="1.5" />
+              <line x1={padLeft + drawW} y1="9" x2={padLeft + drawW} y2="19" stroke="#000" strokeWidth="1.5" />
+              <text x={padLeft + (drawW / 2)} y="11" textAnchor="middle" fontSize="10" fontWeight="bold" fill="#000">
+                ↔ Largo Plancha: {sheetW.toFixed(2)}m ({(sheetW * 100).toFixed(0)} cm)
+              </text>
+
+              {/* Cota Izquierda: Ancho Plancha */}
+              <line x1="16" y1={padTop} x2="16" y2={padTop + drawH} stroke="#000" strokeWidth="1.5" />
+              <line x1="11" y1={padTop} x2="21" y2={padTop} stroke="#000" strokeWidth="1.5" />
+              <line x1="11" y1={padTop + drawH} x2="21" y2={padTop + drawH} stroke="#000" strokeWidth="1.5" />
+              <text x="12" y={padTop + (drawH / 2)} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#000" transform={`rotate(-90 12 ${padTop + (drawH / 2)})`}>
+                ↕ {sheetH.toFixed(2)}m ({(sheetH * 100).toFixed(0)} cm)
+              </text>
+
+              {/* Plancha Base (Contorno) */}
+              <rect
+                x={padLeft}
+                y={padTop}
+                width={drawW}
+                height={drawH}
+                fill="#f1f5f9"
+                stroke="#0f172a"
+                strokeWidth="2"
+              />
+
+              {/* Retazo / Merma sobrante a la derecha si existe */}
+              {wasteW > 1 && (
+                <g>
+                  <rect
+                    x={padLeft + cutsTotalW}
+                    y={padTop}
+                    width={wasteW}
+                    height={cutsTotalH}
+                    fill="#fee2e2"
+                    stroke="#ef4444"
+                    strokeWidth="1"
+                    strokeDasharray="3,3"
+                  />
+                  <text
+                    x={padLeft + cutsTotalW + (wasteW / 2)}
+                    y={padTop + (cutsTotalH / 2)}
+                    textAnchor="middle"
+                    fontSize="8"
+                    fontWeight="bold"
+                    fill="#b91c1c"
+                    transform={`rotate(-90 ${padLeft + cutsTotalW + (wasteW / 2)} ${padTop + (cutsTotalH / 2)})`}
+                  >
+                    Sobrante {((pattern.wasteX || 0) * 100).toFixed(0)}cm
+                  </text>
+                </g>
+              )}
+
+              {/* Retazo / Merma sobrante abajo si existe */}
+              {wasteH > 1 && (
+                <rect
+                  x={padLeft}
+                  y={padTop + cutsTotalH}
+                  width={drawW}
+                  height={wasteH}
+                  fill="#fee2e2"
+                  stroke="#ef4444"
+                  strokeWidth="1"
+                  strokeDasharray="3,3"
+                />
+              )}
+
+              {/* Cuadrícula de Cortes */}
+              {rects.map((rc, idx) => (
+                <g key={idx}>
+                  <rect
+                    x={rc.x}
+                    y={rc.y}
+                    width={rectW}
+                    height={rectH}
+                    fill={idx % 2 === 0 ? "#e0f2fe" : "#bae6fd"}
+                    stroke="#0284c7"
+                    strokeWidth="1"
+                  />
+                  {rc.isFirst ? (
+                    <text
+                      x={rc.x + (rectW / 2)}
+                      y={rc.y + (rectH / 2) + 3}
+                      textAnchor="middle"
+                      fontSize={rectW < 35 || rectH < 25 ? "7" : "9"}
+                      fontWeight="bold"
+                      fill="#0369a1"
+                    >
+                      {(pattern.pieceW * 100).toFixed(0)}×{(pattern.pieceH * 100).toFixed(0)}cm
+                    </text>
+                  ) : (
+                    (rectW >= 28 && rectH >= 18) && (
+                      <text
+                        x={rc.x + (rectW / 2)}
+                        y={rc.y + (rectH / 2) + 2}
+                        textAnchor="middle"
+                        fontSize="7"
+                        fill="#0284c7"
+                      >
+                        #{rc.index}
+                      </text>
+                    )
+                  )}
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {/* Medidas y Guía para el Maestro de Corte */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] mt-2 font-mono">
+            <div className="p-1.5 bg-gray-100 rounded border border-gray-200">
+              <span className="text-gray-500 block text-[9px] uppercase">Medida Corte:</span>
+              <strong className="text-black text-xs font-bold">{(pattern.pieceW * 100).toFixed(0)} cm × {(pattern.pieceH * 100).toFixed(0)} cm</strong>
+            </div>
+            <div className="p-1.5 bg-gray-100 rounded border border-gray-200">
+              <span className="text-gray-500 block text-[9px] uppercase">Cortes por Plancha:</span>
+              <strong className="text-emerald-700 text-xs font-bold">{pattern.piecesPerSheet} piezas ({pattern.cols} col × {pattern.rows} filas)</strong>
+            </div>
+            <div className="p-1.5 bg-gray-100 rounded border border-gray-200">
+              <span className="text-gray-500 block text-[9px] uppercase">Aprovechamiento:</span>
+              <strong className="text-blue-700 text-xs font-bold">{pattern.utilization.toFixed(1)}% (Merma: {pattern.wastePercent.toFixed(1)}%)</strong>
+            </div>
+            <div className="p-1.5 bg-gray-100 rounded border border-gray-200">
+              <span className="text-gray-500 block text-[9px] uppercase">Planchas para este Ítem:</span>
+              <strong className="text-black text-xs font-bold">{pattern.fullSheetsNeeded} plancha(s)</strong>
+            </div>
+          </div>
+        </div>
+      );
+    };
 
     // Alias para compatibilidad
     const PRODUCTS_CATALOG = DEFAULT_WORKSHOP_MATERIALS.map(m => ({
@@ -1318,6 +1713,22 @@
       const [selectedProject, setSelectedProject] = useState(null);
       const [activeCategory, setActiveCategory] = useState('Todos');
       const [toastMessage, setToastMessage] = useState('');
+
+      // Estados para Aprobación con Orden de Compra (OC) y Observaciones Técnicas
+      const [showApproveOtModal, setShowApproveOtModal] = useState(false);
+      const [quoteToApprove, setQuoteToApprove] = useState(null);
+      const [approveOcNumber, setApproveOcNumber] = useState('');
+      const [approveNotes, setApproveNotes] = useState('');
+      const [approveDeadline, setApproveDeadline] = useState('');
+
+      // Estados para Facturación y Cierre Administrativo
+      const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+      const [quoteToInvoice, setQuoteToInvoice] = useState(null);
+      const [invoiceNumber, setInvoiceNumber] = useState('');
+      const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
+      const [invoicePaymentStatus, setInvoicePaymentStatus] = useState('Crédito 30 días');
+      const [invoiceNotes, setInvoiceNotes] = useState('');
+      const [invoiceOcNumber, setInvoiceOcNumber] = useState('');
 
       const showToast = (msg) => {
         setToastMessage(msg);
@@ -2505,6 +2916,16 @@
             });
           }
 
+          if (allText.includes('lata') || allText.includes('galvanizad')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Lata Galvanizada 0.8mm (Plancha 3.00m × 1.00m)`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} cortes de ${w}m × ${h}m)` : `${qty} corte(s)`,
+              checked: false
+            });
+          }
+
           if (allText.includes('vinilo') || allText.includes('adhesivo') || allText.includes('laminado') || allText.includes('rotulad')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
@@ -2619,15 +3040,37 @@
         return materials;
       };
 
-      // 1-Click: Aprobar cotización y enviar a Taller (Generar OT)
-      const handleApproveAndSendToWorkshop = (quote) => {
+      // --- FLUJO DE APROBACIÓN DE COTIZACIÓN CON ORDEN DE COMPRA (OC) Y OBSERVACIONES ---
+      const handleOpenApproveModal = (quote) => {
         if (!quote) return;
-        const correlative = quote.correlative;
+        setQuoteToApprove(quote);
+        const existingOt = workOrders.find(o => o.correlative === quote.correlative);
+        setApproveOcNumber(quote.purchaseOrderNumber || existingOt?.purchaseOrderNumber || '');
+        setApproveNotes(quote.workshopNotes || quote.client?.comments || '');
+        const deadlineDate = new Date();
+        deadlineDate.setDate(deadlineDate.getDate() + 5);
+        setApproveDeadline(quote.deadline || deadlineDate.toISOString().slice(0, 10));
+        setShowApproveOtModal(true);
+      };
 
-        // 1. Actualizar estado de la cotización a "Aprobada"
+      const handleConfirmApproveQuote = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (!quoteToApprove) return;
+        const quote = quoteToApprove;
+        const correlative = quote.correlative;
+        const ocClean = approveOcNumber.trim();
+        const notesClean = approveNotes.trim();
+
+        // 1. Actualizar estado de la cotización a "Aprobada" y registrar OC
         const updatedHistory = quoteHistory.map(q => {
           if (q.correlative === correlative) {
-            return { ...q, status: 'Aprobada' };
+            return {
+              ...q,
+              status: 'Aprobada',
+              purchaseOrderNumber: ocClean,
+              workshopNotes: notesClean,
+              deadline: approveDeadline
+            };
           }
           return q;
         });
@@ -2635,36 +3078,44 @@
         try {
           localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
           if (window.db) {
-            window.db.collection('quotes').doc(correlative).set({ status: 'Aprobada' }, { merge: true });
+            window.db.collection('quotes').doc(correlative).set({
+              status: 'Aprobada',
+              purchaseOrderNumber: ocClean,
+              workshopNotes: notesClean,
+              deadline: approveDeadline
+            }, { merge: true });
           }
-        } catch(e) {}
+        } catch(err) {}
 
-        // 2. Verificar si ya existe una OT para este correlativo
+        // 2. Si ya existe la OT, actualizarla
         const existingOt = workOrders.find(o => o.correlative === correlative);
         if (existingOt) {
-          showToast(`🏭 La OT para ${correlative} ya existe en el Taller.`);
-          setIntranetTab('taller');
-          setOtSearch(correlative);
+          const updatedOrders = workOrders.map(o => o.correlative === correlative ? {
+            ...o,
+            purchaseOrderNumber: ocClean,
+            notes: notesClean || o.notes,
+            deadline: approveDeadline || o.deadline
+          } : o);
+          saveWorkOrdersList(updatedOrders);
+          showToast(`🏭 OT ${existingOt.otFolio} actualizada con OC: ${ocClean || 'Sin OC'}`);
+          setShowApproveOtModal(false);
+          setQuoteToApprove(null);
           return;
         }
 
-        // 3. Crear nueva OT
+        // 3. Crear nueva OT oficial para Taller con Cubicación & OC
         const otFolio = 'OT-' + correlative.replace('COT-', '');
         const materials = generateMaterialsList(quote.items, quote.client?.deliveryMethod);
-
-        // Calcular fecha de entrega sugerida (5 días hábiles a partir de hoy)
-        const deadlineDate = new Date();
-        deadlineDate.setDate(deadlineDate.getDate() + 5);
-        const deadlineStr = deadlineDate.toISOString().slice(0, 10);
 
         const newOt = {
           id: 'ot-' + Date.now(),
           otFolio: otFolio,
           correlative: correlative,
+          purchaseOrderNumber: ocClean,
           numericFolio: quote.numericCorrelative || parseInt(correlative.replace(/\D/g, ''), 10) || 101,
           createdAt: new Date().toLocaleDateString('es-CL'),
           createdTimestamp: Date.now(),
-          deadline: deadlineStr,
+          deadline: approveDeadline || '5 a 7 días hábiles',
           status: 'por_iniciar',
           client: {
             name: quote.client?.name || 'Cliente Particular',
@@ -2679,34 +3130,149 @@
           materials: materials,
           assignedTech: 'Taller Matriz (Olivar)',
           priority: 'Normal',
-          notes: quote.client?.comments || '',
+          notes: notesClean || quote.client?.comments || '',
           totals: quote.totals || {}
         };
 
         const updatedOrders = [newOt, ...workOrders];
         saveWorkOrdersList(updatedOrders);
-        showToast(`🎉 Cotización ${correlative} APROBADA y enviada a Taller (${otFolio})`);
+        setShowApproveOtModal(false);
+        setQuoteToApprove(null);
+        showToast(`🎉 Cotización ${correlative} APROBADA con OC: ${ocClean || 'S/OC'} y enviada a Taller (${otFolio})`);
         setIntranetSection('taller');
         setIntranetTab('taller');
         setOtSearch(correlative);
       };
 
+      // Compatibilidad con 1-click directo
+      const handleApproveAndSendToWorkshop = (quote) => {
+        handleOpenApproveModal(quote);
+      };
+
+      // --- FLUJO DE FACTURACIÓN Y CIERRE ADMINISTRATIVO ---
+      const handleOpenInvoiceModal = (quote) => {
+        if (!quote) return;
+        setQuoteToInvoice(quote);
+        const existingOt = workOrders.find(o => o.correlative === quote.correlative);
+        setInvoiceOcNumber(quote.purchaseOrderNumber || existingOt?.purchaseOrderNumber || '');
+        setInvoiceNumber(quote.invoiceNumber || '');
+        setInvoiceDate(quote.invoiceDate || new Date().toISOString().slice(0, 10));
+        setInvoicePaymentStatus(quote.invoicePaymentStatus || quote.client?.paymentTerms || 'Crédito 30 días');
+        setInvoiceNotes(quote.invoiceNotes || '');
+        setShowInvoiceModal(true);
+      };
+
+      const handleConfirmInvoiceQuote = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        if (!quoteToInvoice) return;
+        const quote = quoteToInvoice;
+        const correlative = quote.correlative;
+        const invNum = (invoiceNumber || '').trim();
+        if (!invNum) {
+          alert('Por favor, ingresa el N° de Factura Electrónica emitido por el SII.');
+          return;
+        }
+
+        const ocClean = invoiceOcNumber.trim();
+
+        // 1. Marcar cotización como Facturada
+        const updatedHistory = quoteHistory.map(q => {
+          if (q.correlative === correlative) {
+            return {
+              ...q,
+              status: 'Facturada',
+              invoiceNumber: invNum,
+              invoiceDate: invoiceDate,
+              purchaseOrderNumber: ocClean || q.purchaseOrderNumber,
+              invoicePaymentStatus: invoicePaymentStatus,
+              invoiceNotes: invoiceNotes.trim()
+            };
+          }
+          return q;
+        });
+        setQuoteHistory(updatedHistory);
+
+        // 2. Marcar OT como facturada si existe
+        const updatedOts = workOrders.map(o => {
+          if (o.correlative === correlative) {
+            return {
+              ...o,
+              invoiceNumber: invNum,
+              purchaseOrderNumber: ocClean || o.purchaseOrderNumber,
+              isInvoiced: true
+            };
+          }
+          return o;
+        });
+        saveWorkOrdersList(updatedOts);
+
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+          if (window.db) {
+            window.db.collection('quotes').doc(correlative).set({
+              status: 'Facturada',
+              invoiceNumber: invNum,
+              invoiceDate: invoiceDate,
+              purchaseOrderNumber: ocClean,
+              invoicePaymentStatus: invoicePaymentStatus,
+              invoiceNotes: invoiceNotes.trim()
+            }, { merge: true });
+          }
+        } catch(err) {}
+
+        setShowInvoiceModal(false);
+        setQuoteToInvoice(null);
+        showToast(`🧾 Cotización ${correlative} FACTURADA exitosamente (Factura N° ${invNum})`);
+      };
+
+      // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---
       const handleUpdateOtStage = (otId, newStage) => {
+        let matchedCorrelative = null;
+        let matchedFolio = '';
         const updated = workOrders.map(o => {
           if (o.id === otId) {
+            matchedCorrelative = o.correlative;
+            matchedFolio = o.otFolio;
             return { ...o, status: newStage };
           }
           return o;
         });
         saveWorkOrdersList(updated);
+
+        // Si el operario en Taller marca "completado" (Terminada), sincronizar automáticamente en Administración
+        if (newStage === 'completado' && matchedCorrelative) {
+          const updatedHistory = quoteHistory.map(q => {
+            if (q.correlative === matchedCorrelative && q.status !== 'Facturada') {
+              return {
+                ...q,
+                status: 'Terminada',
+                finishedAt: new Date().toLocaleDateString('es-CL'),
+                finishedTimestamp: Date.now()
+              };
+            }
+            return q;
+          });
+          setQuoteHistory(updatedHistory);
+          try {
+            localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+            if (window.db) {
+              window.db.collection('quotes').doc(matchedCorrelative).set({
+                status: 'Terminada',
+                finishedAt: new Date().toLocaleDateString('es-CL'),
+                finishedTimestamp: Date.now()
+              }, { merge: true });
+            }
+          } catch(err) {}
+        }
+
         const stageLabels = {
           por_iniciar: '📥 Por Iniciar',
           diseno: '📐 Archivo & Medidas',
           fabricacion: '⚡ En Fabricación',
           calidad: '🔍 Control de Calidad',
-          completado: '✅ Terminado / Listo para Entrega'
+          completado: '✅ Terminado / Listo para Facturar'
         };
-        showToast(`Estado de OT actualizado a ${stageLabels[newStage] || newStage}`);
+        showToast(`Estado de ${matchedFolio || 'OT'} actualizado a ${stageLabels[newStage] || newStage}`);
       };
 
       const handleToggleMaterialCheck = (otId, matId) => {
@@ -5977,12 +6543,27 @@
                         {quoteHistory.map((q) => (
                           <div key={q.correlative} className="p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
-                              <div className="flex items-center gap-3">
+                              <div className="flex flex-wrap items-center gap-2.5">
                                 <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
                                 <span className="text-xs text-zinc-400">📅 {q.date}</span>
-                                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-600/10 text-red-400 border border-red-600/30">
-                                  {q.status}
+                                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                  q.status === 'Facturada' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' :
+                                  q.status === 'Terminada' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 animate-pulse' :
+                                  q.status === 'Aprobada' ? 'bg-blue-600/20 text-blue-300 border-blue-500/40' :
+                                  'bg-red-600/10 text-red-400 border-red-600/30'
+                                }`}>
+                                  {q.status === 'Terminada' ? '✅ Terminada en Taller (Lista p/ Facturar)' : q.status}
                                 </span>
+                                {q.purchaseOrderNumber && (
+                                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-950/40 text-blue-300 border border-blue-500/40">
+                                    📄 OC: {q.purchaseOrderNumber}
+                                  </span>
+                                )}
+                                {q.invoiceNumber && (
+                                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-300 border border-emerald-500/40">
+                                    🧾 Fac: {q.invoiceNumber}
+                                  </span>
+                                )}
                               </div>
                               <div className="font-bold text-white text-sm mt-1">{q.client.name}</div>
                               <div className="text-xs text-zinc-400 mt-0.5">
@@ -6010,14 +6591,50 @@
                                 }
                                 return (
                                   <button
-                                    onClick={() => handleApproveAndSendToWorkshop(q)}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50"
-                                    title="Aprobar esta cotización y enviar ficha técnica a Taller"
+                                    onClick={() => handleOpenApproveModal(q)}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50 cursor-pointer"
+                                    title="Aprobar esta cotización, registrar Orden de Compra (OC) y enviar a Taller"
                                   >
                                     <Icon name="check" className="w-3.5 h-3.5" />
                                     <span>✅ Aprobar y Crear OT</span>
                                   </button>
                                 );
+                              })()}
+
+                              {/* Botón: Facturar Orden */}
+                              {(() => {
+                                const existingOt = workOrders.find(o => o.correlative === q.correlative);
+                                const isAlreadyInvoiced = q.status === 'Facturada' || !!q.invoiceNumber;
+                                const isReadyToInvoice = q.status === 'Terminada' || q.status === 'Aprobada' || (existingOt && (existingOt.status === 'completado' || existingOt.status === 'fabricacion'));
+
+                                if (isAlreadyInvoiced) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenInvoiceModal(q)}
+                                      className="bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-500/50 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                      title="Ver datos de Facturación y Cierre"
+                                    >
+                                      <Icon name="file-text" className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span>🧾 Fac. #{q.invoiceNumber || 'Emitida'}</span>
+                                    </button>
+                                  );
+                                }
+
+                                if (isReadyToInvoice) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenInvoiceModal(q)}
+                                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400 animate-pulse cursor-pointer"
+                                      title="Facturar esta orden de trabajo"
+                                    >
+                                      <Icon name="file-text" className="w-3.5 h-3.5" />
+                                      <span>🧾 Facturar</span>
+                                    </button>
+                                  );
+                                }
+                                return null;
                               })()}
 
                               <button
@@ -6485,7 +7102,17 @@
                                     </span>
                                   </td>
                                   <td className="py-3 px-3 text-zinc-300 font-mono text-xs">
-                                    {mat.format}
+                                    <div className="font-bold text-white">{mat.format}</div>
+                                    {mat.sheetW && mat.sheetH && (
+                                      <span className="text-[10px] text-emerald-400 block font-mono">
+                                        📐 Plancha {mat.sheetW}m × {mat.sheetH}m
+                                      </span>
+                                    )}
+                                    {mat.rollW && (
+                                      <span className="text-[10px] text-blue-400 block font-mono">
+                                        🖨️ Bobina {mat.rollW}m
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="py-3 px-3 text-right font-mono text-zinc-400 text-xs">
                                     {mat.cost > 0 ? formatCLP(mat.cost) : '—'}
@@ -7425,6 +8052,16 @@
                                       <span className="text-xs text-amber-400 font-semibold bg-amber-950/30 border border-amber-900/40 px-2.5 py-1 rounded-lg flex items-center gap-1">
                                         ⏰ Entrega Prometida: {ot.deadline || 'Por coordinar'}
                                       </span>
+                                      {ot.purchaseOrderNumber && (
+                                        <span className="text-xs font-mono font-bold text-blue-300 bg-blue-950/40 border border-blue-500/40 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                                          <span>📄 OC: {ot.purchaseOrderNumber}</span>
+                                        </span>
+                                      )}
+                                      {ot.invoiceNumber && (
+                                        <span className="text-xs font-mono font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/40 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                                          <span>🧾 Factura: #{ot.invoiceNumber}</span>
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="mt-2 flex flex-wrap items-center gap-3">
                                       <span className="text-white font-bold text-base">{ot.client?.name}</span>
@@ -7437,6 +8074,12 @@
                                       <p className="text-xs text-zinc-400 mt-1 flex items-center gap-1.5">
                                         <span>📍 Dirección Obra:</span>
                                         <strong className="text-zinc-200">{ot.client.deliveryAddress}</strong>
+                                      </p>
+                                    )}
+                                    {ot.notes && (
+                                      <p className="text-xs text-amber-300/90 mt-1 flex items-center gap-1.5 bg-amber-950/20 px-2.5 py-1 rounded border border-amber-900/30">
+                                        <span>📝 Notas Taller:</span>
+                                        <span>{ot.notes}</span>
                                       </p>
                                     )}
                                   </div>
@@ -7482,6 +8125,39 @@
                                     </button>
                                   </div>
                                 </div>
+
+                                {/* Resumen Rápido de Cubicación de Materiales para el Operario */}
+                                {(() => {
+                                  const cub = calculateWorkshopCubicationAndNesting(ot.items);
+                                  if (cub.rigidMaterials.length === 0 && cub.flexibleMaterials.length === 0) return null;
+                                  return (
+                                    <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="font-bold text-amber-400 flex items-center gap-1">
+                                          <span>📐 Cubicación Bodega:</span>
+                                        </span>
+                                        {cub.rigidMaterials.map((rm, rIdx) => (
+                                          <span key={rIdx} className="bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800 text-zinc-200 font-mono text-[11px]">
+                                            <strong>{rm.totalSheetsGroup} {rm.totalSheetsGroup === 1 ? 'plancha' : 'planchas'}</strong> {rm.name} ({rm.totalGroupPieces} cortes)
+                                          </span>
+                                        ))}
+                                        {cub.flexibleMaterials.map((fm, fIdx) => (
+                                          <span key={fIdx} className="bg-zinc-900 px-2.5 py-1 rounded-lg border border-zinc-800 text-zinc-200 font-mono text-[11px]">
+                                            <strong>~{fm.linearMeters} ml</strong> {fm.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenOtPrintModal(ot)}
+                                        className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 self-end sm:self-auto cursor-pointer transition hover:underline"
+                                      >
+                                        <span>🗺️ Ver Plano y Ficha de Corte</span>
+                                        <span>➔</span>
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
 
                                 {/* FASES DE PRODUCCIÓN (BOTONES KANBAN 1-CLICK) */}
                                 <div className="bg-zinc-950 p-3.5 rounded-xl border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
@@ -8787,6 +9463,11 @@
                       )}
                       <p className="text-[10px] text-gray-500">Fecha Emisión: {selectedOtForPrint.createdAt}</p>
                       <p className="text-[11px] text-red-600 font-bold">FECHA ENTREGA: {selectedOtForPrint.deadline || 'Coordinada con Taller'}</p>
+                      {selectedOtForPrint.purchaseOrderNumber && (
+                        <p className="text-[11px] text-blue-800 font-mono font-black mt-0.5">
+                          📄 ORDEN DE COMPRA (OC): {selectedOtForPrint.purchaseOrderNumber}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -8844,10 +9525,135 @@
                     </table>
                   </div>
 
+                  {/* SECCIÓN 2 & 3: CUBICACIÓN TÉCNICA DE MATERIALES & NESTING VISUAL */}
+                  {(() => {
+                    const cub = calculateWorkshopCubicationAndNesting(selectedOtForPrint.items);
+                    return (
+                      <div className="mb-5 space-y-4">
+                        {/* 2. Cubicación de Materiales para Bodega */}
+                        <div>
+                          <div className="flex items-center justify-between border-b border-gray-300 pb-1 mb-1.5">
+                            <h2 className="font-bold text-xs uppercase tracking-wider text-black">
+                              2. Cubicación de Materiales y Despacho de Bodega
+                            </h2>
+                            <span className="text-[10px] font-mono font-bold bg-black text-white px-2 py-0.5 rounded">
+                              Total Cortes: {cub.totalPiecesCount} piezas ({cub.totalAreaSqm.toFixed(2)} m²)
+                            </span>
+                          </div>
+
+                          <table className="w-full text-left border-collapse text-[11px]">
+                            <thead>
+                              <tr className="bg-gray-100 border-b border-gray-300 text-gray-700 uppercase text-[9px]">
+                                <th className="py-1.5 px-2">Material / Insumo</th>
+                                <th className="py-1.5 px-2">Formato Base</th>
+                                <th className="py-1.5 px-2 text-right">Superficie Neta</th>
+                                <th className="py-1.5 px-2 text-center bg-gray-200 text-black font-black">CANTIDAD A RETIRAR DE BODEGA</th>
+                                <th className="py-1.5 px-2 text-right">Total Cortes</th>
+                                <th className="py-1.5 px-2 text-right">Aprovechamiento</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 font-mono">
+                              {/* Planchas Rígidas (Lata, Acrílico, Trovicel, Foam, ACM) */}
+                              {cub.rigidMaterials.map((mat, idx) => (
+                                <tr key={`rigid-${idx}`} className="bg-white">
+                                  <td className="py-2 px-2 font-bold text-black font-sans">
+                                    <div className="flex items-center gap-1.5">
+                                      <span>🏷️</span>
+                                      <span>{mat.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-2 text-gray-600">
+                                    Plancha {mat.sheetW.toFixed(2)}m × {mat.sheetH.toFixed(2)}m ({mat.sheetArea.toFixed(2)} m²)
+                                  </td>
+                                  <td className="py-2 px-2 text-right font-bold text-black">
+                                    {mat.totalGroupArea.toFixed(2)} m²
+                                  </td>
+                                  <td className="py-2 px-2 text-center bg-gray-100 font-black text-black text-xs">
+                                    <span className="inline-block bg-black text-white px-2.5 py-0.5 rounded">
+                                      {mat.totalSheetsGroup} {mat.totalSheetsGroup === 1 ? 'Plancha' : 'Planchas'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-2 text-right text-gray-700">
+                                    {mat.totalGroupPieces} cortes
+                                  </td>
+                                  <td className="py-2 px-2 text-right text-emerald-700 font-bold">
+                                    {mat.primaryPattern ? `${mat.primaryPattern.utilization.toFixed(1)}% útil` : '100%'}
+                                  </td>
+                                </tr>
+                              ))}
+
+                              {/* Materiales en Bobina (Plotter / Laminación) */}
+                              {cub.flexibleMaterials.map((flex, idx) => (
+                                <tr key={`flex-${idx}`} className="bg-gray-50/60">
+                                  <td className="py-2 px-2 font-bold text-black font-sans">
+                                    <div className="flex items-center gap-1.5">
+                                      <span>🖨️</span>
+                                      <span>{flex.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2 px-2 text-gray-600">
+                                    Bobina {flex.rollW}m de ancho
+                                  </td>
+                                  <td className="py-2 px-2 text-right font-bold text-black">
+                                    {flex.totalArea.toFixed(2)} m²
+                                  </td>
+                                  <td className="py-2 px-2 text-center bg-gray-100 font-black text-black text-xs">
+                                    <span className="inline-block bg-blue-900 text-white px-2.5 py-0.5 rounded">
+                                      ~{flex.linearMeters} metros lineales
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-2 text-right text-gray-700">
+                                    {cub.totalPiecesCount} piezas
+                                  </td>
+                                  <td className="py-2 px-2 text-right text-gray-600">
+                                    Bobina continua
+                                  </td>
+                                </tr>
+                              ))}
+
+                              {cub.rigidMaterials.length === 0 && cub.flexibleMaterials.length === 0 && (
+                                <tr>
+                                  <td colSpan="6" className="py-3 text-center text-gray-500 font-sans">
+                                    No se detectaron piezas con medidas específicas para cubicar automáticamente.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* 3. Plano y Distribución de Cortes en Plancha (Nesting Visual) */}
+                        {cub.rigidMaterials.length > 0 && (
+                          <div className="pt-2">
+                            <h2 className="font-bold text-xs uppercase tracking-wider text-black mb-1 border-b border-gray-300 pb-1">
+                              3. Plano de Distribución y Patrón de Corte en Plancha (Nesting Visual)
+                            </h2>
+                            <p className="text-[10px] text-gray-600 mb-2">
+                              Distribución recomendada para el maestro de corte / guillotina / láser con cotas y medidas exactas para maximizar el aprovechamiento.
+                            </p>
+                            {cub.rigidMaterials.map((matGroup) => (
+                              <div key={matGroup.key} className="space-y-3">
+                                {matGroup.cutPatterns.map((pat, pIdx) => (
+                                  <CuttingNestingDiagram
+                                    key={pIdx}
+                                    pattern={pat}
+                                    sheetW={matGroup.sheetW}
+                                    sheetH={matGroup.sheetH}
+                                    title={`${matGroup.name} (Ítem ${pat.itemIndex}: ${pat.name})`}
+                                  />
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Tabla de Materiales Requeridos para Bodega / Taller */}
                   <div className="mb-6">
                     <h2 className="font-bold text-xs uppercase tracking-wider text-black mb-1 border-b border-gray-300 pb-1">
-                      2. Lista y Checklist de Materiales Extraídos para Fabricación
+                      4. Lista y Checklist de Insumos Extraídos para Fabricación
                     </h2>
                     <table className="w-full text-left border-collapse text-[11px] mt-1">
                       <thead>
@@ -8883,7 +9689,7 @@
                   {selectedOtForPrint.images && selectedOtForPrint.images.length > 0 && (
                     <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded">
                       <h2 className="font-bold text-xs uppercase tracking-wider text-black mb-2 border-b border-gray-300 pb-1">
-                        3. Fotografías de Terreno / Boceto de Referencia ({selectedOtForPrint.images.length})
+                        5. Fotografías de Terreno / Boceto de Referencia ({selectedOtForPrint.images.length})
                       </h2>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {selectedOtForPrint.images.map((img, idx) => (
@@ -8920,6 +9726,313 @@
                       <p className="text-gray-500">Despacho / Instalación</p>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODAL: APROBAR COTIZACIÓN CON ORDEN DE COMPRA (OC) & NOTAS    */}
+          {/* ============================================================== */}
+          {showApproveOtModal && quoteToApprove && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-lg shadow-emerald-600/20">
+                      <Icon name="check" className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400">
+                        Aprobación de Venta
+                      </span>
+                      <h3 className="font-heading font-black text-white text-base">
+                        Aprobar y Enviar a Taller ({quoteToApprove.correlative})
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowApproveOtModal(false);
+                      setQuoteToApprove(null);
+                    }}
+                    className="text-zinc-500 hover:text-white"
+                  >
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Resumen del Cliente */}
+                <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-800 text-xs space-y-1">
+                  <div className="text-white font-bold text-sm">{quoteToApprove.client?.name}</div>
+                  <div className="text-zinc-400 font-mono text-[11px]">
+                    RUT: {quoteToApprove.client?.documentId || 'S/RUT'} • Total: <strong className="text-emerald-400">{formatCLP(quoteToApprove.totals?.total)}</strong>
+                  </div>
+                </div>
+
+                <form onSubmit={handleConfirmApproveQuote} className="space-y-4 text-xs">
+                  {/* Campo: N° Orden de Compra (OC) */}
+                  <div>
+                    <label className="block text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+                      <span>📄 N° Orden de Compra del Cliente (OC):</span>
+                      <span className="text-[10px] text-zinc-400 font-normal">(Opcional / HES)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: OC-88492, Pedido #1024 o HES..."
+                      value={approveOcNumber}
+                      onChange={(e) => setApproveOcNumber(e.target.value)}
+                      className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none font-mono text-sm"
+                      autoFocus
+                    />
+                    <span className="text-[11px] text-zinc-400 mt-1 block">
+                      Este número quedará vinculado a la ficha técnica de taller y a la factura final.
+                    </span>
+                  </div>
+
+                  {/* Campo: Plazo / Fecha de Entrega */}
+                  <div>
+                    <label className="block text-xs font-bold text-white mb-1">
+                      ⏰ Fecha / Plazo de Entrega Comprometido:
+                    </label>
+                    <input
+                      type="date"
+                      value={approveDeadline}
+                      onChange={(e) => setApproveDeadline(e.target.value)}
+                      className="w-full bg-black text-white px-3.5 py-2 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none font-mono"
+                    />
+                  </div>
+
+                  {/* Campo: Observaciones para Taller & Facturación */}
+                  <div>
+                    <label className="block text-xs font-bold text-white mb-1">
+                      📝 Observaciones para Taller y Facturación:
+                    </label>
+                    <textarea
+                      rows="3"
+                      placeholder="Instrucciones especiales de fabricación, despacho a planta, factura a 30 días..."
+                      value={approveNotes}
+                      onChange={(e) => setApproveNotes(e.target.value)}
+                      className="w-full bg-black text-white px-3.5 py-2 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-900">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowApproveOtModal(false);
+                        setQuoteToApprove(null);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <Icon name="check" className="w-4 h-4" />
+                      <span>Confirmar y Enviar a Taller</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODAL: FACTURACIÓN Y CIERRE ADMINISTRATIVO                      */}
+          {/* ============================================================== */}
+          {showInvoiceModal && quoteToInvoice && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl p-6 space-y-5 shadow-2xl my-4">
+                <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500 text-black flex items-center justify-center font-black shadow-lg shadow-emerald-500/20 text-lg">
+                      🧾
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-widest text-emerald-400">
+                        Cierre Administrativo & Facturación Electrónica SII
+                      </span>
+                      <h3 className="font-heading font-black text-white text-base">
+                        Facturar Orden: {quoteToInvoice.correlative}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInvoiceModal(false);
+                      setQuoteToInvoice(null);
+                    }}
+                    className="text-zinc-500 hover:text-white"
+                  >
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Tarjetas de Trazabilidad Completa */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+                  <div className="p-3 bg-black rounded-xl border border-zinc-800">
+                    <span className="text-zinc-500 block text-[10px] uppercase">Cotización:</span>
+                    <strong className="text-white text-sm">{quoteToInvoice.correlative}</strong>
+                  </div>
+                  <div className="p-3 bg-black rounded-xl border border-zinc-800">
+                    <span className="text-zinc-500 block text-[10px] uppercase">Orden de Trabajo (OT):</span>
+                    <strong className="text-emerald-400 text-sm">
+                      {'OT-' + quoteToInvoice.correlative.replace('COT-', '')}
+                    </strong>
+                  </div>
+                  <div className="p-3 bg-black rounded-xl border border-zinc-800">
+                    <span className="text-zinc-500 block text-[10px] uppercase">Estado Actual:</span>
+                    <strong className="text-amber-400 text-sm capitalize">{quoteToInvoice.status}</strong>
+                  </div>
+                </div>
+
+                {/* Datos del Cliente y Desglose Financiero */}
+                <div className="p-4 bg-zinc-900/90 rounded-xl border border-zinc-800 space-y-3 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-2">
+                    <div>
+                      <span className="text-[10px] uppercase text-zinc-400 block">Razón Social:</span>
+                      <strong className="text-white text-sm">{quoteToInvoice.client?.name}</strong>
+                      <p className="text-zinc-400 text-[11px] font-mono">
+                        RUT: {quoteToInvoice.client?.documentId || 'S/RUT'} • Contacto: {quoteToInvoice.client?.phone || 'S/Fono'}
+                      </p>
+                    </div>
+                    {quoteToInvoice.client?.deliveryAddress && (
+                      <div className="text-right sm:text-right">
+                        <span className="text-[10px] uppercase text-zinc-400 block">Dirección:</span>
+                        <span className="text-zinc-300 text-[11px]">{quoteToInvoice.client.deliveryAddress}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tabla de Montos */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-1 font-mono text-xs">
+                    <div>
+                      <span className="text-zinc-500 text-[10px] block uppercase">Subtotal Neto:</span>
+                      <span className="text-zinc-200 font-bold">{formatCLP(quoteToInvoice.totals?.subtotal)}</span>
+                    </div>
+                    {quoteToInvoice.totals?.discountAmount > 0 && (
+                      <div>
+                        <span className="text-zinc-500 text-[10px] block uppercase">Descuento:</span>
+                        <span className="text-red-400 font-bold">-{formatCLP(quoteToInvoice.totals.discountAmount)}</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-zinc-500 text-[10px] block uppercase">IVA (19%):</span>
+                      <span className="text-zinc-200 font-bold">{formatCLP(quoteToInvoice.totals?.taxAmount)}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-emerald-400 text-[10px] block uppercase font-bold">Total Facturable:</span>
+                      <span className="text-xl font-black text-emerald-400 font-mono">
+                        {formatCLP(quoteToInvoice.totals?.total)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Formulario de Facturación Oficial */}
+                <form onSubmit={handleConfirmInvoiceQuote} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-white mb-1">
+                        🧾 N° Factura Electrónica (SII): <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej: 1485 o Factura #1485"
+                        value={invoiceNumber}
+                        onChange={(e) => setInvoiceNumber(e.target.value)}
+                        className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none font-mono text-sm font-bold"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-white mb-1">
+                        📄 N° Orden de Compra Cliente (OC):
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej: OC-88492 o Pedido"
+                        value={invoiceOcNumber}
+                        onChange={(e) => setInvoiceOcNumber(e.target.value)}
+                        className="w-full bg-black text-white px-3.5 py-2.5 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none font-mono text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-white mb-1">
+                        📅 Fecha de Emisión Factura:
+                      </label>
+                      <input
+                        type="date"
+                        value={invoiceDate}
+                        onChange={(e) => setInvoiceDate(e.target.value)}
+                        className="w-full bg-black text-white px-3.5 py-2 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none font-mono"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-white mb-1">
+                        💳 Condición de Pago:
+                      </label>
+                      <select
+                        value={invoicePaymentStatus}
+                        onChange={(e) => setInvoicePaymentStatus(e.target.value)}
+                        className="w-full bg-black text-white px-3.5 py-2 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none"
+                      >
+                        <option value="Crédito 30 días">Crédito 30 días</option>
+                        <option value="Crédito 60 días">Crédito 60 días</option>
+                        <option value="Contado / Transferido">Contado / Transferido</option>
+                        <option value="50% Anticipo / 50% Saldo">50% Anticipo / 50% Saldo</option>
+                        <option value="Pagada al Día">Pagada al Día</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-white mb-1">
+                      📝 Observaciones de Facturación / Referencias:
+                    </label>
+                    <textarea
+                      rows="2"
+                      placeholder="N° de transferencia, guía de despacho de respaldo, detalles del SII..."
+                      value={invoiceNotes}
+                      onChange={(e) => setInvoiceNotes(e.target.value)}
+                      className="w-full bg-black text-white px-3.5 py-2 rounded-xl border border-zinc-700 focus:border-emerald-500 focus:outline-none"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end gap-2.5 pt-3 border-t border-zinc-900">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowInvoiceModal(false);
+                        setQuoteToInvoice(null);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <Icon name="check" className="w-4 h-4" />
+                      <span>Confirmar y Marcar como Facturada</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
                 </div>
               </div>
             </div>
