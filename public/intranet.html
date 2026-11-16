@@ -1298,6 +1298,7 @@
       const [itemHeight, setItemHeight] = useState(1.0);
       const [itemQty, setItemQty] = useState(1);
       const [itemPrice, setItemPrice] = useState(14000);
+      const [priceMode, setPriceMode] = useState('sqm'); // 'sqm' | 'unit_piece'
       const [installationFee, setInstallationFee] = useState(0);
       const [freightFee, setFreightFee] = useState(0);
       const [discountAmount, setDiscountAmount] = useState(0);
@@ -1401,9 +1402,13 @@
           if (mat.unit === 'unidad') {
             setItemWidth(0);
             setItemHeight(0);
-          } else if (parseFloat(itemWidth) === 0 && parseFloat(itemHeight) === 0) {
-            setItemWidth(1.0);
-            setItemHeight(1.0);
+            setPriceMode('unit_piece');
+          } else {
+            if (parseFloat(itemWidth) === 0 && parseFloat(itemHeight) === 0) {
+              setItemWidth(1.0);
+              setItemHeight(1.0);
+            }
+            setPriceMode('sqm');
           }
           showToast(`📋 ${mat.name} ($${mat.pricePerSqm.toLocaleString('es-CL')} / ${mat.unit})`);
         }
@@ -2141,10 +2146,11 @@
         const h = parseFloat(itemHeight) || 0;
         const qty = parseInt(itemQty, 10) || 1;
         const price = parseFloat(itemPrice) || 0;
-        const isSqm = w > 0 && h > 0;
-        const area = isSqm ? (w * h) : 1;
+        const hasDimensions = w > 0 && h > 0;
+        const isSqm = hasDimensions && (priceMode === 'sqm');
+        const area = hasDimensions ? (w * h) : 1;
 
-        // Costo base del sustrato
+        // Costo base del sustrato (por m² o por pieza directa)
         const baseCost = isSqm ? (w * h * qty * price) : (qty * price);
 
         // Sumar capas de la Composición del Letrero (Submateriales montados: ej. Foam + Adhesivo + Laminado)
@@ -2191,9 +2197,10 @@
           productId: selectedCatalogId || 'custom-item',
           name: desc,
           detail: combinedDetail,
-          calcType: isSqm ? 'sqm' : 'unit',
-          width: isSqm ? w : null,
-          height: isSqm ? h : null,
+          calcType: isSqm ? 'sqm' : (hasDimensions ? 'unit_piece' : 'unit'),
+          priceMode: priceMode,
+          width: hasDimensions ? w : null,
+          height: hasDimensions ? h : null,
           quantity: qty,
           unitPrice: price,
           unitPiecePrice: unitPiecePrice,
@@ -2852,10 +2859,10 @@
 
         q.items.forEach((item, index) => {
           let spec = '';
-          if (item.calcType === 'sqm') {
+          if (item.width && item.height) {
             spec = `(${item.quantity} ud de ${item.width}m × ${item.height}m)`;
           } else {
-            spec = `(${item.quantity} ${item.unitLabel})`;
+            spec = `(${item.quantity} ${item.unitLabel || 'ud'})`;
           }
           const unitPiece = item.unitPiecePrice || Math.round(item.subtotal / (item.quantity || 1));
           message += `${index + 1}. *${item.name}* ${spec}\n`;
@@ -5173,26 +5180,76 @@
                             </div>
                           </div>
 
-                          {/* Precio base editable libremente */}
-                          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800">
-                            <label className="block text-xs font-semibold text-zinc-300 mb-1">
-                              Precio Base del Sustrato {(parseFloat(itemWidth) > 0 && parseFloat(itemHeight) > 0) ? 'por m²' : 'Unitario'} ($ CLP):
-                            </label>
-                            <div className="relative max-w-sm">
-                              <span className="absolute left-3 top-2.5 text-zinc-500 font-mono text-sm">$</span>
-                              <input
-                                type="number"
-                                step="500"
-                                min="0"
-                                value={itemPrice}
-                                onChange={(e) => setItemPrice(e.target.value)}
-                                className="w-full bg-zinc-900 text-white pl-8 pr-4 py-2 rounded-lg border border-zinc-700 text-sm font-mono focus:border-red-600 focus:outline-none"
-                                required
-                              />
+                          {/* Modalidad de Cobro & Precio */}
+                          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                                Modalidad de Cobro:
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setPriceMode('sqm')}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                                    priceMode === 'sqm'
+                                      ? 'bg-red-600 text-white shadow-sm'
+                                      : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white'
+                                  }`}
+                                >
+                                  <span>📐</span>
+                                  <span>Por Superficie ($/m²)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setPriceMode('unit_piece')}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                                    priceMode === 'unit_piece'
+                                      ? 'bg-emerald-600 text-white shadow-sm'
+                                      : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white'
+                                  }`}
+                                >
+                                  <span>🏷️</span>
+                                  <span>Precio Fijo por Pieza ($/ud)</span>
+                                </button>
+                              </div>
                             </div>
-                            <span className="text-[11px] text-zinc-400 mt-1 block">
-                              Cargado automáticamente del catálogo Excel. Puedes modificarlo libremente.
-                            </span>
+
+                            {priceMode === 'unit_piece' && (parseFloat(itemWidth) > 0 && parseFloat(itemHeight) > 0) && (
+                              <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/40 text-emerald-300 text-[11px] flex items-center gap-2">
+                                <span>💡</span>
+                                <span>
+                                  <strong>Cobro exacto por pieza:</strong> Al cliente se le cobra directo por unidad (ej: <strong>$3.000 c/u</strong>), y la orden de taller recibe las medidas ({itemWidth}m × {itemHeight}m) para corte sin descuadrar los totales.
+                                </span>
+                              </div>
+                            )}
+
+                            <div>
+                              <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                                {priceMode === 'unit_piece'
+                                  ? 'Precio Unitario por Pieza ($ CLP c/u):'
+                                  : (parseFloat(itemWidth) > 0 && parseFloat(itemHeight) > 0)
+                                    ? 'Precio Base del Sustrato por m² ($ CLP/m²):'
+                                    : 'Precio Base Unitario ($ CLP):'}
+                              </label>
+                              <div className="relative max-w-sm">
+                                <span className="absolute left-3 top-2.5 text-zinc-500 font-mono text-sm">$</span>
+                                <input
+                                  type="number"
+                                  step={priceMode === 'unit_piece' ? "100" : "500"}
+                                  min="0"
+                                  value={itemPrice}
+                                  onChange={(e) => setItemPrice(e.target.value)}
+                                  className="w-full bg-zinc-900 text-white pl-8 pr-4 py-2 rounded-lg border border-zinc-700 text-sm font-mono focus:border-red-600 focus:outline-none"
+                                  required
+                                />
+                              </div>
+                              <span className="text-[11px] text-zinc-400 mt-1 block">
+                                {priceMode === 'unit_piece'
+                                  ? 'Ingresa el valor neto acordado por cada unidad (ej. $3.000).'
+                                  : 'Cargado automáticamente del catálogo. Puedes modificarlo libremente.'}
+                              </span>
+                            </div>
                           </div>
 
                           {/* SECCIÓN: COMPOSICIÓN DEL LETRERO (Combina Foam + Adhesivo + Laminado en un solo producto) */}
@@ -5582,8 +5639,9 @@
                             const h = parseFloat(itemHeight) || 0;
                             const qty = parseInt(itemQty, 10) || 1;
                             const pr = parseFloat(itemPrice) || 0;
-                            const isSqm = w > 0 && h > 0;
-                            const area = isSqm ? (w * h) : 1;
+                            const hasDimensions = w > 0 && h > 0;
+                            const isSqm = hasDimensions && (priceMode === 'sqm');
+                            const area = hasDimensions ? (w * h) : 1;
                             const base = isSqm ? (w * h * qty * pr) : (qty * pr);
 
                             let compositionSum = 0;
@@ -5612,7 +5670,7 @@
                                 <div>
                                   <span className="text-[10px] text-zinc-400 uppercase font-bold block">Subtotal Calculado Ítem:</span>
                                   <div className="text-xs text-zinc-300 font-mono mt-0.5 space-y-0.5">
-                                    <div>Base: {formatCLP(base)}</div>
+                                    <div>Base ({priceMode === 'unit_piece' ? `${qty} ud × ${formatCLP(pr)}` : (isSqm ? `${(w * h * qty).toFixed(2)} m² × ${formatCLP(pr)}` : `${qty} ud × ${formatCLP(pr)}`)}): {formatCLP(base)}</div>
                                     {compositionSum > 0 && <div className="text-amber-400">+ Composición de Capas: {formatCLP(compositionSum)}</div>}
                                     {finishesSum > 0 && <div className="text-emerald-400">+ Acabados: {formatCLP(finishesSum)}</div>}
                                   </div>
@@ -5625,7 +5683,7 @@
                                     👉 Valor Unitario: {formatCLP(unitPiecePreview)} c/u ({qty} {qty === 1 ? 'unidad' : 'unidades'})
                                   </div>
                                   <span className="text-[10px] text-zinc-400 block mt-0.5">
-                                    {isSqm ? `(${w}m × ${h}m = ${(w * h * qty).toFixed(2)} m² totales)` : `${qty} unidad(es)`}
+                                    {hasDimensions ? `(${w}m × ${h}m | ${(w * h * qty).toFixed(2)} m² totales)` : `${qty} unidad(es)`}
                                   </span>
                                 </div>
                               </div>
@@ -5667,8 +5725,10 @@
                                     <tr key={item.id} className="hover:bg-zinc-950 transition">
                                       <td className="py-3.5 px-2 text-zinc-300 font-mono">
                                         <span className="font-bold text-white block">{item.quantity} ud</span>
-                                        {item.calcType === 'sqm' ? (
-                                          <span className="text-[10px] text-zinc-400 block">{item.width}m × {item.height}m ({(item.width * item.height * item.quantity).toFixed(2)} m²)</span>
+                                        {item.width && item.height ? (
+                                          <span className="text-[10px] text-zinc-400 block">
+                                            {item.width}m × {item.height}m {item.calcType === 'sqm' ? `(${(item.width * item.height * item.quantity).toFixed(2)} m²)` : '(Precio Fijo)'}
+                                          </span>
                                         ) : (
                                           <span className="text-[10px] text-zinc-400 block">{item.unitLabel}</span>
                                         )}
@@ -5686,8 +5746,10 @@
                                         <div className="font-bold text-emerald-400">
                                           {formatCLP(item.unitPiecePrice || Math.round(item.subtotal / (item.quantity || 1)))} c/u
                                         </div>
-                                        {item.calcType === 'sqm' && (
+                                        {item.calcType === 'sqm' ? (
                                           <span className="text-[10px] text-zinc-500 block">Base: {formatCLP(item.unitPrice)}/m²</span>
+                                        ) : (
+                                          <span className="text-[10px] text-zinc-500 block">Fijo: {formatCLP(item.unitPrice)} c/u</span>
                                         )}
                                       </td>
                                       <td className="py-3.5 px-2 text-right font-mono font-bold text-white text-sm">{formatCLP(item.subtotal)}</td>
@@ -8767,7 +8829,7 @@
                           <tr key={idx}>
                             <td className="py-2 px-2 font-bold font-mono text-center">{item.quantity}</td>
                             <td className="py-2 px-2 font-mono whitespace-nowrap">
-                              {item.calcType === 'sqm' && item.width && item.height ? `${item.width}m × ${item.height}m (${(item.width * item.height * item.quantity).toFixed(2)} m²)` : item.unitLabel || '1 ud'}
+                              {item.width && item.height ? `${item.width}m × ${item.height}m (${(item.width * item.height * item.quantity).toFixed(2)} m²)` : item.unitLabel || '1 ud'}
                             </td>
                             <td className="py-2 px-2">
                               <strong className="text-black block">{item.name}</strong>
@@ -8975,10 +9037,12 @@
                           <tr key={i} className="align-top">
                             <td className="py-2 px-2.5 font-mono text-zinc-800">
                               <span className="font-bold text-black block">{item.quantity} ud</span>
-                              {item.calcType === 'sqm' ? (
+                              {item.width && item.height ? (
                                 <span className="text-[10px] text-zinc-600 block">
                                   <span>{item.width}m × {item.height}m</span>
-                                  <span className="no-print print-hide-sqm text-zinc-400"> ({(item.width * item.height * item.quantity).toFixed(2)} m²)</span>
+                                  {item.calcType === 'sqm' && (
+                                    <span className="no-print print-hide-sqm text-zinc-400"> ({(item.width * item.height * item.quantity).toFixed(2)} m²)</span>
+                                  )}
                                 </span>
                               ) : (
                                 <span className="text-[10px] text-zinc-600 block">{item.unitLabel}</span>
