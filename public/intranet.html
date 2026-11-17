@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Intranet Taller & Administración | Letreros Olivar SpA</title>
-  <meta name="description" content="Intranet privada de Letreros Olivar SpA: Cotizador oficial de taller, tarifario Excel, maestra de clientes, calendario de entregas e instalaciones." />
+  <meta name="description" content="Intranet privada de Letreros Olivar SpA: Cotizador formal de taller, tarifario Excel, maestra de clientes, calendario de entregas e instalaciones." />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="keywords" content="letreros olivar, grafica corporativa olivar, seneticas viales, banner pvc olivar, palomas publicitarias, gigantografias rancagua, cajones luminosos, corte laser acrilico, cortes cnc aluminio compuesto, impresion gran formato, publicidad olivar" />
   <link rel="canonical" href="https://letrerosolivar.com/" />
@@ -150,7 +150,7 @@
     }
     @page {
       size: A4 portrait;
-      margin: 4mm 5mm !important;
+      margin: 6mm 7mm !important;
     }
     @media print {
       html, body {
@@ -158,9 +158,10 @@
         color: #000000 !important;
         margin: 0 !important;
         padding: 0 !important;
-        height: 100% !important;
-        max-height: 100vh !important;
-        overflow: hidden !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
@@ -178,16 +179,22 @@
         max-width: 100% !important;
         background: #ffffff !important;
         color: #000000 !important;
-        padding: 2mm 3mm !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
         margin: 0 !important;
         box-sizing: border-box !important;
-        page-break-after: avoid !important;
-        page-break-before: avoid !important;
+        overflow: visible !important;
+
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
       .no-print, .print-hide-sqm {
         display: none !important;
+      }
+      .print-avoid-break, .avoid-break, table, tr, td, th {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
       table, tr, td, th {
         page-break-inside: avoid !important;
@@ -2815,7 +2822,7 @@
 
         setIntranetSection('admin');
         setIntranetTab('cotizador');
-        showToast(`✏️ Editando cotización oficial ${quoteToEdit.correlative}`);
+        showToast(`✏️ Editando cotización formal ${quoteToEdit.correlative}`);
       };
 
       // --- REUTILIZAR / CLONAR COTIZACIÓN DEL HISTORIAL (Crea una NUEVA sin modificar la anterior) ---
@@ -5880,7 +5887,7 @@
                         </button>
                       </div>
                     </div>
-{/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO OFICIAL */}
+{/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO FORMAL */}
                 {intranetTab === 'cotizador' && (
                   <div className="space-y-8">
                     
@@ -5891,7 +5898,7 @@
                           <Icon name="lock" className="w-5 h-5" />
                         </div>
                         <div>
-                          <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest block">Correlativo Oficial de Taller:</span>
+                          <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest block">Correlativo Formal de Taller:</span>
                           <span className="text-2xl font-mono font-black text-red-500">{currentCorrelativeCode}</span>
                         </div>
                       </div>
@@ -6308,7 +6315,7 @@
                               type="button"
                               onClick={handleOpenLivePreview}
                               className="w-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 text-xs border border-blue-500/40 cursor-pointer shadow-sm"
-                              title="Revisar vista previa oficial con formato, fotos y totales antes de imprimir o emitir"
+                              title="Revisar vista previa formal con formato, fotos y totales antes de imprimir o emitir"
                             >
                               <Icon name="printer" className="w-4 h-4" />
                               <span>👁️ Vista Previa en Vivo (Preview)</span>
@@ -8111,7 +8118,7 @@
                                   <button
                                     onClick={() => handleOpenPrintModal(q)}
                                     className="bg-white hover:bg-slate-50 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
-                                    title="Ver e imprimir PDF oficial de la cotización"
+                                    title="Ver e imprimir PDF formal de la cotización"
                                   >
                                     <Icon name="printer" className="w-3.5 h-3.5 text-slate-700" />
                                     <span>Ver / Imprimir PDF</span>
@@ -11173,7 +11180,7 @@
                   )}
 
                   {/* Firmas y Recepción */}
-                  <div className="grid grid-cols-3 gap-4 pt-2 mt-2 border-t border-gray-300 text-center text-[9px]">
+                  <div className="grid grid-cols-3 gap-4 pt-2 mt-2 border-t border-gray-300 text-center text-[9px] print-avoid-break">
                     <div>
                       <div className="border-b border-black h-8 mb-1"></div>
                       <strong>Firma Maestro Fabricador</strong>
@@ -11510,7 +11517,7 @@
                   <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
                     <span className="font-bold text-xs sm:text-sm font-heading">
-                      Cotización Oficial Letreros Olivar ({currentQuoteToPrint.correlative})
+                      Cotización Formal Letreros Olivar ({currentQuoteToPrint.correlative})
                     </span>
                     <span className="hidden md:inline-block text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">
                       📁 Guardar PDF: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
@@ -11556,7 +11563,7 @@
                     </div>
                     <div className="text-right">
                       <div className="border-2 border-red-600 px-3 py-1.5 rounded-lg bg-red-50/80 inline-block text-right">
-                        <span className="text-[9px] font-black text-zinc-700 uppercase tracking-widest block">COTIZACIÓN OFICIAL</span>
+                        <span className="text-[9px] font-black text-zinc-700 uppercase tracking-widest block">COTIZACIÓN FORMAL</span>
                         <span className="text-xl font-mono font-black text-red-600">{currentQuoteToPrint.correlative}</span>
                       </div>
                       <p className="text-[10px] text-zinc-700 mt-1"><strong>Emisión:</strong> {currentQuoteToPrint.date}</p>
@@ -11703,7 +11710,7 @@
                   </div>
 
                   {/* Condiciones de Fabricación y Firma Autorizada */}
-                  <div className="pt-2 border-t border-zinc-200 grid grid-cols-2 gap-6 text-[10px] text-zinc-600">
+                  <div className="pt-2 border-t border-zinc-200 grid grid-cols-2 gap-6 text-[10px] text-zinc-600 print-avoid-break">
                     <div className="space-y-0.5">
                       <strong className="text-black block font-bold text-[10px]">Términos de Fabricación:</strong>
                       <p>• Plazo de fabricación: {currentQuoteToPrint.client.manufacturingDays || '5 a 7 días hábiles'}.</p>

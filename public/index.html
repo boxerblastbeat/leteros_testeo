@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -160,7 +160,7 @@
     }
     @page {
       size: A4 portrait;
-      margin: 6mm 8mm;
+      margin: 6mm 7mm !important;
     }
     @media print {
       html, body {
@@ -168,6 +168,10 @@
         color: #000000 !important;
         margin: 0 !important;
         padding: 0 !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
@@ -185,7 +189,10 @@
         max-width: 100% !important;
         background: #ffffff !important;
         color: #000000 !important;
-        padding: 4mm 6mm !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        overflow: visible !important;
         margin: 0 auto !important;
         box-sizing: border-box !important;
         page-break-inside: avoid !important;
@@ -193,6 +200,10 @@
       }
       .no-print, .print-hide-sqm {
         display: none !important;
+      }
+      .print-avoid-break, .avoid-break, table, tr, td, th {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
       table {
         page-break-inside: avoid !important;
@@ -1773,7 +1784,7 @@
 
         setIntranetSection('taller');
         setIntranetTab('cotizador');
-        showToast(`✏️ Editando cotización oficial ${quoteToEdit.correlative}`);
+        showToast(`✏️ Editando cotización formal ${quoteToEdit.correlative}`);
       };
 
       // --- REUTILIZAR / CLONAR COTIZACIÓN DEL HISTORIAL (Crea una NUEVA sin modificar la anterior) ---
@@ -3762,7 +3773,7 @@
                       </div>
                     </div>
 
-                {/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO OFICIAL */}
+                {/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO FORMAL */}
                 {intranetTab === 'cotizador' && (
                   <div className="space-y-8">
                     
@@ -3773,7 +3784,7 @@
                           <Icon name="lock" className="w-5 h-5" />
                         </div>
                         <div>
-                          <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest block">Correlativo Oficial de Taller:</span>
+                          <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest block">Correlativo Formal de Taller:</span>
                           <span className="text-2xl font-mono font-black text-red-500">{currentCorrelativeCode}</span>
                         </div>
                       </div>
@@ -4931,7 +4942,7 @@
                         <h2 className="text-lg font-bold text-white font-heading">
                           Historial de Cotizaciones Emitidas ({quoteHistory.length})
                         </h2>
-                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
+                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo formal emitido por Letreros Olivar SpA.</p>
                       </div>
                       <button
                         onClick={() => handleStartNewQuote()}
@@ -4944,7 +4955,7 @@
 
                     {quoteHistory.length === 0 ? (
                       <div className="p-12 text-center bg-black border border-zinc-800 rounded-2xl text-zinc-500">
-                        Aún no se han emitido cotizaciones oficiales en este navegador.
+                        Aún no se han emitido cotizaciones formales en este navegador.
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -6522,14 +6533,14 @@
           {/* MODAL / VISTA DE IMPRESIÓN Y PDF FORMAL A4 (OPTIMIZADO 1 PÁGINA) */}
           {/* ============================================================== */}
           {showPrintModal && currentQuoteToPrint && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-              <div className="bg-white text-black rounded-2xl w-full max-w-4xl my-4 overflow-hidden shadow-2xl flex flex-col">
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+              <div className="bg-white text-black rounded-2xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col">
                 {/* Barra de control en pantalla (no se imprime) */}
-                <div className="bg-zinc-950 text-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print border-b border-zinc-800">
+                <div className="bg-zinc-950 text-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print border-b border-zinc-800 shrink-0 z-30">
                   <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
                     <span className="font-bold text-xs sm:text-sm font-heading">
-                      Cotización Oficial Letreros Olivar ({currentQuoteToPrint.correlative})
+                      Cotización Formal Letreros Olivar ({currentQuoteToPrint.correlative})
                     </span>
                     <span className="hidden md:inline-block text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">
                       📁 Guardar PDF como: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
@@ -6557,7 +6568,8 @@
                 </div>
 
                 {/* Hoja de Impresión A4 compacta (1 página asegurada) */}
-                <div id="print-area" className="p-6 sm:p-8 space-y-4 bg-white text-black text-xs leading-normal">
+                <div className="overflow-y-auto overflow-x-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
+                <div id="print-area" className="w-full max-w-[210mm] min-w-[320px] sm:min-w-0 p-5 sm:p-6 space-y-3 bg-white text-black text-[11px] leading-tight shadow-sm border border-gray-200 print:p-0 print:border-none print:shadow-none print:space-y-3">
                   
                   {/* Encabezado: Logo, Datos Empresa y Correlativo */}
                   <div className="flex justify-between items-start border-b-2 border-black pb-3">
@@ -6572,7 +6584,7 @@
                     </div>
                     <div className="text-right">
                       <div className="border-2 border-red-600 px-3 py-1.5 rounded-lg bg-red-50/80 inline-block text-right">
-                        <span className="text-[9px] font-black text-zinc-700 uppercase tracking-widest block">COTIZACIÓN OFICIAL</span>
+                        <span className="text-[9px] font-black text-zinc-700 uppercase tracking-widest block">COTIZACIÓN FORMAL</span>
                         <span className="text-xl font-mono font-black text-red-600">{currentQuoteToPrint.correlative}</span>
                       </div>
                       <p className="text-[10px] text-zinc-700 mt-1"><strong>Emisión:</strong> {currentQuoteToPrint.date}</p>
@@ -6717,7 +6729,7 @@
                   </div>
 
                   {/* Condiciones de Fabricación y Firma Autorizada */}
-                  <div className="pt-2 border-t border-zinc-200 grid grid-cols-2 gap-6 text-[10px] text-zinc-600">
+                  <div className="pt-2 border-t border-zinc-200 grid grid-cols-2 gap-6 text-[10px] text-zinc-600 print-avoid-break">
                     <div className="space-y-0.5">
                       <strong className="text-black block font-bold text-[10px]">Términos de Fabricación:</strong>
                       <p>• Plazo de fabricación: {currentQuoteToPrint.client.manufacturingDays || '5 a 7 días hábiles'}.</p>
@@ -6731,6 +6743,7 @@
                     </div>
                   </div>
 
+                </div>
                 </div>
               </div>
             </div>
