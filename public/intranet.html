@@ -218,12 +218,36 @@
       border-color: #e2e8f0 !important;
       color: #0f172a !important;
     }
-    .bg-zinc-900\/90, .bg-zinc-900\/80, .bg-zinc-900\/70, .bg-zinc-900\/60,
-    .bg-zinc-900\/50, .bg-zinc-900\/40, .bg-zinc-900\/30, .bg-zinc-900\/20,
-    .bg-zinc-950\/40, .bg-zinc-950\/20 {
+    [class*="bg-black/"], [class*="bg-black\\/"] {
       background-color: #f8fafc !important;
       border-color: #e2e8f0 !important;
       color: #0f172a !important;
+    }
+    [class*="bg-zinc-900/"], [class*="bg-zinc-900\\/"],
+    [class*="bg-zinc-950/"], [class*="bg-zinc-950\\/"] {
+      background-color: #f8fafc !important;
+      border-color: #e2e8f0 !important;
+      color: #0f172a !important;
+    }
+    [class*="bg-red-950/"], [class*="bg-red-950\\/"] {
+      background-color: #fef2f2 !important;
+      border-color: #fecaca !important;
+      color: #b91c1c !important;
+    }
+    [class*="bg-amber-950/"], [class*="bg-amber-950\\/"] {
+      background-color: #fffbeb !important;
+      border-color: #fde68a !important;
+      color: #b45309 !important;
+    }
+    [class*="bg-blue-950/"], [class*="bg-blue-950\\/"] {
+      background-color: #eff6ff !important;
+      border-color: #bfdbfe !important;
+      color: #1d4ed8 !important;
+    }
+    [class*="bg-emerald-950/"], [class*="bg-emerald-950\\/"] {
+      background-color: #ecfdf5 !important;
+      border-color: #a7f3d0 !important;
+      color: #047857 !important;
     }
     .bg-zinc-800, .bg-zinc-700 {
       background-color: #f1f5f9 !important;
@@ -3466,7 +3490,8 @@
         }
 
         // 3. Crear nueva OT oficial para Taller con Cubicación & OC
-        const otFolio = 'OT-' + correlative.replace('COT-', '');
+        const corrStr = String(correlative || '');
+        const otFolio = 'OT-' + corrStr.replace('COT-', '');
         const materials = generateMaterialsList(quote.items, quote.client?.deliveryMethod);
 
         const newOt = {
@@ -3474,7 +3499,7 @@
           otFolio: otFolio,
           correlative: correlative,
           purchaseOrderNumber: ocClean,
-          numericFolio: quote.numericCorrelative || parseInt(correlative.replace(/\D/g, ''), 10) || 101,
+          numericFolio: quote.numericCorrelative || parseInt(corrStr.replace(/\D/g, ''), 10) || 101,
           createdAt: new Date().toLocaleDateString('es-CL'),
           createdTimestamp: Date.now(),
           deadline: approveDeadline || '5 a 7 días hábiles',
@@ -3828,20 +3853,22 @@
       // Rescatador / Generador inteligente de OT para supervisión administrativa
       const getOrBuildOtForQuote = (quote) => {
         if (!quote) return null;
-        let ot = workOrders.find(o => o.correlative === quote.correlative || (o.otFolio && quote.correlative && o.otFolio.includes(quote.correlative.replace('COT-', ''))));
+        const corrStr = String(quote.correlative || '');
+        if (!corrStr) return null;
+        let ot = workOrders.find(o => (o.correlative && o.correlative === quote.correlative) || (o.otFolio && o.otFolio.includes(corrStr.replace('COT-', ''))));
         if (!ot && (quote.status === 'Aprobada' || quote.status === 'Terminada' || quote.status === 'Facturada' || quote.purchaseOrderNumber || quote.hasOt)) {
-          const otFolio = 'OT-' + quote.correlative.replace('COT-', '');
+          const otFolio = 'OT-' + corrStr.replace('COT-', '');
           const generatedMaterials = generateMaterialsList(quote.items || [], quote.client?.deliveryMethod);
           ot = {
-            id: `ot-${quote.correlative}`,
+            id: `ot-${corrStr}`,
             otFolio,
-            correlative: quote.correlative,
-            numericFolio: parseInt(quote.correlative.replace(/\D/g, ''), 10) || 1,
+            correlative: corrStr,
+            numericFolio: parseInt(corrStr.replace(/\D/g, ''), 10) || 1,
             createdAt: quote.date || new Date().toLocaleDateString('es-CL'),
             createdTimestamp: quote.timestamp || (Date.now() - 86400000 * 2),
             deadline: quote.deadline || quote.client?.manufacturingDays || '5 a 7 días hábiles',
             status: quote.status === 'Terminada' || quote.status === 'Facturada' ? 'completado' : 'fabricacion',
-            client: { ...quote.client },
+            client: { ...(quote.client || {}) },
             items: quote.items || [],
             materials: generatedMaterials,
             assignedTech: 'Taller Matriz (Olivar)',
@@ -4100,10 +4127,10 @@
         message += `\n• *Cuenta:* ${companyInfo.bank.tipo} N° ${companyInfo.bank.cuenta}`;
         message += `\n• *Envío de Comprobantes:* ${companyInfo.bank.email}\n`;
         message += `\n*📍 Taller:* ${companyInfo.address}`;
-        message += `\n*✅ Validez de Oferta:* ${q.client.validDays || 15} días.\n`;
+        message += `\n*✅ Validez de Oferta:* ${q.client?.validDays || 15} días.\n`;
         message += `\n_Cotización formal emitida por Letreros Olivar SpA._`;
 
-        const phoneTarget = (q.client.phone || '').replace(/\D/g, '') || companyInfo.whatsapp;
+        const phoneTarget = String(q.client?.phone || '').replace(/\D/g, '') || companyInfo.whatsapp;
         window.open(`https://wa.me/${phoneTarget}?text=${encodeURIComponent(message)}`, '_blank');
       };
 
@@ -5406,18 +5433,18 @@
               <div className="max-w-7xl mx-auto space-y-8">
                 
                                 {/* Barra Superior / Switcher de Espacios de la Intranet */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xl">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shadow-lg shadow-red-600/30">
+                    <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shadow-md shadow-red-600/30">
                       <Icon name="lock" className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-red-500">INTRANET CORPORATIVA</span>
-                        <span className="text-zinc-600">•</span>
-                        <span className="text-[11px] text-zinc-400">Letreros Olivar SpA</span>
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-red-600">INTRANET CORPORATIVA</span>
+                        <span className="text-slate-400">•</span>
+                        <span className="text-[11px] text-slate-500 font-medium">Letreros Olivar SpA</span>
                       </div>
-                      <h1 className="text-lg sm:text-xl font-black text-white font-heading">
+                      <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
                         {intranetSection === 'portal' ? 'Menú Principal de Espacios' : intranetSection === 'admin' ? 'Área Comercial & Administración' : 'Área Técnica & Taller de Producción'}
                       </h1>
                     </div>
@@ -5425,18 +5452,18 @@
 
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Botones de navegación directa entre espacios */}
-                    <div className="flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800 shadow-inner">
+                    <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
                       <button
                         type="button"
                         onClick={() => setIntranetSection('portal')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                           intranetSection === 'portal'
-                            ? 'bg-zinc-800 text-white shadow-sm'
-                            : 'text-zinc-400 hover:text-white'
+                            ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                            : 'text-slate-600 hover:text-slate-900'
                         }`}
                         title="Ver los dos cuadros de espacios"
                       >
-                        <Icon name="home" className="w-3.5 h-3.5" />
+                        <Icon name="home" className="w-3.5 h-3.5 text-slate-600" />
                         <span>🏠 Menú de Espacios</span>
                       </button>
 
@@ -5448,10 +5475,10 @@
                             setIntranetTab('cotizador');
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                           intranetSection === 'admin'
-                            ? 'bg-red-600 text-white shadow-sm shadow-red-900/40'
-                            : 'text-zinc-400 hover:text-white'
+                            ? 'bg-red-600 text-white shadow-sm'
+                            : 'text-slate-600 hover:text-slate-900'
                         }`}
                         title="Ir a Cotizaciones, Historial, Tarifario y Clientes"
                       >
@@ -5467,10 +5494,10 @@
                             setIntranetTab('taller');
                           }
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                           intranetSection === 'taller'
-                            ? 'bg-amber-500 text-black shadow-sm font-extrabold'
-                            : 'text-zinc-400 hover:text-white'
+                            ? 'bg-amber-500 text-slate-950 shadow-sm font-extrabold'
+                            : 'text-slate-600 hover:text-slate-900'
                         }`}
                         title="Ir a Órdenes de Trabajo, Materiales y Calendario"
                       >
@@ -5482,10 +5509,10 @@
                     <button
                       type="button"
                       onClick={handleSyncAllCloud}
-                      className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/40 shadow-sm"
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 shadow-sm cursor-pointer"
                       title="Sincronizar historial, correlativo y calendario con Firebase Cloud"
                     >
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                       <span>☁️ Nube Activa</span>
                     </button>
 
@@ -5496,19 +5523,19 @@
                         setIsIntranetLoggedIn(false);
                         setShowLoginModal(true);
                       }}
-                      className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-zinc-900 hover:bg-red-950/40 text-zinc-400 hover:text-red-400 border border-zinc-800 hover:border-red-800/40"
+                      className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 shadow-sm cursor-pointer"
                       title="Bloquear sesión de la intranet"
                     >
-                      <Icon name="lock" className="w-3.5 h-3.5" />
+                      <Icon name="lock" className="w-3.5 h-3.5 text-slate-500" />
                       <span>Bloquear</span>
                     </button>
 
-                    <div className="hidden sm:flex items-center gap-1.5 ml-auto border-l border-zinc-800 pl-3">
+                    <div className="hidden sm:flex items-center gap-1.5 ml-auto border-l border-slate-200 pl-3">
                       <a
                         href="cotizador.html"
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800"
+                        className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm"
                         title="Abrir cotizador independiente de taller"
                       >
                         <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
@@ -5518,10 +5545,10 @@
                       <a
                         href="cotizador.html"
                         download="Cotizador_Taller_Letreros_Olivar.html"
-                        className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/40"
+                        className="px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 shadow-sm"
                         title="Descargar para usar Offline en el computador"
                       >
-                        <Icon name="download" className="w-3.5 h-3.5" />
+                        <Icon name="download" className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Descargar Offline 💾</span>
                       </a>
                     </div>
@@ -5535,52 +5562,52 @@
                 {intranetSection === 'portal' && (
                   <div className="space-y-6">
                     <div className="text-center max-w-2xl mx-auto space-y-2 py-4">
-                      <span className="text-xs font-mono font-bold text-red-500 uppercase tracking-widest bg-red-950/40 px-3 py-1 rounded-full border border-red-800/40">
+                      <span className="text-xs font-mono font-bold text-red-700 uppercase tracking-widest bg-red-50 px-3.5 py-1.5 rounded-full border border-red-200 shadow-sm inline-block">
                         SISTEMA INTEGRADO DE GESTIÓN
                       </span>
-                      <h2 className="text-2xl sm:text-3xl font-black text-white font-heading">
+                      <h2 className="text-2xl sm:text-3xl font-black text-slate-900 font-heading">
                         Selecciona el Espacio de Trabajo
                       </h2>
-                      <p className="text-xs sm:text-sm text-zinc-400">
+                      <p className="text-xs sm:text-sm text-slate-600">
                         Plataforma dividida en dos áreas operativas independientes para agilizar el flujo entre ventas y fabricación.
                       </p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 pt-2">
                       {/* CUADRO 1: ADMINISTRACIÓN & COTIZACIONES (COMERCIAL) */}
-                      <div className="p-6 sm:p-8 rounded-3xl bg-zinc-900/90 border border-zinc-800 hover:border-red-600/60 transition shadow-2xl flex flex-col justify-between group hover:shadow-red-950/20">
+                      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 hover:border-red-500 transition shadow-lg hover:shadow-xl flex flex-col justify-between group">
                         <div className="space-y-5">
                           <div className="flex items-center justify-between">
-                            <div className="w-14 h-14 rounded-2xl bg-red-600/20 text-red-500 border border-red-600/40 flex items-center justify-center font-bold text-2xl shadow-lg group-hover:scale-105 transition">
+                            <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 border border-red-200 flex items-center justify-center font-bold text-2xl shadow-sm group-hover:scale-105 transition">
                               <Icon name="file-text" className="w-7 h-7" />
                             </div>
-                            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-red-600/10 text-red-400 border border-red-600/20 font-bold uppercase">
+                            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-bold uppercase">
                               Área Comercial / Ventas
                             </span>
                           </div>
 
                           <div>
-                            <h3 className="text-xl sm:text-2xl font-black text-white font-heading">
+                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
                               1. Administración & Cotizaciones
                             </h3>
-                            <p className="text-xs sm:text-sm text-zinc-400 mt-2 leading-relaxed">
+                            <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
                               Emisión formal de presupuestos con correlativo automático protegido, tarifario de materiales (Excel), recepción de solicitudes web, maestra de clientes y métricas de ventas.
                             </p>
                           </div>
 
                           {/* Métricas rápidas */}
                           <div className="grid grid-cols-3 gap-2.5 pt-2">
-                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
-                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Correlativo</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-red-500">{currentCorrelativeCode}</span>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Correlativo</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-red-600">{currentCorrelativeCode}</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
-                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Cotizadas</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-white">{quoteHistory.length}</span>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Cotizadas</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-slate-900">{quoteHistory.length}</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
-                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Clientes</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-white">{clientsMaster.length}</span>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Clientes</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-slate-900">{clientsMaster.length}</span>
                             </div>
                           </div>
 
@@ -5593,9 +5620,9 @@
                                 setIntranetTab('cotizador');
                                 handleStartNewQuote();
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="plus" className="w-3.5 h-3.5 text-red-500" />
+                              <Icon name="plus" className="w-4 h-4 text-red-600" />
                               <span className="font-semibold">+ Nueva Cotización</span>
                             </button>
                             <button
@@ -5604,9 +5631,9 @@
                                 setIntranetSection('admin');
                                 setIntranetTab('historial');
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="history" className="w-3.5 h-3.5 text-red-500" />
+                              <Icon name="history" className="w-4 h-4 text-red-600" />
                               <span className="font-semibold">Historial Emitidas</span>
                             </button>
                             <button
@@ -5615,9 +5642,9 @@
                                 setIntranetSection('admin');
                                 setIntranetTab('kpis');
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="bar-chart" className="w-3.5 h-3.5 text-red-500" />
+                              <Icon name="bar-chart" className="w-4 h-4 text-red-600" />
                               <span className="font-semibold">Reportes & KPIs</span>
                             </button>
                             <button
@@ -5626,15 +5653,15 @@
                                 setIntranetSection('admin');
                                 setIntranetTab('clientes');
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="users" className="w-3.5 h-3.5 text-red-500" />
+                              <Icon name="users" className="w-4 h-4 text-red-600" />
                               <span className="font-semibold">Maestra Clientes</span>
                             </button>
                           </div>
                         </div>
 
-                        <div className="pt-6 mt-4 border-t border-zinc-800/80">
+                        <div className="pt-6 mt-4 border-t border-slate-100">
                           <button
                             type="button"
                             onClick={() => {
@@ -5644,7 +5671,7 @@
                                 handleStartNewQuote(true);
                               }
                             }}
-                            className="w-full py-3.5 px-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-red-600/30 group-hover:shadow-red-600/50"
+                            className="w-full py-3.5 px-5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-md shadow-red-600/25 cursor-pointer"
                           >
                             <span>Ingresar a Administración Comercial</span>
                             <Icon name="arrow-right" className="w-4 h-4" />
@@ -5653,39 +5680,39 @@
                       </div>
 
                       {/* CUADRO 2: TALLER & PRODUCCIÓN (TÉCNICO / MAESTROS) */}
-                      <div className="p-6 sm:p-8 rounded-3xl bg-zinc-900/90 border border-zinc-800 hover:border-amber-500/60 transition shadow-2xl flex flex-col justify-between group hover:shadow-amber-950/20">
+                      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 hover:border-amber-500 transition shadow-lg hover:shadow-xl flex flex-col justify-between group">
                         <div className="space-y-5">
                           <div className="flex items-center justify-between">
-                            <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold text-2xl shadow-lg group-hover:scale-105 transition">
+                            <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center font-bold text-2xl shadow-sm group-hover:scale-105 transition">
                               <Icon name="tool" className="w-7 h-7" />
                             </div>
-                            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold uppercase">
+                            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-bold uppercase">
                               Área Técnica / Fabricación
                             </span>
                           </div>
 
                           <div>
-                            <h3 className="text-xl sm:text-2xl font-black text-white font-heading">
+                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
                               2. Taller & Producción
                             </h3>
-                            <p className="text-xs sm:text-sm text-zinc-400 mt-2 leading-relaxed">
+                            <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
                               Panel operativo de fabricación para maestros y técnicos. Órdenes de Trabajo (OT) aprobadas, checklist de materiales, despiece técnico y calendario de entregas e instalaciones.
                             </p>
                           </div>
 
                           {/* Métricas rápidas */}
                           <div className="grid grid-cols-3 gap-2.5 pt-2">
-                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
-                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">OTs Activas</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-amber-400">{workOrders.filter(o => o.status !== 'completado').length}</span>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">OTs Activas</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-amber-700">{workOrders.filter(o => o.status !== 'completado').length}</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
-                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Listas / OK</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-emerald-400">{workOrders.filter(o => o.status === 'completado').length}</span>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Listas / OK</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-emerald-700">{workOrders.filter(o => o.status === 'completado').length}</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-black/60 border border-zinc-800 text-center">
-                              <span className="text-[10px] text-zinc-500 font-bold uppercase block">Calendario</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-white">{workshopCalendar.filter(e => e.status !== 'completado').length}</span>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Calendario</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-blue-700">{workshopCalendar.filter(e => e.status !== 'completado').length}</span>
                             </div>
                           </div>
 
@@ -5697,9 +5724,9 @@
                                 setIntranetSection('taller');
                                 setIntranetTab('taller');
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="tool" className="w-3.5 h-3.5 text-amber-400" />
+                              <Icon name="tool" className="w-4 h-4 text-amber-600" />
                               <span className="font-semibold">Ver OTs de Taller</span>
                             </button>
                             <button
@@ -5709,9 +5736,9 @@
                                 setIntranetTab('taller');
                                 setShowNewManualOtModal(true);
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="plus" className="w-3.5 h-3.5 text-amber-400" />
+                              <Icon name="plus" className="w-4 h-4 text-amber-600" />
                               <span className="font-semibold">+ Nueva OT Manual</span>
                             </button>
                             <button
@@ -5720,9 +5747,9 @@
                                 setIntranetSection('taller');
                                 setIntranetTab('calendario');
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="calendar" className="w-3.5 h-3.5 text-amber-400" />
+                              <Icon name="calendar" className="w-4 h-4 text-amber-600" />
                               <span className="font-semibold">Agenda de Entregas</span>
                             </button>
                             <button
@@ -5731,22 +5758,22 @@
                                 setIntranetSection('admin');
                                 setIntranetTab('precios');
                               }}
-                              className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center gap-2 transition text-left"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
-                              <Icon name="table" className="w-3.5 h-3.5 text-amber-400" />
+                              <Icon name="table" className="w-4 h-4 text-amber-600" />
                               <span className="font-semibold">Cubicación / Tarifas</span>
                             </button>
                           </div>
                         </div>
 
-                        <div className="pt-6 mt-4 border-t border-zinc-800/80">
+                        <div className="pt-6 mt-4 border-t border-slate-100">
                           <button
                             type="button"
                             onClick={() => {
                               setIntranetSection('taller');
                               setIntranetTab('taller');
                             }}
-                            className="w-full py-3.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-amber-500/20 group-hover:shadow-amber-500/40"
+                            className="w-full py-3.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-md shadow-amber-500/25 cursor-pointer"
                           >
                             <span>Ingresar a Taller & Producción</span>
                             <Icon name="arrow-right" className="w-4 h-4" />
@@ -7204,12 +7231,12 @@
                               </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-2 border-t border-zinc-900">
+                            <div className="flex justify-end gap-3 pt-2 border-t border-slate-200">
                               <a
-                                href={`https://wa.me/${(req.clientPhone || '').replace(/\D/g, '')}`}
+                                href={`https://wa.me/${String(req.clientPhone || '').replace(/\D/g, '')}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-emerald-400 text-xs font-bold border border-zinc-700 flex items-center gap-1.5"
+                                className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-bold border border-emerald-300 shadow-sm flex items-center gap-1.5 transition"
                               >
                                 <Icon name="whatsapp" className="w-3.5 h-3.5" />
                                 <span>Hablar por WhatsApp</span>
@@ -9541,10 +9568,10 @@
                                     </button>
                                     {ot.client?.phone && (
                                       <a
-                                        href={`https://wa.me/${(ot.client.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${ot.client.name}, le saludamos de Letreros Olivar SpA para informarle el avance de su trabajo (${ot.otFolio}).`)}`}
+                                        href={`https://wa.me/${String(ot.client.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${ot.client.name || 'Cliente'}, le saludamos de Letreros Olivar SpA para informarle el avance de su trabajo (${ot.otFolio}).`)}`}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="bg-zinc-900 hover:bg-zinc-800 text-emerald-400 px-3 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
+                                        className="bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-300 shadow-sm flex items-center gap-1.5 transition"
                                       >
                                         <Icon name="whatsapp" className="w-3.5 h-3.5" />
                                         <span>WhatsApp</span>
@@ -10076,7 +10103,7 @@
                                         <span className="truncate font-semibold text-zinc-300">🏢 {ev.client}</span>
                                         {ev.phone && (
                                           <a
-                                            href={`https://wa.me/${ev.phone.replace(/\D/g, '')}`}
+                                            href={`https://wa.me/${String(ev.phone || '').replace(/\D/g, '')}`}
                                             target="_blank"
                                             rel="noreferrer"
                                             className="text-emerald-400 hover:underline flex items-center gap-1 flex-shrink-0"
@@ -11321,7 +11348,7 @@
                   <div className="p-3 bg-black rounded-xl border border-zinc-800">
                     <span className="text-zinc-500 block text-[10px] uppercase">Orden de Trabajo (OT):</span>
                     <strong className="text-emerald-400 text-sm">
-                      {'OT-' + quoteToInvoice.correlative.replace('COT-', '')}
+                      {'OT-' + String(quoteToInvoice?.correlative || '').replace('COT-', '')}
                     </strong>
                   </div>
                   <div className="p-3 bg-black rounded-xl border border-zinc-800">
