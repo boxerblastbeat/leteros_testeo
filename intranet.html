@@ -1731,6 +1731,10 @@
       const [invoiceNotes, setInvoiceNotes] = useState('');
       const [invoiceOcNumber, setInvoiceOcNumber] = useState('');
 
+      // Estados para Filtros Avanzados del Historial y Cobranzas
+      const [historyStatusFilter, setHistoryStatusFilter] = useState('todas'); // 'todas', 'emitidas', 'taller', 'facturadas', 'pagadas', 'pendientes_pago'
+      const [historySearchQuery, setHistorySearchQuery] = useState('');
+
       const showToast = (msg) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(''), 3500);
@@ -3175,6 +3179,8 @@
         }
 
         const ocClean = invoiceOcNumber.trim();
+        const isNowPaid = invoicePaymentStatus === 'Pagada al Día' || quote.isPaid || false;
+        const paidDateVal = isNowPaid ? (quote.paidDate || invoiceDate) : null;
 
         // 1. Marcar cotización como Facturada
         const updatedHistory = quoteHistory.map(q => {
@@ -3186,6 +3192,8 @@
               invoiceDate: invoiceDate,
               purchaseOrderNumber: ocClean || q.purchaseOrderNumber,
               invoicePaymentStatus: invoicePaymentStatus,
+              isPaid: isNowPaid,
+              paidDate: paidDateVal,
               invoiceNotes: invoiceNotes.trim()
             };
           }
@@ -3200,7 +3208,9 @@
               ...o,
               invoiceNumber: invNum,
               purchaseOrderNumber: ocClean || o.purchaseOrderNumber,
-              isInvoiced: true
+              isInvoiced: true,
+              isPaid: isNowPaid,
+              paidDate: paidDateVal
             };
           }
           return o;
@@ -3216,6 +3226,8 @@
               invoiceDate: invoiceDate,
               purchaseOrderNumber: ocClean,
               invoicePaymentStatus: invoicePaymentStatus,
+              isPaid: isNowPaid,
+              paidDate: paidDateVal,
               invoiceNotes: invoiceNotes.trim()
             }, { merge: true });
           }
@@ -3224,6 +3236,64 @@
         setShowInvoiceModal(false);
         setQuoteToInvoice(null);
         showToast(`🧾 Cotización ${correlative} FACTURADA exitosamente (Factura N° ${invNum})`);
+      };
+
+      // --- GESTIÓN DE COBRANZAS: MARCAR / DESMARCAR PAGO DIRECTO ---
+      const handleTogglePaidStatus = (quote) => {
+        if (!quote) return;
+        const correlative = quote.correlative;
+        const willBePaid = !(quote.isPaid === true || quote.paymentStatus === 'Pagada' || quote.invoicePaymentStatus === 'Pagada al Día');
+        const todayStr = new Date().toISOString().slice(0, 10);
+
+        if (!willBePaid) {
+          const confirmUnpay = window.confirm(`¿Deseas desmarcar el pago de ${correlative} (${quote.client?.name || 'Cliente'}) y dejarla como Pendiente de Pago?`);
+          if (!confirmUnpay) return;
+        }
+
+        const updatedHistory = quoteHistory.map(q => {
+          if (q.correlative === correlative) {
+            return {
+              ...q,
+              isPaid: willBePaid,
+              paymentStatus: willBePaid ? 'Pagada' : 'Pendiente',
+              paidDate: willBePaid ? (q.paidDate || todayStr) : null,
+              invoicePaymentStatus: willBePaid ? 'Pagada al Día' : (q.invoicePaymentStatus === 'Pagada al Día' ? 'Pendiente' : (q.invoicePaymentStatus || 'Pendiente'))
+            };
+          }
+          return q;
+        });
+        setQuoteHistory(updatedHistory);
+
+        // Sincronizar con OT si existe
+        const updatedOts = workOrders.map(o => {
+          if (o.correlative === correlative) {
+            return {
+              ...o,
+              isPaid: willBePaid,
+              paidDate: willBePaid ? (o.paidDate || todayStr) : null
+            };
+          }
+          return o;
+        });
+        saveWorkOrdersList(updatedOts);
+
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+          if (window.db) {
+            window.db.collection('quotes').doc(correlative).set({
+              isPaid: willBePaid,
+              paymentStatus: willBePaid ? 'Pagada' : 'Pendiente',
+              paidDate: willBePaid ? todayStr : null,
+              invoicePaymentStatus: willBePaid ? 'Pagada al Día' : 'Pendiente'
+            }, { merge: true });
+          }
+        } catch(err) { console.warn('Error guardando pago en Firebase:', err); }
+
+        if (willBePaid) {
+          showToast(`💵 ¡Excelente! Cotización ${correlative} marcada como PAGADA.`);
+        } else {
+          showToast(`↩️ Cotización ${correlative} devuelta a Pendiente de Pago.`);
+        }
       };
 
       // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---
@@ -6505,203 +6575,503 @@
                   </div>
                 )}
 
-                {/* SUB-PESTAÑA 3: HISTORIAL DE COTIZACIONES EMITIDAS */}
-                {intranetTab === 'historial' && (
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-black border border-zinc-800">
-                      <div>
-                        <h2 className="text-lg font-bold text-white font-heading">
-                          Historial de Cotizaciones Emitidas ({quoteHistory.length})
-                        </h2>
-                        <p className="text-xs text-zinc-400 mt-0.5">Control correlativo oficial emitido por Letreros Olivar SpA.</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSyncAllCloud}
-                          className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
-                          title="Sincronizar y forzar la descarga de cotizaciones desde Firebase"
-                        >
-                          <Icon name="refresh" className="w-3.5 h-3.5" />
-                          <span>🔄 Actualizar Nube</span>
-                        </button>
-                        <button
-                          onClick={() => handleStartNewQuote()}
-                          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
-                        >
-                          <Icon name="plus" className="w-4 h-4" />
-                          <span>➕ Crear Nueva Cotización</span>
-                        </button>
-                      </div>
-                    </div>
+                {/* SUB-PESTAÑA 3: HISTORIAL DE COTIZACIONES EMITIDAS & CONTROL DE COBRANZAS */}
+                {intranetTab === 'historial' && (() => {
+                  const isQuotePaid = (q) => {
+                    return q.isPaid === true || q.paymentStatus === 'Pagada' || q.invoicePaymentStatus === 'Pagada al Día';
+                  };
 
-                    {quoteHistory.length === 0 ? (
-                      <div className="p-12 text-center bg-black border border-zinc-800 rounded-2xl text-zinc-500">
-                        Aún no se han emitido cotizaciones oficiales en este navegador.
+                  const isQuoteInvoiced = (q) => {
+                    return q.status === 'Facturada' || Boolean(q.invoiceNumber);
+                  };
+
+                  const isQuoteInWorkshop = (q) => {
+                    const hasOt = workOrders.some(o => o.correlative === q.correlative);
+                    return q.status === 'Aprobada' || q.status === 'Terminada' || hasOt;
+                  };
+
+                  const isQuoteOnlyIssued = (q) => {
+                    const hasOt = workOrders.some(o => o.correlative === q.correlative);
+                    return !hasOt && q.status !== 'Aprobada' && q.status !== 'Terminada' && q.status !== 'Facturada' && !q.invoiceNumber;
+                  };
+
+                  const countTodas = quoteHistory.length;
+                  const countEmitidas = quoteHistory.filter(isQuoteOnlyIssued).length;
+                  const countTaller = quoteHistory.filter(isQuoteInWorkshop).length;
+                  const countFacturadas = quoteHistory.filter(isQuoteInvoiced).length;
+                  const countPagadas = quoteHistory.filter(isQuotePaid).length;
+                  const countPendientesPago = quoteHistory.filter(q => !isQuotePaid(q)).length;
+
+                  const totalPorCobrar = quoteHistory.filter(q => !isQuotePaid(q)).reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
+                  const totalRecaudado = quoteHistory.filter(isQuotePaid).reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
+
+                  const filteredQuotes = quoteHistory.filter(q => {
+                    if (historyStatusFilter === 'emitidas' && !isQuoteOnlyIssued(q)) return false;
+                    if (historyStatusFilter === 'taller' && !isQuoteInWorkshop(q)) return false;
+                    if (historyStatusFilter === 'facturadas' && !isQuoteInvoiced(q)) return false;
+                    if (historyStatusFilter === 'pagadas' && !isQuotePaid(q)) return false;
+                    if (historyStatusFilter === 'pendientes_pago' && isQuotePaid(q)) return false;
+
+                    if (historySearchQuery.trim()) {
+                      const qStr = historySearchQuery.trim().toLowerCase();
+                      const correlativeMatch = (q.correlative || '').toLowerCase().includes(qStr);
+                      const clientNameMatch = (q.client?.name || '').toLowerCase().includes(qStr);
+                      const rutMatch = (q.client?.documentId || '').toLowerCase().includes(qStr);
+                      const phoneMatch = (q.client?.phone || '').toLowerCase().includes(qStr);
+                      const invoiceMatch = (q.invoiceNumber || '').toLowerCase().includes(qStr);
+                      const ocMatch = (q.purchaseOrderNumber || '').toLowerCase().includes(qStr);
+                      return correlativeMatch || clientNameMatch || rutMatch || phoneMatch || invoiceMatch || ocMatch;
+                    }
+                    return true;
+                  });
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Cabecera Principal y Acciones */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-black border border-zinc-800">
+                        <div>
+                          <h2 className="text-lg font-bold text-white font-heading flex items-center gap-2">
+                            <span>Historial de Cotizaciones & Gestión de Cobranzas</span>
+                            <span className="text-xs font-mono bg-zinc-800 text-zinc-300 px-2.5 py-0.5 rounded-full">
+                              {countTodas} en total
+                            </span>
+                          </h2>
+                          <p className="text-xs text-zinc-400 mt-0.5">
+                            Control del ciclo completo: emisión, aprobación, órdenes en taller, facturación electrónica y pagos.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSyncAllCloud}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                            title="Sincronizar y forzar la descarga de cotizaciones desde Firebase"
+                          >
+                            <Icon name="refresh" className="w-3.5 h-3.5" />
+                            <span>🔄 Actualizar Nube</span>
+                          </button>
+                          <button
+                            onClick={() => handleStartNewQuote()}
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                          >
+                            <Icon name="plus" className="w-4 h-4" />
+                            <span>➕ Crear Nueva Cotización</span>
+                          </button>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {quoteHistory.map((q) => (
-                          <div key={q.correlative} className="p-5 rounded-2xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2.5">
-                                <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
-                                <span className="text-xs text-zinc-400">📅 {q.date}</span>
-                                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                                  q.status === 'Facturada' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' :
-                                  q.status === 'Terminada' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 animate-pulse' :
-                                  q.status === 'Aprobada' ? 'bg-blue-600/20 text-blue-300 border-blue-500/40' :
-                                  'bg-red-600/10 text-red-400 border-red-600/30'
-                                }`}>
-                                  {q.status === 'Terminada' ? '✅ Terminada en Taller (Lista p/ Facturar)' : q.status}
+
+                      {/* BARRA DE FILTROS POR LÍNEAS SEPARADAS */}
+                      <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
+                        {/* Línea 1: Buscador en tiempo real */}
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="🔍 Buscar por cliente, correlativo COT-XXXX, RUT, N° Factura u Orden de Compra (OC)..."
+                            value={historySearchQuery}
+                            onChange={(e) => setHistorySearchQuery(e.target.value)}
+                            className="w-full bg-black text-white text-xs px-4 py-2.5 pl-10 rounded-xl border border-zinc-700 focus:border-red-500 focus:outline-none font-mono"
+                          />
+                          <div className="absolute left-3.5 top-3 text-zinc-500 text-xs">
+                            <Icon name="search" className="w-4 h-4" />
+                          </div>
+                          {historySearchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setHistorySearchQuery('')}
+                              className="absolute right-3 top-2.5 text-zinc-400 hover:text-white text-xs font-bold"
+                            >
+                              ✕ Limpiar
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Línea 2: Filtros por Estado del Ciclo de Producción (En líneas y botones claros) */}
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block mb-1.5">
+                            Filtrar por Etapa del Trabajo:
+                          </span>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            {/* Pestaña / Botón 1: Todas */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('todas')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                                historyStatusFilter === 'todas'
+                                  ? 'bg-zinc-800 border-white text-white shadow-md'
+                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>📋 Todas</span>
+                                <span className="font-mono text-[11px] bg-zinc-700/60 text-white px-2 py-0.5 rounded">
+                                  {countTodas}
                                 </span>
-                                {q.purchaseOrderNumber && (
-                                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-950/40 text-blue-300 border border-blue-500/40">
-                                    📄 OC: {q.purchaseOrderNumber}
-                                  </span>
-                                )}
-                                {q.invoiceNumber && (
-                                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-300 border border-emerald-500/40">
-                                    🧾 Fac: {q.invoiceNumber}
-                                  </span>
-                                )}
                               </div>
-                              <div className="font-bold text-white text-sm mt-1">{q.client.name}</div>
-                              <div className="text-xs text-zinc-400 mt-0.5">
-                                {q.items.length} trabajos • Modalidad: <strong className="text-zinc-200">{q.client.deliveryMethod === 'instalacion' ? 'Instalación' : q.client.deliveryMethod === 'entrega' ? 'Despacho a Cliente' : 'Retiro en Taller'}</strong> • Total: <strong className="text-white font-mono">{formatCLP(q.totals.total)}</strong>
+                              <span className="text-[10px] text-zinc-500 mt-1">Historial total</span>
+                            </button>
+
+                            {/* Pestaña / Botón 2: Cotizaciones Emitidas */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('emitidas')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                                historyStatusFilter === 'emitidas'
+                                  ? 'bg-red-950/40 border-red-500 text-red-200 shadow-md shadow-red-900/20'
+                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>📄 Emitidas</span>
+                                <span className="font-mono text-[11px] bg-red-900/60 text-red-300 px-2 py-0.5 rounded">
+                                  {countEmitidas}
+                                </span>
                               </div>
+                              <span className="text-[10px] text-zinc-500 mt-1">En espera cliente</span>
+                            </button>
+
+                            {/* Pestaña / Botón 3: En Taller / Aceptadas */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('taller')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                                historyStatusFilter === 'taller'
+                                  ? 'bg-blue-950/40 border-blue-500 text-blue-200 shadow-md shadow-blue-900/20'
+                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>🏭 En Taller</span>
+                                <span className="font-mono text-[11px] bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded">
+                                  {countTaller}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-zinc-500 mt-1">Aprobadas c/ OT</span>
+                            </button>
+
+                            {/* Pestaña / Botón 4: Facturadas */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('facturadas')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                                historyStatusFilter === 'facturadas'
+                                  ? 'bg-emerald-950/50 border-emerald-500 text-emerald-200 shadow-md shadow-emerald-900/20'
+                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>🧾 Facturadas</span>
+                                <span className="font-mono text-[11px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">
+                                  {countFacturadas}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-zinc-500 mt-1">Con factura SII</span>
+                            </button>
+
+                            {/* Pestaña / Botón 5: Pagadas */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('pagadas')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                                historyStatusFilter === 'pagadas'
+                                  ? 'bg-emerald-900/60 border-emerald-400 text-white shadow-md shadow-emerald-600/30'
+                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>💵 Pagadas</span>
+                                <span className="font-mono text-[11px] bg-emerald-600 text-white px-2 py-0.5 rounded">
+                                  {countPagadas}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-zinc-500 mt-1">100% cobradas</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Línea 3: MÓDULO EXCLUSIVO DE COBRANZAS (REVISIÓN DE MIÉRCOLES) */}
+                        <div className={`p-3.5 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          historyStatusFilter === 'pendientes_pago'
+                            ? 'bg-amber-950/50 border-amber-500 shadow-lg shadow-amber-500/20'
+                            : 'bg-zinc-900/60 border-zinc-800'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg">
+                              ⏳
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {/* Botón: Aprobar y Crear OT / Ver en Taller */}
-                              {(() => {
-                                const existingOt = workOrders.find(o => o.correlative === q.correlative);
-                                if (existingOt) {
-                                  return (
-                                    <button
-                                      onClick={() => {
-                                        setIntranetTab('taller');
-                                        setOtSearch(q.correlative);
-                                      }}
-                                      className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-500/40 flex items-center gap-1.5 transition shadow-sm"
-                                      title="Ver Orden de Trabajo activa en Taller"
-                                    >
-                                      <Icon name="tool" className="w-3.5 h-3.5" />
-                                      <span>🏭 Ver en Taller ({existingOt.otFolio})</span>
-                                    </button>
-                                  );
-                                }
-                                return (
-                                  <button
-                                    onClick={() => handleOpenApproveModal(q)}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50 cursor-pointer"
-                                    title="Aprobar esta cotización, registrar Orden de Compra (OC) y enviar a Taller"
-                                  >
-                                    <Icon name="check" className="w-3.5 h-3.5" />
-                                    <span>✅ Aprobar y Crear OT</span>
-                                  </button>
-                                );
-                              })()}
-
-                              {/* Botón: Facturar Orden */}
-                              {(() => {
-                                const existingOt = workOrders.find(o => o.correlative === q.correlative);
-                                const isAlreadyInvoiced = q.status === 'Facturada' || !!q.invoiceNumber;
-                                const isReadyToInvoice = q.status === 'Terminada' || q.status === 'Aprobada' || (existingOt && (existingOt.status === 'completado' || existingOt.status === 'fabricacion'));
-
-                                if (isAlreadyInvoiced) {
-                                  return (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenInvoiceModal(q)}
-                                      className="bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-500/50 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                                      title="Ver datos de Facturación y Cierre"
-                                    >
-                                      <Icon name="file-text" className="w-3.5 h-3.5 text-emerald-400" />
-                                      <span>🧾 Fac. #{q.invoiceNumber || 'Emitida'}</span>
-                                    </button>
-                                  );
-                                }
-
-                                if (isReadyToInvoice) {
-                                  return (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenInvoiceModal(q)}
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400 animate-pulse cursor-pointer"
-                                      title="Facturar esta orden de trabajo"
-                                    >
-                                      <Icon name="file-text" className="w-3.5 h-3.5" />
-                                      <span>🧾 Facturar</span>
-                                    </button>
-                                  );
-                                }
-                                return null;
-                              })()}
-
-                              <button
-                                onClick={() => {
-                                  handleOpenNewCalModal({
-                                    title: `${q.client && q.client.deliveryMethod === 'instalacion' ? 'Instalación' : 'Entrega'} ${q.correlative}`,
-                                    client: (q.client && q.client.name) || '',
-                                    phone: (q.client && q.client.phone) || '',
-                                    address: (q.client && q.client.deliveryAddress) || '',
-                                    correlative: q.correlative,
-                                    type: (q.client && q.client.deliveryMethod === 'instalacion') ? 'instalacion' : 'despacho'
-                                  });
-                                  setIntranetTab('calendario');
-                                }}
-                                className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 transition shadow-sm"
-                                title="Agendar fecha de entrega o instalación en el calendario del taller"
-                              >
-                                <Icon name="calendar" className="w-3.5 h-3.5" />
-                                <span>📅 Agendar Entrega</span>
-                              </button>
-
-                              <button
-                                onClick={() => handleEditExistingQuote(q)}
-                                className="bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-500/40 flex items-center gap-1.5 transition shadow-sm"
-                                title="Editar esta cotización directamente conservando el mismo correlativo"
-                              >
-                                <Icon name="file-text" className="w-3.5 h-3.5" />
-                                <span>✏️ Editar Orden</span>
-                              </button>
-                              <button
-                                onClick={() => handleReuseQuote(q)}
-                                className="bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-500/40 flex items-center gap-1.5 transition shadow-sm"
-                                title="Cargar estos datos en el cotizador para emitir una NUEVA cotización sin alterar la original"
-                              >
-                                <Icon name="refresh" className="w-3.5 h-3.5" />
-                                <span>Reutilizar / Clonar</span>
-                              </button>
-                              <button
-                                onClick={() => handleOpenPrintModal(q)}
-                                className="bg-zinc-900 hover:bg-zinc-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
-                              >
-                                <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
-                                <span>Ver / Imprimir PDF</span>
-                              </button>
-                              <button
-                                onClick={() => handleSendWhatsAppQuote(q)}
-                                className="bg-zinc-900 hover:bg-zinc-800 text-emerald-400 px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
-                              >
-                                <Icon name="whatsapp" className="w-3.5 h-3.5" />
-                                <span>WhatsApp</span>
-                              </button>
-                              <button
-                                onClick={() => handleRequestDeleteQuote(q)}
-                                className="bg-red-950/30 hover:bg-red-600 text-red-500 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-900/50 hover:border-red-600 flex items-center gap-1.5 transition shadow-sm"
-                                title="Eliminar cotización permanentemente (Requiere PIN de Administrador)"
-                              >
-                                <Icon name="trash" className="w-3.5 h-3.5" />
-                                <span>🗑️ Borrar</span>
-                              </button>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-heading font-black text-white text-xs sm:text-sm">
+                                  Revisión Semanal de Cobranzas (Pagos Pendientes)
+                                </span>
+                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                  {countPendientesPago} sin pagar
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-zinc-400 mt-0.5">
+                                Por cobrar: <strong className="text-amber-400 font-mono font-bold text-xs">{formatCLP(totalPorCobrar)}</strong> • Cobrado: <strong className="text-emerald-400 font-mono font-bold text-xs">{formatCLP(totalRecaudado)}</strong>
+                              </p>
                             </div>
                           </div>
-                        ))}
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter(historyStatusFilter === 'pendientes_pago' ? 'todas' : 'pendientes_pago')}
+                              className={`px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow ${
+                                historyStatusFilter === 'pendientes_pago'
+                                  ? 'bg-amber-500 text-black hover:bg-amber-400 ring-2 ring-amber-300'
+                                  : 'bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40'
+                              }`}
+                            >
+                              <span>{historyStatusFilter === 'pendientes_pago' ? '✓ Viendo Solo Sin Pagar' : '🔍 Filtrar Solo Trabajos Sin Pagar'}</span>
+                            </button>
+                            {historyStatusFilter !== 'todas' && (
+                              <button
+                                type="button"
+                                onClick={() => setHistoryStatusFilter('todas')}
+                                className="px-3 py-2 rounded-xl text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
+                              >
+                                Ver Todas
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
+
+                      {/* LISTADO DE COTIZACIONES FILTRADAS */}
+                      {filteredQuotes.length === 0 ? (
+                        <div className="p-12 text-center bg-black border border-zinc-800 rounded-2xl text-zinc-500 space-y-2">
+                          <div className="text-3xl">🔍</div>
+                          <div className="text-sm font-bold text-zinc-300">
+                            No se encontraron cotizaciones con el filtro actual ({historyStatusFilter}).
+                          </div>
+                          <p className="text-xs text-zinc-500">
+                            Prueba seleccionando "Todas" o cambiando el término de búsqueda.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHistoryStatusFilter('todas');
+                              setHistorySearchQuery('');
+                            }}
+                            className="mt-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold"
+                          >
+                            Restablecer Filtros
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {filteredQuotes.map((q) => {
+                            const paid = isQuotePaid(q);
+                            return (
+                              <div
+                                key={q.correlative}
+                                className={`p-5 rounded-2xl bg-black border transition flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                                  paid
+                                    ? 'border-zinc-800 hover:border-emerald-500/40'
+                                    : 'border-zinc-800 hover:border-amber-500/50'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2.5">
+                                    <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
+                                    <span className="text-xs text-zinc-400">📅 {q.date}</span>
+                                    
+                                    {/* Estado del Flujo de Producción */}
+                                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                      q.status === 'Facturada' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' :
+                                      q.status === 'Terminada' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 animate-pulse' :
+                                      q.status === 'Aprobada' ? 'bg-blue-600/20 text-blue-300 border-blue-500/40' :
+                                      'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                    }`}>
+                                      {q.status === 'Terminada' ? '✅ Terminada en Taller (Lista p/ Facturar)' : q.status || 'Emitida'}
+                                    </span>
+
+                                    {/* Estado de Cobranza / Pago */}
+                                    {paid ? (
+                                      <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-600/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1">
+                                        <span>💵 PAGADA</span>
+                                        {q.paidDate && <span className="opacity-80">({q.paidDate})</span>}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 flex items-center gap-1">
+                                        <span>⏳ PENDIENTE DE PAGO</span>
+                                      </span>
+                                    )}
+
+                                    {q.purchaseOrderNumber && (
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-950/40 text-blue-300 border border-blue-500/40">
+                                        📄 OC: {q.purchaseOrderNumber}
+                                      </span>
+                                    )}
+                                    {q.invoiceNumber && (
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-300 border border-emerald-500/40">
+                                        🧾 Fac: {q.invoiceNumber}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="font-bold text-white text-sm mt-1">{q.client?.name}</div>
+                                  <div className="text-xs text-zinc-400 mt-0.5">
+                                    {q.items?.length || 0} trabajos • Modalidad: <strong className="text-zinc-200">{q.client?.deliveryMethod === 'instalacion' ? 'Instalación' : q.client?.deliveryMethod === 'entrega' ? 'Despacho a Cliente' : 'Retiro en Taller'}</strong> • Total: <strong className="text-white font-mono text-sm">{formatCLP(q.totals?.total)}</strong>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {/* BOTÓN: MARCAR COMO PAGADA / DESMARCAR */}
+                                  {!paid ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTogglePaidStatus(q)}
+                                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50 cursor-pointer"
+                                      title="Registrar que el cliente pagó esta orden"
+                                    >
+                                      <Icon name="check" className="w-3.5 h-3.5" />
+                                      <span>💵 Marcar Pagada</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTogglePaidStatus(q)}
+                                      className="bg-emerald-950/60 hover:bg-zinc-800 text-emerald-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-500/40 flex items-center gap-1.5 transition cursor-pointer"
+                                      title="Esta orden está pagada. Clic para desmarcar o cambiar a pendiente."
+                                    >
+                                      <Icon name="check" className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span>✅ Pagada ↩️</span>
+                                    </button>
+                                  )}
+
+                                  {/* Botón: Aprobar y Crear OT / Ver en Taller */}
+                                  {(() => {
+                                    const existingOt = workOrders.find(o => o.correlative === q.correlative);
+                                    if (existingOt) {
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setIntranetTab('taller');
+                                            setOtSearch(q.correlative);
+                                          }}
+                                          className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                          title="Ver Orden de Trabajo activa en Taller"
+                                        >
+                                          <Icon name="tool" className="w-3.5 h-3.5" />
+                                          <span>🏭 Ver en Taller ({existingOt.otFolio})</span>
+                                        </button>
+                                      );
+                                    }
+                                    return (
+                                      <button
+                                        onClick={() => handleOpenApproveModal(q)}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50 cursor-pointer"
+                                        title="Aprobar esta cotización, registrar Orden de Compra (OC) y enviar a Taller"
+                                      >
+                                        <Icon name="check" className="w-3.5 h-3.5" />
+                                        <span>✅ Aprobar y Crear OT</span>
+                                      </button>
+                                    );
+                                  })()}
+
+                                  {/* Botón: Facturar Orden */}
+                                  {(() => {
+                                    const existingOt = workOrders.find(o => o.correlative === q.correlative);
+                                    const isAlreadyInvoiced = q.status === 'Facturada' || !!q.invoiceNumber;
+                                    const isReadyToInvoice = q.status === 'Terminada' || q.status === 'Aprobada' || (existingOt && (existingOt.status === 'completado' || existingOt.status === 'fabricacion'));
+
+                                    if (isAlreadyInvoiced) {
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenInvoiceModal(q)}
+                                          className="bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-500/50 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                          title="Ver datos de Facturación y Cierre"
+                                        >
+                                          <Icon name="file-text" className="w-3.5 h-3.5 text-emerald-400" />
+                                          <span>🧾 Fac. #{q.invoiceNumber || 'Emitida'}</span>
+                                        </button>
+                                      );
+                                    }
+
+                                    if (isReadyToInvoice) {
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenInvoiceModal(q)}
+                                          className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400 animate-pulse cursor-pointer"
+                                          title="Facturar esta orden de trabajo"
+                                        >
+                                          <Icon name="file-text" className="w-3.5 h-3.5" />
+                                          <span>🧾 Facturar</span>
+                                        </button>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+
+                                  <button
+                                    onClick={() => {
+                                      handleOpenNewCalModal({
+                                        title: `${q.client && q.client.deliveryMethod === 'instalacion' ? 'Instalación' : 'Entrega'} ${q.correlative}`,
+                                        client: (q.client && q.client.name) || '',
+                                        phone: (q.client && q.client.phone) || '',
+                                        address: (q.client && q.client.deliveryAddress) || '',
+                                        correlative: q.correlative,
+                                        type: (q.client && q.client.deliveryMethod === 'instalacion') ? 'instalacion' : 'despacho'
+                                      });
+                                      setIntranetTab('calendario');
+                                    }}
+                                    className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                    title="Agendar fecha de entrega o instalación en el calendario del taller"
+                                  >
+                                    <Icon name="calendar" className="w-3.5 h-3.5" />
+                                    <span>📅 Agendar Entrega</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleEditExistingQuote(q)}
+                                    className="bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                    title="Editar esta cotización directamente conservando el mismo correlativo"
+                                  >
+                                    <Icon name="file-text" className="w-3.5 h-3.5" />
+                                    <span>✏️ Editar Orden</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleReuseQuote(q)}
+                                    className="bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                    title="Cargar estos datos en el cotizador para emitir una NUEVA cotización sin alterar la original"
+                                  >
+                                    <Icon name="refresh" className="w-3.5 h-3.5" />
+                                    <span>Reutilizar / Clonar</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenPrintModal(q)}
+                                    className="bg-zinc-900 hover:bg-zinc-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
+                                  >
+                                    <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
+                                    <span>Ver / Imprimir PDF</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleSendWhatsAppQuote(q)}
+                                    className="bg-zinc-900 hover:bg-zinc-800 text-emerald-400 px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
+                                  >
+                                    <Icon name="whatsapp" className="w-3.5 h-3.5" />
+                                    <span>WhatsApp</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleRequestDeleteQuote(q)}
+                                    className="bg-red-950/30 hover:bg-red-600 text-red-500 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-900/50 hover:border-red-600 flex items-center gap-1.5 transition shadow-sm"
+                                    title="Eliminar cotización permanentemente (Requiere PIN de Administrador)"
+                                  >
+                                    <Icon name="trash" className="w-3.5 h-3.5" />
+                                    <span>🗑️ Borrar</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 
                 {/* SUB-PESTAÑA: REPORTES MENSUALES Y KPIS DE VENTAS & PRODUCCIÓN */}
