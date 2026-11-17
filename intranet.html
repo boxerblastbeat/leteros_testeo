@@ -117,7 +117,8 @@
       console.error("Global Error Caught:", msg, error);
       var rootEl = document.getElementById('root');
       if (rootEl && !rootEl.innerHTML.trim()) {
-        rootEl.innerHTML = '<div style="background:#09090b;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;padding:24px;text-align:center;"><div style="background:#18181b;border:1px solid #27272a;border-radius:16px;padding:32px;max-width:520px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);"><div style="font-size:36px;margin-bottom:12px;">🛡️</div><h2 style="font-size:20px;font-weight:900;color:#fff;margin-bottom:8px;">Intranet Letreros Olivar SpA</h2><p style="color:#a1a1aa;font-size:13px;line-height:1.5;margin-bottom:20px;">Se detectó una actualización en el navegador. Haz clic abajo para reanudar el cotizador y la administración.</p><button onclick="window.location.reload()" style="background:#dc2626;color:#fff;font-weight:bold;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:13px;">Reiniciar Intranet ➔</button></div></div>';
+        var errInfo = msg ? ('<div style="margin-top:12px;padding:8px 12px;background:#27272a;border-radius:8px;font-family:monospace;font-size:11px;color:#f87171;text-align:left;word-break:break-all;">' + msg + (line ? (' (' + line + ':' + col + ')') : '') + '</div>') : '';
+        rootEl.innerHTML = '<div style="background:#09090b;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;padding:24px;text-align:center;"><div style="background:#18181b;border:1px solid #27272a;border-radius:16px;padding:32px;max-width:520px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);"><div style="font-size:36px;margin-bottom:12px;">🛡️</div><h2 style="font-size:20px;font-weight:900;color:#fff;margin-bottom:8px;">Intranet Letreros Olivar SpA</h2><p style="color:#a1a1aa;font-size:13px;line-height:1.5;margin-bottom:20px;">Se detectó una actualización en el navegador. Haz clic abajo para reanudar el cotizador y la administración.</p><button onclick="window.location.reload()" style="background:#dc2626;color:#fff;font-weight:bold;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:13px;">Reiniciar Intranet ➔</button>' + errInfo + '</div></div>';
       }
     };
   </script>
@@ -570,7 +571,7 @@
               <line x1="16" y1={padTop} x2="16" y2={padTop + drawH} stroke="#000" strokeWidth="1.5" />
               <line x1="11" y1={padTop} x2="21" y2={padTop} stroke="#000" strokeWidth="1.5" />
               <line x1="11" y1={padTop + drawH} x2="21" y2={padTop + drawH} stroke="#000" strokeWidth="1.5" />
-              <text x="12" y={padTop + (drawH / 2)} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#000" transform={`rotate(-90 12 ${padTop + (drawH / 2)})`}>
+              <text x="12" y={padTop + (drawH / 2)} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#000" transform={"rotate(-90 12 " + (padTop + (drawH / 2)) + ")"}>
                 ↕ {sheetH.toFixed(2)}m ({(sheetH * 100).toFixed(0)} cm)
               </text>
 
@@ -605,7 +606,7 @@
                     fontSize="8"
                     fontWeight="bold"
                     fill="#b91c1c"
-                    transform={`rotate(-90 ${padLeft + cutsTotalW + (wasteW / 2)} ${padTop + (cutsTotalH / 2)})`}
+                    transform={"rotate(-90 " + (padLeft + cutsTotalW + (wasteW / 2)) + " " + (padTop + (cutsTotalH / 2)) + ")"}
                   >
                     Sobrante {((pattern.wasteX || 0) * 100).toFixed(0)}cm
                   </text>
@@ -10030,10 +10031,6 @@
                     </button>
                   </div>
                 </form>
-              </div>
-            </div>
-          )}
-                </div>
               </div>
             </div>
           )}
