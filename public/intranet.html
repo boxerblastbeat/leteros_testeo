@@ -150,7 +150,7 @@
     }
     @page {
       size: A4 portrait;
-      margin: 6mm 8mm;
+      margin: 4mm 5mm !important;
     }
     @media print {
       html, body {
@@ -158,37 +158,38 @@
         color: #000000 !important;
         margin: 0 !important;
         padding: 0 !important;
+        height: 100% !important;
+        max-height: 100vh !important;
+        overflow: hidden !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
       body * {
-        visibility: hidden;
+        visibility: hidden !important;
       }
       #print-area, #print-area *, #ot-print-area, #ot-print-area * {
-        visibility: visible;
+        visibility: visible !important;
       }
       #print-area, #ot-print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
         background: #ffffff !important;
         color: #000000 !important;
-        padding: 4mm 6mm !important;
-        margin: 0 auto !important;
+        padding: 2mm 3mm !important;
+        margin: 0 !important;
         box-sizing: border-box !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
       .no-print, .print-hide-sqm {
         display: none !important;
       }
-      table {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-      tr {
+      table, tr, td, th {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
@@ -514,11 +515,11 @@
       if (!pattern || !pattern.cols || !pattern.rows) return null;
 
       const svgW = 560;
-      const svgH = 200;
+      const svgH = 140;
       const padLeft = 45;
-      const padTop = 30;
+      const padTop = 24;
       const drawW = svgW - padLeft - 20;
-      const drawH = svgH - padTop - 25;
+      const drawH = svgH - padTop - 18;
 
       const scaleX = drawW / sheetW;
       const scaleY = drawH / sheetH;
@@ -542,23 +543,23 @@
       const wasteH = drawH - cutsTotalH;
 
       return (
-        <div className="border-2 border-black rounded-xl p-3 bg-white text-black my-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-300 pb-1.5 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-black uppercase font-heading">
+        <div className="border border-black rounded-lg p-2 bg-white text-black my-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-300 pb-1 mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-black uppercase font-heading">
                 🗺️ Plano de Corte: {title || pattern.name}
               </span>
-              <span className="text-[10px] font-mono bg-black text-white px-2 py-0.5 rounded font-bold">
+              <span className="text-[9px] font-mono bg-black text-white px-1.5 py-0.5 rounded font-bold">
                 Plancha {sheetW}m × {sheetH}m
               </span>
             </div>
-            <div className="text-[11px] font-mono font-bold text-gray-800">
-              Patrón: {pattern.piecesPerSheet} piezas/plancha ({pattern.cols} col × {pattern.rows} filas) • Aprovechamiento: {pattern.utilization.toFixed(1)}%
+            <div className="text-[10px] font-mono font-bold text-gray-800">
+              Patrón: {pattern.piecesPerSheet} piezas/plancha ({pattern.cols}×{pattern.rows}) • Útil: {pattern.utilization.toFixed(1)}%
             </div>
           </div>
 
-          <div className="w-full overflow-x-auto bg-gray-50 border border-gray-300 rounded p-1">
-            <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto max-h-56 font-sans">
+          <div className="w-full overflow-x-auto bg-gray-50 border border-gray-300 rounded p-0.5">
+            <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-auto max-h-36 font-sans">
               {/* Cota Superior: Largo Plancha */}
               <line x1={padLeft} y1="14" x2={padLeft + drawW} y2="14" stroke="#000" strokeWidth="1.5" />
               <line x1={padLeft} y1="9" x2={padLeft} y2="19" stroke="#000" strokeWidth="1.5" />
@@ -1734,6 +1735,8 @@
       // Estados para Filtros Avanzados del Historial y Cobranzas
       const [historyStatusFilter, setHistoryStatusFilter] = useState('todas'); // 'todas', 'emitidas', 'taller', 'facturadas', 'pagadas', 'pendientes_pago'
       const [historySearchQuery, setHistorySearchQuery] = useState('');
+      const [showSupervisorDashboard, setShowSupervisorDashboard] = useState(false);
+      const [supervisorFilter, setSupervisorFilter] = useState('retrasadas'); // 'retrasadas', 'todas_activas', 'urgentes'
 
       const showToast = (msg) => {
         setToastMessage(msg);
@@ -3377,6 +3380,129 @@
       const handleCloseOtPrintModal = () => {
         setShowOtPrintModal(false);
         setSelectedOtForPrint(null);
+      };
+
+      // Rescatador / Generador inteligente de OT para supervisión administrativa
+      const getOrBuildOtForQuote = (quote) => {
+        if (!quote) return null;
+        let ot = workOrders.find(o => o.correlative === quote.correlative || (o.otFolio && quote.correlative && o.otFolio.includes(quote.correlative.replace('COT-', ''))));
+        if (!ot && (quote.status === 'Aprobada' || quote.status === 'Terminada' || quote.status === 'Facturada' || quote.purchaseOrderNumber || quote.hasOt)) {
+          const otFolio = 'OT-' + quote.correlative.replace('COT-', '');
+          const generatedMaterials = generateMaterialsList(quote.items || [], quote.client?.deliveryMethod);
+          ot = {
+            id: `ot-${quote.correlative}`,
+            otFolio,
+            correlative: quote.correlative,
+            numericFolio: parseInt(quote.correlative.replace(/\D/g, ''), 10) || 1,
+            createdAt: quote.date || new Date().toLocaleDateString('es-CL'),
+            createdTimestamp: quote.timestamp || (Date.now() - 86400000 * 2),
+            deadline: quote.deadline || quote.client?.manufacturingDays || '5 a 7 días hábiles',
+            status: quote.status === 'Terminada' || quote.status === 'Facturada' ? 'completado' : 'fabricacion',
+            client: { ...quote.client },
+            items: quote.items || [],
+            materials: generatedMaterials,
+            assignedTech: 'Taller Matriz (Olivar)',
+            priority: 'Normal',
+            purchaseOrderNumber: quote.purchaseOrderNumber || '',
+            notes: quote.workshopNotes || quote.adminNotes || quote.invoiceNotes || '',
+            images: quote.referenceImages || quote.images || []
+          };
+        }
+        return ot;
+      };
+
+      // Cálculo de días en taller desde pase a producción
+      const getOtDaysInWorkshop = (ot) => {
+        if (!ot) return 0;
+        let timestamp = ot.createdTimestamp;
+        if (!timestamp && ot.createdAt) {
+          const parts = String(ot.createdAt).split(/[-/]/);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              timestamp = new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+            } else {
+              timestamp = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+            }
+          }
+        }
+        if (!timestamp || isNaN(timestamp)) {
+          timestamp = Date.now() - (86400000 * 2);
+        }
+        const diffMs = Date.now() - timestamp;
+        return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      };
+
+      // Semáforo de plazos y retrasos en taller
+      const getOtDeadlineInfo = (ot) => {
+        if (!ot) return { status: 'desconocido', label: 'Sin datos', badgeClass: 'bg-zinc-800 text-zinc-400 border-zinc-700' };
+        if (ot.status === 'completado') {
+          return {
+            status: 'completado',
+            label: '✅ Terminada',
+            badgeClass: 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40'
+          };
+        }
+
+        const days = getOtDaysInWorkshop(ot);
+        let maxDaysAllowed = 5;
+        if (ot.deadline) {
+          const match = String(ot.deadline).match(/(\d+)/);
+          if (match) {
+            maxDaysAllowed = parseInt(match[1], 10);
+          }
+        }
+
+        if (days > maxDaysAllowed) {
+          const daysDelayed = days - maxDaysAllowed;
+          return {
+            status: 'retrasada',
+            isDelayed: true,
+            daysDelayed,
+            label: `🚨 Retrasada (+${daysDelayed}d)`,
+            badgeClass: 'bg-rose-950/60 text-rose-300 border-rose-500/50 animate-pulse'
+          };
+        } else if (days >= maxDaysAllowed - 1) {
+          return {
+            status: 'urgente',
+            isUrgent: true,
+            label: '⚠️ Vence Hoy / Urgente',
+            badgeClass: 'bg-amber-950/60 text-amber-300 border-amber-500/50'
+          };
+        } else {
+          return {
+            status: 'en_plazo',
+            isOnTrack: true,
+            label: '🟢 En Plazo',
+            badgeClass: 'bg-emerald-950/40 text-emerald-300 border-emerald-500/30'
+          };
+        }
+      };
+
+      const handleViewOtDirectly = (quote) => {
+        const ot = getOrBuildOtForQuote(quote);
+        if (ot) {
+          if (!workOrders.some(o => o.correlative === ot.correlative)) {
+            saveWorkOrdersList([ot, ...workOrders]);
+          }
+          setSelectedOtForPrint(ot);
+          setShowOtPrintModal(true);
+        } else {
+          handleOpenApproveModal(quote);
+        }
+      };
+
+      const handleJumpToWorkshopBoard = (quote) => {
+        const ot = getOrBuildOtForQuote(quote);
+        if (ot) {
+          if (!workOrders.some(o => o.correlative === ot.correlative)) {
+            saveWorkOrdersList([ot, ...workOrders]);
+          }
+          setOtFilterStatus('todos');
+          setOtSearch(ot.otFolio || ot.correlative);
+          setIntranetTab('taller');
+        } else {
+          handleOpenApproveModal(quote);
+        }
       };
 
       const handleScheduleOtInCalendar = (ot) => {
@@ -6598,19 +6724,30 @@
                   const countTodas = quoteHistory.length;
                   const countEmitidas = quoteHistory.filter(isQuoteOnlyIssued).length;
                   const countTaller = quoteHistory.filter(isQuoteInWorkshop).length;
-                  const countFacturadas = quoteHistory.filter(isQuoteInvoiced).length;
-                  const countPagadas = quoteHistory.filter(isQuotePaid).length;
-                  const countPendientesPago = quoteHistory.filter(q => !isQuotePaid(q)).length;
 
-                  const totalPorCobrar = quoteHistory.filter(q => !isQuotePaid(q)).reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
-                  const totalRecaudado = quoteHistory.filter(isQuotePaid).reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
+                  // Facturas emitidas oficialmente (SII)
+                  const invoicedQuotes = quoteHistory.filter(isQuoteInvoiced);
+                  const countFacturadas = invoicedQuotes.length;
+
+                  // Facturas pendientes de cobro real (Cobranza Semanal: SOLO FACTURADAS SIN PAGAR)
+                  const facturasPendientesCobro = invoicedQuotes.filter(q => !isQuotePaid(q));
+                  const countFacturasPendientes = facturasPendientesCobro.length;
+                  const totalFacturasPorCobrar = facturasPendientesCobro.reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
+
+                  // Facturas ya cobradas / pagadas
+                  const facturasPagadas = invoicedQuotes.filter(isQuotePaid);
+                  const countFacturasPagadas = facturasPagadas.length;
+                  const totalFacturasPagadas = facturasPagadas.reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
+
+                  const countPagadas = quoteHistory.filter(isQuotePaid).length;
 
                   const filteredQuotes = quoteHistory.filter(q => {
                     if (historyStatusFilter === 'emitidas' && !isQuoteOnlyIssued(q)) return false;
                     if (historyStatusFilter === 'taller' && !isQuoteInWorkshop(q)) return false;
                     if (historyStatusFilter === 'facturadas' && !isQuoteInvoiced(q)) return false;
                     if (historyStatusFilter === 'pagadas' && !isQuotePaid(q)) return false;
-                    if (historyStatusFilter === 'pendientes_pago' && isQuotePaid(q)) return false;
+                    // REVISIÓN SEMANAL DE COBRANZA: SOLO FACTURADAS SIN PAGAR
+                    if (historyStatusFilter === 'pendientes_pago' && (!isQuoteInvoiced(q) || isQuotePaid(q))) return false;
 
                     if (historySearchQuery.trim()) {
                       const qStr = historySearchQuery.trim().toLowerCase();
@@ -6788,7 +6925,7 @@
                           </div>
                         </div>
 
-                        {/* Línea 3: MÓDULO EXCLUSIVO DE COBRANZAS (REVISIÓN DE MIÉRCOLES) */}
+                        {/* Línea 3: MÓDULO EXCLUSIVO DE COBRANZAS (SOLO FACTURAS PENDIENTES DE PAGO) */}
                         <div className={`p-3.5 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           historyStatusFilter === 'pendientes_pago'
                             ? 'bg-amber-950/50 border-amber-500 shadow-lg shadow-amber-500/20'
@@ -6801,14 +6938,14 @@
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-heading font-black text-white text-xs sm:text-sm">
-                                  Revisión Semanal de Cobranzas (Pagos Pendientes)
+                                  Revisión Semanal de Cobranzas (Solo Facturas Emitidas)
                                 </span>
                                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                                  {countPendientesPago} sin pagar
+                                  {countFacturasPendientes} facturas por cobrar
                                 </span>
                               </div>
                               <p className="text-[11px] text-zinc-400 mt-0.5">
-                                Por cobrar: <strong className="text-amber-400 font-mono font-bold text-xs">{formatCLP(totalPorCobrar)}</strong> • Cobrado: <strong className="text-emerald-400 font-mono font-bold text-xs">{formatCLP(totalRecaudado)}</strong>
+                                Total Facturas por cobrar: <strong className="text-amber-400 font-mono font-bold text-xs">{formatCLP(totalFacturasPorCobrar)}</strong> • Facturas cobradas: <strong className="text-emerald-400 font-mono font-bold text-xs">{formatCLP(totalFacturasPagadas)}</strong>
                               </p>
                             </div>
                           </div>
@@ -6823,7 +6960,7 @@
                                   : 'bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40'
                               }`}
                             >
-                              <span>{historyStatusFilter === 'pendientes_pago' ? '✓ Viendo Solo Sin Pagar' : '🔍 Filtrar Solo Trabajos Sin Pagar'}</span>
+                              <span>{historyStatusFilter === 'pendientes_pago' ? '✓ Viendo Solo Facturas por Cobrar' : '🔍 Filtrar Facturas Pendientes de Cobro'}</span>
                             </button>
                             {historyStatusFilter !== 'todas' && (
                               <button
@@ -6837,6 +6974,264 @@
                           </div>
                         </div>
                       </div>
+
+                      {/* LÍNEA 4: PANEL DE SUPERVISIÓN DE PRODUCCIÓN Y CONTROL DE RETRASOS EN TALLER */}
+                      {(() => {
+                        const activeOtsList = quoteHistory
+                          .map(q => getOrBuildOtForQuote(q))
+                          .filter(Boolean);
+                        
+                        workOrders.forEach(o => {
+                          if (!activeOtsList.some(item => item.correlative === o.correlative || item.otFolio === o.otFolio)) {
+                            activeOtsList.push(o);
+                          }
+                        });
+
+                        const delayedOts = activeOtsList.filter(o => o.status !== 'completado' && getOtDeadlineInfo(o).status === 'retrasada');
+                        const urgentOts = activeOtsList.filter(o => o.status !== 'completado' && getOtDeadlineInfo(o).status === 'urgente');
+                        const onTrackOts = activeOtsList.filter(o => o.status !== 'completado' && getOtDeadlineInfo(o).status === 'en_plazo');
+                        const inWorkshopCount = activeOtsList.filter(o => o.status !== 'completado').length;
+
+                        return (
+                          <div className="p-4 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center text-xl shrink-0">
+                                  🏭
+                                </div>
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="font-heading font-black text-white text-sm">
+                                      Supervisión de Taller & Control de Retrasos en Fabricación
+                                    </span>
+                                    {delayedOts.length > 0 && (
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
+                                        🚨 {delayedOts.length} con retraso
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-zinc-400 mt-0.5">
+                                    Supervisión de días en taller, estado de fabricación y alertas de plazo sin necesidad de abrir cada cotización.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setShowSupervisorDashboard(!showSupervisorDashboard)}
+                                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center gap-2 cursor-pointer self-start sm:self-auto shadow-sm"
+                              >
+                                <span>{showSupervisorDashboard ? '🔼 Ocultar Panel de Supervisión' : '🔽 Ver Tablero de Supervisión'}</span>
+                              </button>
+                            </div>
+
+                            {/* Resumen Semáforo Rápido */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                              <div 
+                                onClick={() => { setShowSupervisorDashboard(true); setSupervisorFilter('todas_activas'); }}
+                                className={`p-2.5 rounded-xl border cursor-pointer transition ${
+                                  showSupervisorDashboard && supervisorFilter === 'todas_activas' 
+                                    ? 'bg-zinc-800 border-white text-white' 
+                                    : 'bg-black/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700'
+                                }`}
+                              >
+                                <div className="text-[11px] font-medium text-zinc-400">Total en Fabricación</div>
+                                <div className="text-lg font-mono font-bold text-white mt-0.5">{inWorkshopCount} OTs activas</div>
+                              </div>
+
+                              <div 
+                                onClick={() => { setShowSupervisorDashboard(true); setSupervisorFilter('retrasadas'); }}
+                                className={`p-2.5 rounded-xl border cursor-pointer transition ${
+                                  showSupervisorDashboard && supervisorFilter === 'retrasadas' 
+                                    ? 'bg-rose-950/60 border-rose-500 text-rose-200 shadow-md shadow-rose-900/30' 
+                                    : 'bg-black/60 border-zinc-800/80 text-zinc-400 hover:border-rose-900/50'
+                                }`}
+                              >
+                                <div className="text-[11px] font-medium text-rose-400 flex items-center gap-1">
+                                  <span>🚨 Con Retraso</span>
+                                </div>
+                                <div className="text-lg font-mono font-bold text-rose-300 mt-0.5">{delayedOts.length} OTs atrasadas</div>
+                              </div>
+
+                              <div 
+                                onClick={() => { setShowSupervisorDashboard(true); setSupervisorFilter('urgentes'); }}
+                                className={`p-2.5 rounded-xl border cursor-pointer transition ${
+                                  showSupervisorDashboard && supervisorFilter === 'urgentes' 
+                                    ? 'bg-amber-950/60 border-amber-500 text-amber-200' 
+                                    : 'bg-black/60 border-zinc-800/80 text-zinc-400 hover:border-amber-900/50'
+                                }`}
+                              >
+                                <div className="text-[11px] font-medium text-amber-400">⚠️ Vence Pronto / Urgente</div>
+                                <div className="text-lg font-mono font-bold text-amber-300 mt-0.5">{urgentOts.length} OTs</div>
+                              </div>
+
+                              <div 
+                                onClick={() => { setShowSupervisorDashboard(true); setSupervisorFilter('en_plazo'); }}
+                                className={`p-2.5 rounded-xl border cursor-pointer transition ${
+                                  showSupervisorDashboard && supervisorFilter === 'en_plazo' 
+                                    ? 'bg-emerald-950/60 border-emerald-500 text-emerald-200' 
+                                    : 'bg-black/60 border-zinc-800/80 text-zinc-400 hover:border-emerald-900/50'
+                                }`}
+                              >
+                                <div className="text-[11px] font-medium text-emerald-400">🟢 En Plazo Normal</div>
+                                <div className="text-lg font-mono font-bold text-emerald-300 mt-0.5">{onTrackOts.length} OTs al día</div>
+                              </div>
+                            </div>
+
+                            {/* Tabla Desplegable de Supervisión de Retrasos y Días en Taller */}
+                            {showSupervisorDashboard && (
+                              <div className="mt-3 pt-3 border-t border-zinc-800 space-y-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="text-xs font-bold text-zinc-300">
+                                    Detalle de OTs ({supervisorFilter === 'retrasadas' ? '🚨 Solo Retrasadas' : supervisorFilter === 'urgentes' ? '⚠️ Solo Urgentes' : supervisorFilter === 'en_plazo' ? '🟢 En Plazo' : '📋 Todas las Activas'}):
+                                  </span>
+                                  <div className="flex items-center gap-1.5 text-xs">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSupervisorFilter('retrasadas')}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${supervisorFilter === 'retrasadas' ? 'bg-rose-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+                                    >
+                                      🚨 Retrasadas ({delayedOts.length})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSupervisorFilter('urgentes')}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${supervisorFilter === 'urgentes' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+                                    >
+                                      ⚠️ Urgentes ({urgentOts.length})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSupervisorFilter('todas_activas')}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${supervisorFilter === 'todas_activas' ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}
+                                    >
+                                      Todas ({inWorkshopCount})
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="overflow-x-auto rounded-xl border border-zinc-800">
+                                  <table className="w-full text-left text-xs">
+                                    <thead className="bg-zinc-900/90 text-zinc-400 border-b border-zinc-800">
+                                      <tr>
+                                        <th className="p-3">Folio OT</th>
+                                        <th className="p-3">Cliente & Trabajo</th>
+                                        <th className="p-3">Días en Taller</th>
+                                        <th className="p-3">Semáforo Plazo</th>
+                                        <th className="p-3">Etapa Actual</th>
+                                        <th className="p-3 text-right">Acción Rápida</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-zinc-800/60 bg-black">
+                                      {(() => {
+                                        const listToDisplay = activeOtsList.filter(o => {
+                                          if (o.status === 'completado') return false;
+                                          const info = getOtDeadlineInfo(o);
+                                          if (supervisorFilter === 'retrasadas') return info.status === 'retrasada';
+                                          if (supervisorFilter === 'urgentes') return info.status === 'urgente';
+                                          if (supervisorFilter === 'en_plazo') return info.status === 'en_plazo';
+                                          return true;
+                                        });
+
+                                        if (listToDisplay.length === 0) {
+                                          return (
+                                            <tr>
+                                              <td colSpan={6} className="p-6 text-center text-zinc-500">
+                                                🎉 ¡Excelente! No hay órdenes de trabajo bajo este criterio ({supervisorFilter}).
+                                              </td>
+                                            </tr>
+                                          );
+                                        }
+
+                                        return listToDisplay.map(ot => {
+                                          const days = getOtDaysInWorkshop(ot);
+                                          const deadline = getOtDeadlineInfo(ot);
+                                          const quote = quoteHistory.find(q => q.correlative === ot.correlative);
+
+                                          return (
+                                            <tr key={ot.id || ot.otFolio} className="hover:bg-zinc-900/40 transition">
+                                              <td className="p-3 font-mono font-bold text-red-400 whitespace-nowrap">
+                                                {ot.otFolio}
+                                                <div className="text-[10px] text-zinc-500 font-mono">{ot.correlative}</div>
+                                              </td>
+                                              <td className="p-3">
+                                                <div className="font-bold text-white">{ot.client?.name || 'Cliente'}</div>
+                                                <div className="text-[11px] text-zinc-400 truncate max-w-xs">
+                                                  {ot.items && ot.items[0] ? ot.items[0].name : 'Fabricación Gráfica'}
+                                                </div>
+                                              </td>
+                                              <td className="p-3 font-mono">
+                                                <span className={`px-2 py-0.5 rounded font-bold ${days >= 5 ? 'bg-rose-500/20 text-rose-300' : 'bg-zinc-800 text-zinc-300'}`}>
+                                                  ⏱️ {days} {days === 1 ? 'día' : 'días'}
+                                                </span>
+                                              </td>
+                                              <td className="p-3">
+                                                <span className={`text-[10px] font-bold px-2.5 py-1 rounded border whitespace-nowrap ${deadline.badgeClass}`}>
+                                                  {deadline.label}
+                                                </span>
+                                              </td>
+                                              <td className="p-3">
+                                                <select
+                                                  value={ot.status || 'por_iniciar'}
+                                                  onChange={(e) => {
+                                                    const newStatus = e.target.value;
+                                                    const updated = workOrders.map(o => (o.correlative === ot.correlative || o.id === ot.id) ? { ...o, status: newStatus } : o);
+                                                    if (!workOrders.some(o => o.correlative === ot.correlative)) {
+                                                      updated.unshift({ ...ot, status: newStatus });
+                                                    }
+                                                    saveWorkOrdersList(updated);
+                                                    showToast(`Etapa de ${ot.otFolio} actualizada a: ${newStatus}`);
+                                                  }}
+                                                  className="bg-zinc-900 text-white text-[11px] px-2 py-1 rounded border border-zinc-700 focus:border-red-500 focus:outline-none cursor-pointer"
+                                                >
+                                                  <option value="por_iniciar">📥 Por Iniciar</option>
+                                                  <option value="diseno">📐 Archivo & Medidas</option>
+                                                  <option value="fabricacion">⚡ En Fabricación</option>
+                                                  <option value="calidad">🔍 Control Calidad</option>
+                                                  <option value="completado">✅ Terminada</option>
+                                                </select>
+                                              </td>
+                                              <td className="p-3 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setSelectedOtForPrint(ot);
+                                                      setShowOtPrintModal(true);
+                                                    }}
+                                                    className="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                                                    title="Ver Ficha Técnica con Plano de Corte y Cubicación"
+                                                  >
+                                                    <Icon name="file-text" className="w-3.5 h-3.5" />
+                                                    <span>📄 Ficha OT</span>
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setOtFilterStatus('todos');
+                                                      setOtSearch(ot.otFolio || ot.correlative);
+                                                      setIntranetTab('taller');
+                                                    }}
+                                                    className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                                    title="Ir al Tablero de Taller"
+                                                  >
+                                                    <Icon name="tool" className="w-3.5 h-3.5" />
+                                                    <span>🏭 Tablero</span>
+                                                  </button>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          );
+                                        });
+                                      })()}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* LISTADO DE COTIZACIONES FILTRADAS */}
                       {filteredQuotes.length === 0 ? (
@@ -6909,6 +7304,24 @@
                                         🧾 Fac: {q.invoiceNumber}
                                       </span>
                                     )}
+
+                                    {/* Indicadores de Taller y Supervisión */}
+                                    {(() => {
+                                      const ot = getOrBuildOtForQuote(q);
+                                      if (!ot) return null;
+                                      const daysInShop = getOtDaysInWorkshop(ot);
+                                      const dl = getOtDeadlineInfo(ot);
+                                      return (
+                                        <div className="inline-flex items-center gap-1.5">
+                                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                                            ⏱️ {daysInShop}d en taller
+                                          </span>
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${dl.badgeClass}`}>
+                                            {dl.label}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                   <div className="font-bold text-white text-sm mt-1">{q.client?.name}</div>
                                   <div className="text-xs text-zinc-400 mt-0.5">
@@ -6940,26 +7353,36 @@
                                     </button>
                                   )}
 
-                                  {/* Botón: Aprobar y Crear OT / Ver en Taller */}
+                                  {/* Botón: Ficha Técnica OT directa / Tablero de Taller */}
                                   {(() => {
-                                    const existingOt = workOrders.find(o => o.correlative === q.correlative);
-                                    if (existingOt) {
+                                    const ot = getOrBuildOtForQuote(q);
+                                    if (ot) {
                                       return (
-                                        <button
-                                          onClick={() => {
-                                            setIntranetTab('taller');
-                                            setOtSearch(q.correlative);
-                                          }}
-                                          className="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-500/40 flex items-center gap-1.5 transition shadow-sm"
-                                          title="Ver Orden de Trabajo activa en Taller"
-                                        >
-                                          <Icon name="tool" className="w-3.5 h-3.5" />
-                                          <span>🏭 Ver en Taller ({existingOt.otFolio})</span>
-                                        </button>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleViewOtDirectly(q)}
+                                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-emerald-600/30 cursor-pointer"
+                                            title="Ver Ficha Técnica de Taller, plano de corte y cubicación en pantalla"
+                                          >
+                                            <Icon name="file-text" className="w-3.5 h-3.5" />
+                                            <span>📄 Ficha OT ({ot.otFolio})</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleJumpToWorkshopBoard(q)}
+                                            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-2.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1 transition cursor-pointer"
+                                            title="Ir al Tablero de Producción del Taller"
+                                          >
+                                            <Icon name="tool" className="w-3.5 h-3.5" />
+                                            <span>🏭 Tablero</span>
+                                          </button>
+                                        </div>
                                       );
                                     }
                                     return (
                                       <button
+                                        type="button"
                                         onClick={() => handleOpenApproveModal(q)}
                                         className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50 cursor-pointer"
                                         title="Aprobar esta cotización, registrar Orden de Compra (OC) y enviar a Taller"
@@ -7298,7 +7721,7 @@
                             </thead>
                             <tbody className="divide-y divide-zinc-800/60 font-mono">
                               {monthlyKpis.monthQuotes.map(q => {
-                                const matchedOt = workOrders.find(o => o.correlative === q.correlative);
+                                const matchedOt = getOrBuildOtForQuote(q);
                                 return (
                                   <tr key={q.correlative} className="hover:bg-zinc-950 transition">
                                     <td className="py-3 px-3 font-bold text-red-500">{q.correlative}</td>
@@ -7327,18 +7750,24 @@
                                     </td>
                                     <td className="py-3 px-3 text-center font-sans">
                                       {matchedOt ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setIntranetSection('taller');
-                                            setIntranetTab('taller');
-                                            setOtSearch(q.correlative);
-                                          }}
-                                          className="text-[10px] px-2 py-0.5 rounded bg-emerald-600/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 font-mono transition"
-                                          title="Ver en Taller"
-                                        >
-                                          {matchedOt.otFolio} ({matchedOt.status === 'completado' ? 'Listo' : 'En taller'})
-                                        </button>
+                                        <div className="flex items-center justify-center gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleViewOtDirectly(q)}
+                                            className="text-[10px] px-2 py-0.5 rounded bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600 hover:text-white border border-emerald-500/40 font-mono transition font-bold"
+                                            title="Ver Ficha Técnica de Taller directamente"
+                                          >
+                                            📄 {matchedOt.otFolio}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleJumpToWorkshopBoard(q)}
+                                            className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white border border-zinc-700 font-mono transition"
+                                            title="Ver en Tablero de Taller"
+                                          >
+                                            🏭
+                                          </button>
+                                        </div>
                                       ) : (
                                         <span className="text-[10px] text-zinc-600 font-mono">Sin OT</span>
                                       )}
@@ -9772,10 +10201,10 @@
           {/* MODAL / FICHA TÉCNICA DE TALLER & PRODUCCIÓN (IMPRESIÓN OFICIAL) */}
           {/* ============================================================== */}
           {showOtPrintModal && selectedOtForPrint && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-              <div className="bg-white text-black rounded-2xl w-full max-w-4xl my-4 overflow-hidden shadow-2xl flex flex-col">
-                {/* Barra de control en pantalla (no se imprime) */}
-                <div className="bg-zinc-950 text-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print border-b border-zinc-800">
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+              <div className="bg-white text-black rounded-2xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col">
+                {/* Barra de control en pantalla fija arriba (no se oculta al scrollear) */}
+                <div className="bg-zinc-950 text-white p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 no-print border-b border-zinc-800 shrink-0 shadow-md z-30">
                   <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <span className="font-bold text-xs sm:text-sm font-heading">
@@ -9791,7 +10220,7 @@
                       </span>
                     )}
                     <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono">
-                      🔒 Sin Precios de Venta (Solo Técnica)
+                      🔒 1 Sola Página A4
                     </span>
                   </div>
 
@@ -9802,65 +10231,67 @@
                       className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-red-600/30 transition cursor-pointer"
                     >
                       <Icon name="printer" className="w-3.5 h-3.5" />
-                      <span>Imprimir Ficha OT</span>
+                      <span>🖨️ Imprimir Ficha OT (1 Pág)</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleCloseOtPrintModal}
-                      className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                      className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
                     >
-                      Cerrar
+                      <Icon name="x" className="w-3.5 h-3.5" />
+                      <span>Cerrar</span>
                     </button>
                   </div>
                 </div>
 
-                {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) */}
-                <div id="ot-print-area" className="p-8 bg-white text-black font-sans text-xs leading-relaxed">
-                  {/* Cabecera */}
-                  <div className="flex justify-between items-start border-b-2 border-red-600 pb-4 mb-4">
-                    <div>
-                      <h1 className="text-2xl font-black text-red-600 font-heading tracking-wider">LETREROS OLIVAR SpA</h1>
-                      <p className="text-xs text-gray-600 font-semibold uppercase">Taller de Fabricación Gráfica, Estructuras & Publicidad</p>
-                      <p className="text-[10px] text-gray-500">RUT: 77.892.486-5 • Fono: +56 9 5158 5884 • Olivar / Rancagua</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="inline-block bg-black text-white px-3 py-1 font-mono font-black text-sm rounded mb-1">
-                        ORDEN DE TRABAJO: {selectedOtForPrint.otFolio}
+                {/* Contenedor con scroll vertical para pantalla */}
+                <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
+                  {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) - Ajustada para 1 página A4 */}
+                  <div id="ot-print-area" className="w-full max-w-[210mm] p-5 bg-white text-black font-sans text-[10px] leading-tight shadow-sm border border-gray-200 space-y-2.5">
+                    {/* Cabecera */}
+                    <div className="flex justify-between items-start border-b-2 border-red-600 pb-2">
+                      <div>
+                        <h1 className="text-xl font-black text-red-600 font-heading tracking-wider">LETREROS OLIVAR SpA</h1>
+                        <p className="text-[10px] text-gray-600 font-semibold uppercase">Taller de Fabricación Gráfica, Estructuras & Publicidad</p>
+                        <p className="text-[9px] text-gray-500">RUT: 77.892.486-5 • Fono: +56 9 5158 5884 • Olivar / Rancagua</p>
                       </div>
-                      {selectedOtForPrint.isManualOrder || selectedOtForPrint.correlative === 'ORDEN-MANUAL' || selectedOtForPrint.correlative === 'DIRECTO-TALLER' ? (
-                        <p className="text-[10px] text-amber-600 font-mono font-black uppercase">🏷️ ORDEN DE TRABAJO MANUAL (DIRECTO TALLER)</p>
-                      ) : (
-                        <p className="text-[10px] text-gray-600 font-mono font-bold">Ref Cotización: {selectedOtForPrint.correlative}</p>
-                      )}
-                      <p className="text-[10px] text-gray-500">Fecha Emisión: {selectedOtForPrint.createdAt}</p>
-                      <p className="text-[11px] text-red-600 font-bold">FECHA ENTREGA: {selectedOtForPrint.deadline || 'Coordinada con Taller'}</p>
-                      {selectedOtForPrint.purchaseOrderNumber && (
-                        <p className="text-[11px] text-blue-800 font-mono font-black mt-0.5">
-                          📄 ORDEN DE COMPRA (OC): {selectedOtForPrint.purchaseOrderNumber}
-                        </p>
-                      )}
+                      <div className="text-right">
+                        <div className="inline-block bg-black text-white px-2.5 py-0.5 font-mono font-black text-xs rounded mb-0.5">
+                          ORDEN DE TRABAJO: {selectedOtForPrint.otFolio}
+                        </div>
+                        {selectedOtForPrint.isManualOrder || selectedOtForPrint.correlative === 'ORDEN-MANUAL' || selectedOtForPrint.correlative === 'DIRECTO-TALLER' ? (
+                          <p className="text-[9px] text-amber-600 font-mono font-black uppercase">🏷️ ORDEN DE TRABAJO MANUAL (DIRECTO TALLER)</p>
+                        ) : (
+                          <p className="text-[9px] text-gray-600 font-mono font-bold">Ref Cotización: {selectedOtForPrint.correlative}</p>
+                        )}
+                        <p className="text-[9px] text-gray-500">Fecha Emisión: {selectedOtForPrint.createdAt}</p>
+                        <p className="text-[10px] text-red-600 font-bold">ENTREGA: {selectedOtForPrint.deadline || 'Coordinada con Taller'}</p>
+                        {selectedOtForPrint.purchaseOrderNumber && (
+                          <p className="text-[10px] text-blue-800 font-mono font-black mt-0.5">
+                            📄 OC: {selectedOtForPrint.purchaseOrderNumber}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Datos Cliente & Despacho */}
-                  <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded border border-gray-200 mb-4 text-[11px]">
-                    <div>
-                      <span className="font-bold text-gray-700 block uppercase text-[9px]">Cliente / Razón Social:</span>
-                      <strong className="text-sm text-black block">{selectedOtForPrint.client?.name}</strong>
-                      <p className="text-gray-600">RUT: {selectedOtForPrint.client?.documentId || 'S/RUT'}</p>
-                      <p className="text-gray-600">Contacto: {selectedOtForPrint.client?.phone || 'S/Fono'}</p>
+                    {/* Datos Cliente & Despacho */}
+                    <div className="grid grid-cols-2 gap-3 p-2 bg-gray-50 rounded border border-gray-200 text-[10px]">
+                      <div>
+                        <span className="font-bold text-gray-700 block uppercase text-[8px]">Cliente / Razón Social:</span>
+                        <strong className="text-xs text-black block">{selectedOtForPrint.client?.name}</strong>
+                        <p className="text-gray-600">RUT: {selectedOtForPrint.client?.documentId || 'S/RUT'} • Fono: {selectedOtForPrint.client?.phone || 'S/Fono'}</p>
+                      </div>
+                      <div>
+                        <span className="font-bold text-gray-700 block uppercase text-[8px]">Modalidad & Lugar de Entrega:</span>
+                        <strong className="text-black block text-[10px]">
+                          {selectedOtForPrint.client?.deliveryMethod === 'instalacion' ? '🏗️ INSTALACIÓN EN TERRENO' : selectedOtForPrint.client?.deliveryMethod === 'entrega' ? '📦 DESPACHO A CLIENTE' : '🏬 RETIRO EN TALLER OLIVAR'}
+                        </strong>
+                        {selectedOtForPrint.client?.deliveryAddress && (
+                          <p className="text-gray-700 truncate"><strong>Dirección:</strong> {selectedOtForPrint.client.deliveryAddress}</p>
+                        )}
+                        <p className="text-gray-600">Responsable: <strong>{selectedOtForPrint.assignedTech || 'Taller Matriz (Olivar)'}</strong></p>
+                      </div>
                     </div>
-                    <div>
-                      <span className="font-bold text-gray-700 block uppercase text-[9px]">Modalidad & Lugar de Entrega:</span>
-                      <strong className="text-black block">
-                        {selectedOtForPrint.client?.deliveryMethod === 'instalacion' ? '🏗️ INSTALACIÓN EN TERRENO' : selectedOtForPrint.client?.deliveryMethod === 'entrega' ? '📦 DESPACHO A CLIENTE' : '🏬 RETIRO EN TALLER OLIVAR'}
-                      </strong>
-                      {selectedOtForPrint.client?.deliveryAddress && (
-                        <p className="text-gray-700 mt-1"><strong>Dirección:</strong> {selectedOtForPrint.client.deliveryAddress}</p>
-                      )}
-                      <p className="text-gray-600 mt-0.5">Responsable: <strong>{selectedOtForPrint.assignedTech || 'Taller Matriz (Olivar)'}</strong></p>
-                    </div>
-                  </div>
 
                   {/* Tabla de Trabajos / Medidas */}
                   <div className="mb-4">
@@ -10080,19 +10511,19 @@
                   )}
 
                   {/* Firmas y Recepción */}
-                  <div className="grid grid-cols-3 gap-6 pt-6 mt-6 border-t border-gray-300 text-center text-[10px]">
+                  <div className="grid grid-cols-3 gap-4 pt-2 mt-2 border-t border-gray-300 text-center text-[9px]">
                     <div>
-                      <div className="border-b border-black h-10 mb-1"></div>
+                      <div className="border-b border-black h-8 mb-1"></div>
                       <strong>Firma Maestro Fabricador</strong>
                       <p className="text-gray-500">Taller y Estructuras</p>
                     </div>
                     <div>
-                      <div className="border-b border-black h-10 mb-1"></div>
+                      <div className="border-b border-black h-8 mb-1"></div>
                       <strong>Control de Calidad</strong>
                       <p className="text-gray-500">Inspección Final</p>
                     </div>
                     <div>
-                      <div className="border-b border-black h-10 mb-1"></div>
+                      <div className="border-b border-black h-8 mb-1"></div>
                       <strong>Recepción Conforme Cliente</strong>
                       <p className="text-gray-500">Despacho / Instalación</p>
                     </div>
@@ -10100,7 +10531,8 @@
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* ============================================================== */}
           {/* MODAL: APROBAR COTIZACIÓN CON ORDEN DE COMPRA (OC) & NOTAS    */}
@@ -10409,42 +10841,45 @@
           {/* MODAL / VISTA DE IMPRESIÓN Y PDF FORMAL A4 (OPTIMIZADO 1 PÁGINA) */}
           {/* ============================================================== */}
           {showPrintModal && currentQuoteToPrint && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-              <div className="bg-white text-black rounded-2xl w-full max-w-4xl my-4 overflow-hidden shadow-2xl flex flex-col">
-                {/* Barra de control en pantalla (no se imprime) */}
-                <div className="bg-zinc-950 text-white p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print border-b border-zinc-800">
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+              <div className="bg-white text-black rounded-2xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col">
+                {/* Barra de control en pantalla fija arriba (el botón cerrar NUNCA se oculta) */}
+                <div className="bg-zinc-950 text-white p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 no-print border-b border-zinc-800 shrink-0 shadow-md z-30">
                   <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
                     <span className="font-bold text-xs sm:text-sm font-heading">
                       Cotización Oficial Letreros Olivar ({currentQuoteToPrint.correlative})
                     </span>
                     <span className="hidden md:inline-block text-[10px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-mono">
-                      📁 Guardar PDF como: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
+                      📁 Guardar PDF: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
                     </span>
                     <span className="hidden lg:inline-flex text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono items-center gap-1">
-                      <span>🔒 Valores m² ocultos en impresión</span>
+                      <span>🔒 1 Sola Página A4</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handlePrintQuote}
-                      className="bg-red-600 hover:bg-red-500 text-white font-extrabold px-4 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow-lg shadow-red-600/30"
+                      className="bg-red-600 hover:bg-red-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shadow-lg shadow-red-600/30 cursor-pointer"
                     >
                       <Icon name="printer" className="w-4 h-4" />
-                      <span>Imprimir / Guardar PDF (1 Pág)</span>
+                      <span>🖨️ Imprimir / Guardar PDF (1 Pág)</span>
                     </button>
                     <button
                       onClick={handleClosePrintModal}
-                      className="text-zinc-400 hover:text-white p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 transition"
+                      className="text-zinc-200 hover:text-white px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 transition flex items-center gap-1.5 font-bold text-xs cursor-pointer"
                       title="Cerrar vista previa"
                     >
-                      <Icon name="x" className="w-4 h-4" />
+                      <Icon name="x" className="w-3.5 h-3.5" />
+                      <span>Cerrar</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Hoja de Impresión A4 compacta (1 página asegurada) */}
-                <div id="print-area" className="p-6 sm:p-8 space-y-4 bg-white text-black text-xs leading-normal">
+                {/* Contenedor con scroll vertical para pantalla */}
+                <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
+                  {/* Hoja de Impresión A4 compacta (1 página asegurada) */}
+                  <div id="print-area" className="w-full max-w-[210mm] p-5 sm:p-6 space-y-3 bg-white text-black text-[11px] leading-tight shadow-sm border border-gray-200">
                   
                   {/* Encabezado: Logo, Datos Empresa y Correlativo */}
                   <div className="flex justify-between items-start border-b-2 border-black pb-3">
@@ -10646,7 +11081,8 @@
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* MODAL FICHA TÉCNICA */}
           {selectedProject && (
@@ -10673,7 +11109,8 @@
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
         </div>
       );
