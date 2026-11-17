@@ -631,14 +631,18 @@
           totalGroupArea += cut.totalArea;
           totalGroupPieces += cut.qty;
 
-          // Orientación A (Sin rotar: cut.w a lo largo de sheetW)
-          const colsA = Math.floor(sheetW / cut.w) || 0;
-          const rowsA = Math.floor(sheetH / cut.h) || 0;
+          // Separación técnica obligatoria entre piezas por sangría de disco de corte: 3 mm (0.003 m)
+          const CUTTING_KERF = 0.003;
+
+          // Orientación A (Sin rotar: cut.w a lo largo de sheetW, cut.h a lo largo de sheetH)
+          // Cada corte de disco consume 3mm; N piezas requieren (N - 1) pasadas de disco: N*(w + kerf) <= sheetW + kerf
+          const colsA = cut.w > 0 ? Math.floor((sheetW + CUTTING_KERF) / (cut.w + CUTTING_KERF)) : 0;
+          const rowsA = cut.h > 0 ? Math.floor((sheetH + CUTTING_KERF) / (cut.h + CUTTING_KERF)) : 0;
           const fitA = colsA * rowsA;
 
-          // Orientación B (Rotado 90°: cut.h a lo largo de sheetW)
-          const colsB = Math.floor(sheetW / cut.h) || 0;
-          const rowsB = Math.floor(sheetH / cut.w) || 0;
+          // Orientación B (Rotado 90°: cut.h a lo largo de sheetW, cut.w a lo largo de sheetH)
+          const colsB = cut.h > 0 ? Math.floor((sheetW + CUTTING_KERF) / (cut.h + CUTTING_KERF)) : 0;
+          const rowsB = cut.w > 0 ? Math.floor((sheetH + CUTTING_KERF) / (cut.w + CUTTING_KERF)) : 0;
           const fitB = colsB * rowsB;
 
           const isRotated = fitB > fitA;
@@ -648,6 +652,10 @@
           const pieceH = isRotated ? cut.w : cut.h;
           const piecesPerSheet = Math.max(bestCols * bestRows, 1);
           const fullSheetsNeeded = Math.ceil(cut.qty / piecesPerSheet);
+
+          // Espacio real ocupado en la plancha considerando piezas y los 3mm entre cortes de disco
+          const usedW = bestCols > 0 ? (bestCols * pieceW) + ((bestCols - 1) * CUTTING_KERF) : 0;
+          const usedH = bestRows > 0 ? (bestRows * pieceH) + ((bestRows - 1) * CUTTING_KERF) : 0;
 
           const sheetUsefulArea = piecesPerSheet * (cut.w * cut.h);
           const utilization = Math.min(100, (sheetUsefulArea / sheetArea) * 100);
@@ -660,12 +668,15 @@
             rows: bestRows,
             pieceW,
             pieceH,
+            cuttingKerf: CUTTING_KERF,
+            usedW,
+            usedH,
             piecesPerSheet,
             fullSheetsNeeded,
             utilization,
             wastePercent,
-            wasteX: Math.max(0, sheetW - (bestCols * pieceW)),
-            wasteY: Math.max(0, sheetH - (bestRows * pieceH))
+            wasteX: Math.max(0, sheetW - usedW),
+            wasteY: Math.max(0, sheetH - usedH)
           };
         });
 
@@ -715,23 +726,26 @@
       const scaleX = drawW / sheetW;
       const scaleY = drawH / sheetH;
 
+      const kerfM = pattern.cuttingKerf || 0.003;
       const rectW = pattern.pieceW * scaleX;
       const rectH = pattern.pieceH * scaleY;
+      const kerfScaledX = kerfM * scaleX;
+      const kerfScaledY = kerfM * scaleY;
 
       const rects = [];
       for (let r = 0; r < pattern.rows; r++) {
         for (let c = 0; c < pattern.cols; c++) {
-          const x = padLeft + (c * rectW);
-          const y = padTop + (r * rectH);
+          const x = padLeft + (c * (rectW + kerfScaledX));
+          const y = padTop + (r * (rectH + kerfScaledY));
           const isFirst = (r === 0 && c === 0);
           rects.push({ x, y, isFirst, index: (r * pattern.cols) + c + 1 });
         }
       }
 
-      const cutsTotalW = pattern.cols * rectW;
-      const cutsTotalH = pattern.rows * rectH;
-      const wasteW = drawW - cutsTotalW;
-      const wasteH = drawH - cutsTotalH;
+      const cutsTotalW = pattern.usedW ? (pattern.usedW * scaleX) : ((pattern.cols * rectW) + ((pattern.cols - 1) * kerfScaledX));
+      const cutsTotalH = pattern.usedH ? (pattern.usedH * scaleY) : ((pattern.rows * rectH) + ((pattern.rows - 1) * kerfScaledY));
+      const wasteW = Math.max(0, drawW - cutsTotalW);
+      const wasteH = Math.max(0, drawH - cutsTotalH);
 
       return (
         <div className="border border-black rounded-lg p-2 bg-white text-black my-2">
@@ -742,6 +756,9 @@
               </span>
               <span className="text-[9px] font-mono bg-black text-white px-1.5 py-0.5 rounded font-bold">
                 Plancha {sheetW}m × {sheetH}m
+              </span>
+              <span className="text-[9px] font-mono bg-amber-500 text-black px-1.5 py-0.5 rounded font-bold" title="Espacio mínimo de 3mm reservado entre piezas para corte con disco">
+                ⚙️ Disco: 3 mm e/piezas
               </span>
             </div>
             <div className="text-[10px] font-mono font-bold text-gray-800">
@@ -1326,52 +1343,85 @@
         return () => unsubCorr();
       }, []);
 
-      // === FIREBASE: Sincronizar Historial de Cotizaciones (Auto-migración multi-clave y tiempo real) ===
-      useEffect(() => {
-        if (!window.db) return;
-
-        // Auto-migración robusta: Subir cotizaciones guardadas en este computador a Firestore
+      // === GESTIÓN DE ELIMINACIONES PERMANENTES (BLINDAJE ANTI-RESURRECCIÓN) ===
+      const getDeletedCorrelativesList = () => {
         try {
+          const raw = localStorage.getItem('olivar_deleted_correlatives');
+          return raw ? JSON.parse(raw) : [];
+        } catch(e) { return []; }
+      };
+
+      const recordDeletedCorrelatives = (correlativesArray) => {
+        if (!Array.isArray(correlativesArray) || correlativesArray.length === 0) return;
+        try {
+          const currentList = getDeletedCorrelativesList();
+          const mergedSet = new Set([...currentList, ...correlativesArray]);
+          const mergedList = Array.from(mergedSet);
+          localStorage.setItem('olivar_deleted_correlatives', JSON.stringify(mergedList));
+
+          // Purgar de todas las posibles claves locales
           const possibleKeys = ['olivar_quotes_history', 'letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'];
-          const collected = [];
           possibleKeys.forEach(k => {
             try {
               const raw = localStorage.getItem(k);
               if (raw) {
                 const list = JSON.parse(raw);
                 if (Array.isArray(list)) {
-                  list.forEach(item => {
-                    if (item && (item.correlative || item.items || item.client)) {
-                      collected.push(item);
-                    }
-                  });
+                  const filtered = list.filter(q => q && !mergedSet.has(q.correlative));
+                  localStorage.setItem(k, JSON.stringify(filtered));
                 }
               }
             } catch(e) {}
           });
 
-          if (collected.length > 0) {
-            collected.forEach((q, idx) => {
-              try {
-                const docId = (q.correlative && q.correlative.trim()) ? q.correlative.trim() : ('COT-RECUP-' + (idx + 101));
-                const clean = JSON.parse(JSON.stringify(q, (k, v) => (v === undefined ? '' : v)));
-                clean.timestamp = clean.timestamp || Date.now();
-                clean.correlative = docId;
-                window.db.collection('quotes').doc(docId).set(clean, { merge: true })
-                  .then(() => console.log('✅ Cotización local migrada a Firestore:', docId))
-                  .catch(err => console.warn('Error subiendo cotización:', docId, err));
-              } catch(err) {
-                console.warn('Error serializando cotización:', err);
-              }
-            });
+          // Registrar en Firestore en el documento permanente de eliminaciones
+          if (window.db) {
+            window.db.collection('system').doc('deleted_correlatives').set({
+              correlatives: firebase.firestore.FieldValue.arrayUnion(...correlativesArray),
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).catch(() => {});
           }
-        } catch(e) { console.warn('Error en auto-migración de historial local:', e); }
+        } catch(e) { console.warn('Error registrando eliminaciones permanentes:', e); }
+      };
 
-        // Listener en tiempo real sin restricción para que carguen TODAS
+      // === FIREBASE: Sincronizar Historial de Cotizaciones (Con blindaje de eliminación permanente) ===
+      useEffect(() => {
+        if (!window.db) return;
+
+        // 1. Sincronizar lista de eliminados permanentes desde la nube
+        window.db.collection('system').doc('deleted_correlatives').get()
+          .then(docSnap => {
+            if (docSnap.exists) {
+              const cloudDeleted = docSnap.data().correlatives || [];
+              if (Array.isArray(cloudDeleted) && cloudDeleted.length > 0) {
+                recordDeletedCorrelatives(cloudDeleted);
+              }
+            }
+          }).catch(() => {});
+
+        // 2. Limpiar claves redundantes locales antiguas para que nunca revivan cotizaciones
+        try {
+          const legacyKeys = ['letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'];
+          legacyKeys.forEach(k => localStorage.removeItem(k));
+        } catch(e) {}
+
+        // 3. Listener en tiempo real con filtro estricto anti-resurrección
         const unsubQuotes = window.db.collection('quotes')
           .onSnapshot(snap => {
             if (!snap.empty) {
-              const fireQuotes = snap.docs.map(d => ({ _fireId: d.id, ...d.data() }));
+              const deletedSet = new Set(getDeletedCorrelativesList());
+              const fireQuotes = [];
+              snap.docs.forEach(d => {
+                const q = { _fireId: d.id, ...d.data() };
+                const corr = q.correlative || d.id;
+                if (deletedSet.has(corr)) {
+                  // Si existe en Firestore pero fue eliminado, purgarlo físicamente
+                  window.db.collection('quotes').doc(d.id).delete().catch(() => {});
+                } else {
+                  fireQuotes.push(q);
+                }
+              });
+
               fireQuotes.sort((a, b) => {
                 const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
                 const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
@@ -3205,19 +3255,16 @@
 
         const correlative = quoteToDelete.correlative;
 
-        // 1. Quitar del estado local y localStorage
-        setQuoteHistory(prev => {
-          const updated = prev.filter(q => q.correlative !== correlative);
-          try {
-            localStorage.setItem('olivar_quotes_history', JSON.stringify(updated));
-          } catch(err) {}
-          return updated;
-        });
+        // 1. Registrar eliminación permanente y purgar de todos los almacenamientos locales y nube
+        recordDeletedCorrelatives([correlative]);
 
-        // 2. Eliminar de Firebase Firestore
+        // 2. Quitar del estado local
+        setQuoteHistory(prev => prev.filter(q => q.correlative !== correlative));
+
+        // 3. Eliminar físicamente de Firebase Firestore
         if (window.db) {
           window.db.collection('quotes').doc(correlative).delete()
-            .then(() => console.log('Cotización eliminada de Firestore:', correlative))
+            .then(() => console.log('✅ Cotización eliminada permanentemente de Firestore:', correlative))
             .catch(err => console.warn('Error eliminando de Firestore:', err));
         }
 
@@ -3738,19 +3785,18 @@
 
         if (!window.confirm(confirmMsg)) return;
 
-        const dupSet = new Set(duplicateQuotesInfo.keys());
-        const cleanedHistory = quoteHistory.filter(q => !dupSet.has(q.correlative));
+        const dupCorrelatives = dupEntries.map(([c]) => c);
+        const dupSet = new Set(dupCorrelatives);
 
+        // Registrar en la lista permanente de eliminados y purgar claves
+        recordDeletedCorrelatives(dupCorrelatives);
+
+        const cleanedHistory = quoteHistory.filter(q => !dupSet.has(q.correlative));
         setQuoteHistory(cleanedHistory);
-        try {
-          localStorage.setItem('olivar_quotes_history', JSON.stringify(cleanedHistory));
-        } catch(e) {}
 
         if (window.db) {
-          dupEntries.forEach(([dupCorr]) => {
-            window.db.collection('quotes').doc(dupCorr).delete()
-              .then(() => console.log('🗑️ Duplicado eliminado de Firebase:', dupCorr))
-              .catch(err => console.warn('Error eliminando de Firebase:', dupCorr, err));
+          dupCorrelatives.forEach((dupCorr) => {
+            window.db.collection('quotes').doc(dupCorr).delete().catch(() => {});
           });
         }
 
@@ -11100,7 +11146,7 @@
                               3. Plano de Distribución y Patrón de Corte en Plancha (Nesting Visual)
                             </h2>
                             <p className="text-[10px] text-gray-600 mb-2">
-                              Distribución recomendada para el maestro de corte / guillotina / láser con cotas y medidas exactas para maximizar el aprovechamiento.
+                              Distribución técnica para el maestro de corte / dimensionadora de taller (considera separación obligatoria de 3 mm por pasada de disco de corte entre piezas).
                             </p>
                             {cub.rigidMaterials.map((matGroup) => (
                               <div key={matGroup.key} className="space-y-3">

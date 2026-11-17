@@ -127,27 +127,24 @@
       firebase.initializeApp(firebaseConfig);
       window.db = firebase.firestore();
       
-      // Auto-migración en segundo plano de cualquier cotización guardada localmente
-      const possibleKeys = ['olivar_quotes_history', 'letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'];
-      possibleKeys.forEach(function(k) {
-        try {
-          var raw = localStorage.getItem(k);
-          if (raw) {
-            var list = JSON.parse(raw);
-            if (Array.isArray(list)) {
-              list.forEach(function(q, idx) {
-                if (q) {
-                  var docId = (q.correlative && q.correlative.trim()) ? q.correlative.trim() : ('COT-RECUP-' + (idx + 101));
-                  var clean = JSON.parse(JSON.stringify(q, function(k, v) { return v === undefined ? '' : v; }));
-                  clean.timestamp = clean.timestamp || Date.now();
-                  clean.correlative = docId;
-                  window.db.collection('quotes').doc(docId).set(clean, { merge: true });
-                }
-              });
-            }
+      // Blindaje contra cotizaciones eliminadas y limpieza de almacenamiento redundante
+      try {
+        var rawDel = localStorage.getItem('olivar_deleted_correlatives');
+        var deletedSet = new Set(rawDel ? JSON.parse(rawDel) : []);
+        var rawQuotes = localStorage.getItem('olivar_quotes_history');
+        if (rawQuotes) {
+          var list = JSON.parse(rawQuotes);
+          if (Array.isArray(list)) {
+            var filtered = list.filter(function(q) {
+              return q && q.correlative && !deletedSet.has(q.correlative);
+            });
+            localStorage.setItem('olivar_quotes_history', JSON.stringify(filtered));
           }
-        } catch(e) {}
-      });
+        }
+        ['letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'].forEach(function(k) {
+          localStorage.removeItem(k);
+        });
+      } catch(e) {}
     } catch(e) { console.warn("Firebase error:", e); }
   </script>
 
