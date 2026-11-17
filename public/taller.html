@@ -151,10 +151,17 @@
         overflow: visible !important;
       }
 
+      .print-sheet-wrapper {
+        display: block !important;
+        width: 100% !important;
+      }
+
       /* LÁMINA 1: DIBUJO CAD VECTORIAL A PÁGINA COMPLETA VERTICAL (HERO) */
       .print-sheet-hero-page {
+        page-break-before: auto !important;
         page-break-after: always !important;
         page-break-inside: avoid !important;
+        break-before: auto !important;
         break-after: page !important;
         break-inside: avoid !important;
         height: 268mm !important;
@@ -170,8 +177,10 @@
 
       /* LÁMINA 2: ANEXO DE CORTE CON TABLA DE PIEZAS Y FIRMAS */
       .print-sheet-details-page {
+        page-break-before: auto !important;
         page-break-after: always !important;
         page-break-inside: avoid !important;
+        break-before: auto !important;
         break-after: page !important;
         break-inside: avoid !important;
         box-sizing: border-box !important;
@@ -181,9 +190,10 @@
         overflow: hidden !important;
       }
 
-      .print-sheet-details-page:last-child {
-        page-break-after: avoid !important;
-        break-after: avoid !important;
+      /* Solo la última lámina de la última plancha evita salto posterior innecesario */
+      .print-sheet-wrapper:last-child > .print-sheet-details-page {
+        page-break-after: auto !important;
+        break-after: auto !important;
       }
 
       .page-break-inside-avoid,
@@ -1495,7 +1505,7 @@
               const totalH = sheet.sheetH + padTop + padBottom;
 
               return (
-                <div key={sheet.sheetIndex}>
+                <div key={sheet.sheetIndex} className="print-sheet-wrapper">
                   
                   {/* ===================================================================== */}
                   {/* PÁGINA 1: EL DIBUJO CAD VECTORIAL A PÁGINA COMPLETA VERTICAL (HERO)   */}
