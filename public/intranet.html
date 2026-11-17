@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -138,6 +138,29 @@
     try {
       firebase.initializeApp(firebaseConfig);
       window.db = firebase.firestore();
+      
+      // Blindaje contra cotizaciones eliminadas y limpieza de almacenamiento redundante
+      try {
+        var rawDel = localStorage.getItem('olivar_deleted_correlatives');
+        var deletedList = rawDel ? JSON.parse(rawDel) : [];
+        var deletedSet = new Set(deletedList.map(function(c) { return String(c || '').trim().toUpperCase(); }));
+        var rawQuotes = localStorage.getItem('olivar_quotes_history');
+        if (rawQuotes) {
+          var list = JSON.parse(rawQuotes);
+          if (Array.isArray(list)) {
+            var filtered = list.filter(function(q) {
+              if (!q) return false;
+              var c = String(q.correlative || '').trim().toUpperCase();
+              var f = String(q._fireId || '').trim().toUpperCase();
+              return (!c || !deletedSet.has(c)) && (!f || !deletedSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
+            });
+            localStorage.setItem('olivar_quotes_history', JSON.stringify(filtered));
+          }
+        }
+        ['letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'].forEach(function(k) {
+          localStorage.removeItem(k);
+        });
+      } catch(e) {}
     } catch(e) { console.warn("Firebase error:", e); }
   </script>
 
@@ -1370,8 +1393,24 @@
       });
 
       const [quoteHistory, setQuoteHistory] = useState(() => {
-        const saved = localStorage.getItem('olivar_quotes_history');
-        return saved ? JSON.parse(saved) : [];
+        try {
+          const rawDel = localStorage.getItem('olivar_deleted_correlatives');
+          const delList = rawDel ? JSON.parse(rawDel) : [];
+          const delSet = new Set(delList.map(c => String(c || '').trim().toUpperCase()));
+          const saved = localStorage.getItem('olivar_quotes_history');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              return parsed.filter(q => {
+                if (!q) return false;
+                const c = String(q.correlative || '').trim().toUpperCase();
+                const f = String(q._fireId || '').trim().toUpperCase();
+                return (!c || !delSet.has(c)) && (!f || !delSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
+              });
+            }
+          }
+        } catch(e) {}
+        return [];
       });
 
       // === FIREBASE: Sincronizar Correlativo en Tiempo Real (Bidireccional) ===
@@ -1406,18 +1445,23 @@
       }, []);
 
       // === GESTIÓN DE ELIMINACIONES PERMANENTES (BLINDAJE ANTI-RESURRECCIÓN) ===
+      const normCorr = (c) => String(c || '').trim().toUpperCase();
+
       const getDeletedCorrelativesList = () => {
         try {
           const raw = localStorage.getItem('olivar_deleted_correlatives');
-          return raw ? JSON.parse(raw) : [];
+          const list = raw ? JSON.parse(raw) : [];
+          return Array.isArray(list) ? list.map(normCorr).filter(Boolean) : [];
         } catch(e) { return []; }
       };
 
       const recordDeletedCorrelatives = (correlativesArray) => {
-        if (!Array.isArray(correlativesArray) || correlativesArray.length === 0) return;
+        if (!Array.isArray(correlativesArray) || correlativesArray.length === 0) return [];
         try {
+          const cleanInput = correlativesArray.map(normCorr).filter(Boolean);
+          if (cleanInput.length === 0) return [];
           const currentList = getDeletedCorrelativesList();
-          const mergedSet = new Set([...currentList, ...correlativesArray]);
+          const mergedSet = new Set([...currentList, ...cleanInput]);
           const mergedList = Array.from(mergedSet);
           localStorage.setItem('olivar_deleted_correlatives', JSON.stringify(mergedList));
 
@@ -1425,12 +1469,16 @@
           const possibleKeys = ['olivar_quotes_history', 'letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'];
           possibleKeys.forEach(k => {
             try {
-              const raw = localStorage.getItem(k);
-              if (raw) {
-                const list = JSON.parse(raw);
-                if (Array.isArray(list)) {
-                  const filtered = list.filter(q => q && !mergedSet.has(q.correlative));
-                  localStorage.setItem(k, JSON.stringify(filtered));
+              if (k !== 'olivar_quotes_history') {
+                localStorage.removeItem(k);
+              } else {
+                const raw = localStorage.getItem(k);
+                if (raw) {
+                  const list = JSON.parse(raw);
+                  if (Array.isArray(list)) {
+                    const filtered = list.filter(q => q && !mergedSet.has(normCorr(q.correlative)) && !mergedSet.has(normCorr(q._fireId)));
+                    localStorage.setItem(k, JSON.stringify(filtered));
+                  }
                 }
               }
             } catch(e) {}
@@ -1439,27 +1487,93 @@
           // Registrar en Firestore en el documento permanente de eliminaciones
           if (window.db) {
             window.db.collection('system').doc('deleted_correlatives').set({
-              correlatives: firebase.firestore.FieldValue.arrayUnion(...correlativesArray),
+              correlatives: firebase.firestore.FieldValue.arrayUnion(...mergedList),
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true }).catch(() => {});
           }
-        } catch(e) { console.warn('Error registrando eliminaciones permanentes:', e); }
+          return mergedList;
+        } catch(e) { console.warn('Error registrando eliminaciones permanentes:', e); return []; }
+      };
+
+      // Helper universal para purgar definitivamente una o más cotizaciones
+      const permanentlyPurgeQuotes = (quotesOrCorrelatives) => {
+        const items = Array.isArray(quotesOrCorrelatives) ? quotesOrCorrelatives : [quotesOrCorrelatives];
+        if (items.length === 0) return;
+
+        const allCorrsToPurge = [];
+        const allFireIdsToPurge = [];
+
+        items.forEach(item => {
+          if (!item) return;
+          if (typeof item === 'object') {
+            if (item.correlative) allCorrsToPurge.push(normCorr(item.correlative));
+            if (item._fireId) {
+              allFireIdsToPurge.push(String(item._fireId).trim());
+              allCorrsToPurge.push(normCorr(item._fireId));
+            }
+          } else {
+            allCorrsToPurge.push(normCorr(item));
+          }
+        });
+
+        const distinctPurge = Array.from(new Set([...allCorrsToPurge, ...allFireIdsToPurge.map(normCorr)])).filter(Boolean);
+        if (distinctPurge.length === 0) return;
+
+        // 1. Registrar en lista permanente y purgar de localStorage
+        recordDeletedCorrelatives(distinctPurge);
+        const purgeSet = new Set(distinctPurge);
+
+        // 2. Quitar del estado React de forma inmediata
+        setQuoteHistory(prev => prev.filter(q => {
+          const c = normCorr(q.correlative);
+          const f = normCorr(q._fireId);
+          return !purgeSet.has(c) && !purgeSet.has(f);
+        }));
+
+        // 3. Purgar físicamente de Firebase Firestore
+        if (window.db) {
+          distinctPurge.forEach(idOrCorr => {
+            // Intentar borrar por ID directo
+            window.db.collection('quotes').doc(idOrCorr).delete().catch(() => {});
+
+            // Marcar tombstone previo al borrado o por si quedó residual
+            window.db.collection('quotes').doc(idOrCorr).set({
+              isDeleted: true,
+              status: 'ELIMINADA_PERMANENTE',
+              deletedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).then(() => {
+              window.db.collection('quotes').doc(idOrCorr).delete().catch(() => {});
+            }).catch(() => {});
+
+            // Búsqueda y borrado por campo correlative
+            window.db.collection('quotes').where('correlative', '==', idOrCorr).get()
+              .then(snap => {
+                snap.docs.forEach(d => d.ref.delete().catch(() => {}));
+              }).catch(() => {});
+          });
+
+          allFireIdsToPurge.forEach(fid => {
+            window.db.collection('quotes').doc(fid).delete().catch(() => {});
+          });
+        }
       };
 
       // === FIREBASE: Sincronizar Historial de Cotizaciones (Con blindaje de eliminación permanente) ===
       useEffect(() => {
         if (!window.db) return;
 
-        // 1. Sincronizar lista de eliminados permanentes desde la nube
-        window.db.collection('system').doc('deleted_correlatives').get()
-          .then(docSnap => {
+        // 1. Escuchar lista de eliminados permanentes en TIEMPO REAL desde la nube
+        const unsubDeleted = window.db.collection('system').doc('deleted_correlatives')
+          .onSnapshot(docSnap => {
             if (docSnap.exists) {
               const cloudDeleted = docSnap.data().correlatives || [];
               if (Array.isArray(cloudDeleted) && cloudDeleted.length > 0) {
                 recordDeletedCorrelatives(cloudDeleted);
+                const delSet = new Set(cloudDeleted.map(normCorr));
+                setQuoteHistory(prev => prev.filter(q => !delSet.has(normCorr(q.correlative)) && !delSet.has(normCorr(q._fireId))));
               }
             }
-          }).catch(() => {});
+          }, () => {});
 
         // 2. Limpiar claves redundantes locales antiguas para que nunca revivan cotizaciones
         try {
@@ -1471,12 +1585,19 @@
         const unsubQuotes = window.db.collection('quotes')
           .onSnapshot(snap => {
             if (!snap.empty) {
-              const deletedSet = new Set(getDeletedCorrelativesList());
+              const deletedSet = new Set(getDeletedCorrelativesList().map(normCorr));
               const fireQuotes = [];
               snap.docs.forEach(d => {
-                const q = { _fireId: d.id, ...d.data() };
-                const corr = q.correlative || d.id;
-                if (deletedSet.has(corr)) {
+                const data = d.data() || {};
+                const q = { _fireId: d.id, ...data };
+                const corr = normCorr(q.correlative || d.id);
+                const docIdNorm = normCorr(d.id);
+                const isDel = data.isDeleted === true ||
+                              data.status === 'ELIMINADA_PERMANENTE' ||
+                              deletedSet.has(corr) ||
+                              deletedSet.has(docIdNorm);
+
+                if (isDel) {
                   // Si existe en Firestore pero fue eliminado, purgarlo físicamente
                   window.db.collection('quotes').doc(d.id).delete().catch(() => {});
                 } else {
@@ -1491,9 +1612,16 @@
               });
               setQuoteHistory(fireQuotes);
               try { localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes)); } catch(e){}
+            } else {
+              setQuoteHistory([]);
+              try { localStorage.setItem('olivar_quotes_history', JSON.stringify([])); } catch(e){}
             }
           }, err => console.warn('Firestore quotes error:', err));
-        return () => unsubQuotes();
+
+        return () => {
+          unsubDeleted();
+          unsubQuotes();
+        };
       }, []);
 
       // === FIREBASE: Sincronizar Calendario de Entregas & Taller en Tiempo Real ===
@@ -1564,48 +1692,48 @@
         }
         showToast('🔄 Forzando sincronización total con Firebase...');
         
-        // 1. Subir locales desde todas las claves posibles
+        // 1. Limpiar completamente claves redundantes para evitar residuos
         try {
-          const possibleKeys = ['olivar_quotes_history', 'letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'];
-          let uploadedCount = 0;
-          possibleKeys.forEach(k => {
-            try {
-              const raw = localStorage.getItem(k);
-              if (raw) {
-                const list = JSON.parse(raw);
-                if (Array.isArray(list)) {
-                  list.forEach((q, idx) => {
-                    const docId = (q.correlative && q.correlative.trim()) ? q.correlative.trim() : ('COT-RECUP-' + (idx + 101));
-                    const clean = JSON.parse(JSON.stringify(q, (k, v) => (v === undefined ? '' : v)));
-                    clean.timestamp = clean.timestamp || Date.now();
-                    clean.correlative = docId;
-                    window.db.collection('quotes').doc(docId).set(clean, { merge: true });
-                    uploadedCount++;
-                  });
-                }
-              }
-            } catch(e) {}
-          });
+          const legacyKeys = ['letreros_olivar_quotes', 'quotes_history', 'quotes', 'historial_cotizaciones'];
+          legacyKeys.forEach(k => localStorage.removeItem(k));
+
           const localCal = localStorage.getItem('olivar_workshop_calendar');
           if (localCal) {
             window.db.collection('system').doc('workshop_calendar').set({
               events: JSON.parse(localCal),
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
+            }, { merge: true }).catch(() => {});
           }
           const localOrders = localStorage.getItem('olivar_work_orders');
           if (localOrders) {
             window.db.collection('system').doc('work_orders').set({
               orders: JSON.parse(localOrders),
               updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
+            }, { merge: true }).catch(() => {});
           }
         } catch(e){}
 
-        // 2. Traer todas de Firestore directamente del servidor
+        // 2. Traer todas de Firestore directamente del servidor filtrando estrictamente eliminadas
         window.db.collection('quotes').get().then(snap => {
+          const deletedSet = new Set(getDeletedCorrelativesList().map(normCorr));
           if (!snap.empty) {
-            const fireQuotes = snap.docs.map(d => ({ _fireId: d.id, ...d.data() }));
+            const fireQuotes = [];
+            snap.docs.forEach(d => {
+              const data = d.data() || {};
+              const corr = normCorr(data.correlative || d.id);
+              const docIdNorm = normCorr(d.id);
+              const isDel = data.isDeleted === true ||
+                            data.status === 'ELIMINADA_PERMANENTE' ||
+                            deletedSet.has(corr) ||
+                            deletedSet.has(docIdNorm);
+
+              if (isDel) {
+                window.db.collection('quotes').doc(d.id).delete().catch(() => {});
+              } else {
+                fireQuotes.push({ _fireId: d.id, ...data });
+              }
+            });
+
             fireQuotes.sort((a, b) => {
               const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
               const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
@@ -1615,7 +1743,9 @@
             try { localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes)); } catch(e){}
             showToast('✅ ¡' + fireQuotes.length + ' cotizaciones cargadas desde la nube!');
           } else {
-            showToast('ℹ️ No hay más cotizaciones en la nube aún.');
+            setQuoteHistory([]);
+            try { localStorage.setItem('olivar_quotes_history', JSON.stringify([])); } catch(e){}
+            showToast('ℹ️ No hay cotizaciones en la nube.');
           }
         }).catch(err => {
           console.warn(err);
@@ -3317,18 +3447,8 @@
 
         const correlative = quoteToDelete.correlative;
 
-        // 1. Registrar eliminación permanente y purgar de todos los almacenamientos locales y nube
-        recordDeletedCorrelatives([correlative]);
-
-        // 2. Quitar del estado local
-        setQuoteHistory(prev => prev.filter(q => q.correlative !== correlative));
-
-        // 3. Eliminar físicamente de Firebase Firestore
-        if (window.db) {
-          window.db.collection('quotes').doc(correlative).delete()
-            .then(() => console.log('✅ Cotización eliminada permanentemente de Firestore:', correlative))
-            .catch(err => console.warn('Error eliminando de Firestore:', err));
-        }
+        // Purgar con blindaje triple de forma definitiva
+        permanentlyPurgeQuotes(quoteToDelete);
 
         setShowDeleteModal(false);
         setQuoteToDelete(null);
@@ -3459,20 +3579,8 @@
           return;
         }
 
-        const corrList = expiredList.map(q => q.correlative);
-        const corrSet = new Set(corrList);
-        recordDeletedCorrelatives(corrList);
-        const updatedHistory = quoteHistory.filter(q => !corrSet.has(q.correlative));
-        setQuoteHistory(updatedHistory);
-        try {
-          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
-        } catch(e) {}
-        if (window.db) {
-          corrList.forEach(corr => {
-            window.db.collection('quotes').doc(corr).delete().catch(() => {});
-          });
-        }
-        showToast('🗑️ ' + corrList.length + ' cotizaciones vencidas eliminadas permanentemente.');
+        permanentlyPurgeQuotes(expiredList);
+        showToast('🗑️ ' + expiredList.length + ' cotizaciones vencidas eliminadas permanentemente.');
       };
 
       const handleRevalidateQuote = (quote, extraDays = 15) => {
@@ -4026,19 +4134,8 @@
         if (!window.confirm(confirmMsg)) return;
 
         const dupCorrelatives = dupEntries.map(([c]) => c);
-        const dupSet = new Set(dupCorrelatives);
-
-        // Registrar en la lista permanente de eliminados y purgar claves
-        recordDeletedCorrelatives(dupCorrelatives);
-
-        const cleanedHistory = quoteHistory.filter(q => !dupSet.has(q.correlative));
-        setQuoteHistory(cleanedHistory);
-
-        if (window.db) {
-          dupCorrelatives.forEach((dupCorr) => {
-            window.db.collection('quotes').doc(dupCorr).delete().catch(() => {});
-          });
-        }
+        const dupQuotes = quoteHistory.filter(q => dupCorrelatives.includes(q.correlative));
+        permanentlyPurgeQuotes(dupQuotes.length > 0 ? dupQuotes : dupCorrelatives);
 
         showToast(`✅ Se eliminaron ${dupEntries.length} duplicados. El historial ahora refleja exactamente los montos reales.`);
       };
@@ -4048,16 +4145,10 @@
         const confirmMsg = `¿Eliminar la cotización duplicada ${correlative}${orig ? ` (copia de ${orig.correlative})` : ''}?`;
         if (!window.confirm(confirmMsg)) return;
 
-        const cleanedHistory = quoteHistory.filter(q => q.correlative !== correlative);
-        setQuoteHistory(cleanedHistory);
-        try {
-          localStorage.setItem('olivar_quotes_history', JSON.stringify(cleanedHistory));
-        } catch(e) {}
+        const targetQuote = quoteHistory.find(q => q.correlative === correlative);
+        permanentlyPurgeQuotes(targetQuote || correlative);
 
-        if (window.db) {
-          window.db.collection('quotes').doc(correlative).delete().catch(() => {});
-        }
-        showToast(`✅ Cotización duplicada ${correlative} eliminada.`);
+        showToast(`✅ Cotización duplicada ${correlative} eliminada permanentemente.`);
       };
 
       // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---

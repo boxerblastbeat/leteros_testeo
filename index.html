@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -130,13 +130,17 @@
       // Blindaje contra cotizaciones eliminadas y limpieza de almacenamiento redundante
       try {
         var rawDel = localStorage.getItem('olivar_deleted_correlatives');
-        var deletedSet = new Set(rawDel ? JSON.parse(rawDel) : []);
+        var deletedList = rawDel ? JSON.parse(rawDel) : [];
+        var deletedSet = new Set(deletedList.map(function(c) { return String(c || '').trim().toUpperCase(); }));
         var rawQuotes = localStorage.getItem('olivar_quotes_history');
         if (rawQuotes) {
           var list = JSON.parse(rawQuotes);
           if (Array.isArray(list)) {
             var filtered = list.filter(function(q) {
-              return q && q.correlative && !deletedSet.has(q.correlative);
+              if (!q) return false;
+              var c = String(q.correlative || '').trim().toUpperCase();
+              var f = String(q._fireId || '').trim().toUpperCase();
+              return (!c || !deletedSet.has(c)) && (!f || !deletedSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
             });
             localStorage.setItem('olivar_quotes_history', JSON.stringify(filtered));
           }
@@ -765,8 +769,24 @@
       });
 
       const [quoteHistory, setQuoteHistory] = useState(() => {
-        const saved = localStorage.getItem('olivar_quotes_history');
-        return saved ? JSON.parse(saved) : [];
+        try {
+          const rawDel = localStorage.getItem('olivar_deleted_correlatives');
+          const delList = rawDel ? JSON.parse(rawDel) : [];
+          const delSet = new Set(delList.map(c => String(c || '').trim().toUpperCase()));
+          const saved = localStorage.getItem('olivar_quotes_history');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              return parsed.filter(q => {
+                if (!q) return false;
+                const c = String(q.correlative || '').trim().toUpperCase();
+                const f = String(q._fireId || '').trim().toUpperCase();
+                return (!c || !delSet.has(c)) && (!f || !delSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
+              });
+            }
+          }
+        } catch(e) {}
+        return [];
       });
 
       const [intranetClientData, setIntranetClientData] = useState({
@@ -1114,8 +1134,75 @@
       }, [correlativeNumber]);
 
       useEffect(() => {
-        localStorage.setItem('olivar_quotes_history', JSON.stringify(quoteHistory));
+        try {
+          const rawDel = localStorage.getItem('olivar_deleted_correlatives');
+          const delList = rawDel ? JSON.parse(rawDel) : [];
+          const delSet = new Set(delList.map(c => String(c || '').trim().toUpperCase()));
+          const cleanQuotes = quoteHistory.filter(q => {
+            if (!q) return false;
+            const c = String(q.correlative || '').trim().toUpperCase();
+            const f = String(q._fireId || '').trim().toUpperCase();
+            return (!c || !delSet.has(c)) && (!f || !delSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
+          });
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(cleanQuotes));
+        } catch(e) {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(quoteHistory));
+        }
       }, [quoteHistory]);
+
+      // Sincronización en tiempo real de eliminaciones entre pestañas y Firebase
+      useEffect(() => {
+        const handleStorage = (e) => {
+          if (e.key === 'olivar_deleted_correlatives' || e.key === 'olivar_quotes_history') {
+            try {
+              const rawDel = localStorage.getItem('olivar_deleted_correlatives');
+              const delSet = new Set((rawDel ? JSON.parse(rawDel) : []).map(c => String(c || '').trim().toUpperCase()));
+              const rawQuotes = localStorage.getItem('olivar_quotes_history');
+              if (rawQuotes) {
+                const parsed = JSON.parse(rawQuotes);
+                if (Array.isArray(parsed)) {
+                  setQuoteHistory(parsed.filter(q => {
+                    if (!q) return false;
+                    const c = String(q.correlative || '').trim().toUpperCase();
+                    const f = String(q._fireId || '').trim().toUpperCase();
+                    return (!c || !delSet.has(c)) && (!f || !delSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
+                  }));
+                }
+              }
+            } catch(err) {}
+          }
+        };
+        window.addEventListener('storage', handleStorage);
+
+        let unsubCloud = null;
+        if (window.db) {
+          unsubCloud = window.db.collection('system').doc('deleted_correlatives')
+            .onSnapshot(docSnap => {
+              if (docSnap.exists) {
+                const cloudDeleted = docSnap.data().correlatives || [];
+                if (Array.isArray(cloudDeleted) && cloudDeleted.length > 0) {
+                  const normCloud = cloudDeleted.map(c => String(c || '').trim().toUpperCase());
+                  const rawDel = localStorage.getItem('olivar_deleted_correlatives');
+                  const localList = rawDel ? JSON.parse(rawDel).map(c => String(c || '').trim().toUpperCase()) : [];
+                  const merged = Array.from(new Set([...localList, ...normCloud]));
+                  localStorage.setItem('olivar_deleted_correlatives', JSON.stringify(merged));
+                  const delSet = new Set(merged);
+                  setQuoteHistory(prev => prev.filter(q => {
+                    if (!q) return false;
+                    const c = String(q.correlative || '').trim().toUpperCase();
+                    const f = String(q._fireId || '').trim().toUpperCase();
+                    return (!c || !delSet.has(c)) && (!f || !delSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
+                  }));
+                }
+              }
+            }, () => {});
+        }
+
+        return () => {
+          window.removeEventListener('storage', handleStorage);
+          if (unsubCloud) unsubCloud();
+        };
+      }, []);
 
       // Gestión de Tarifario de Taller
       const handleUpdateMaterialPrice = (id, newPrice) => {
