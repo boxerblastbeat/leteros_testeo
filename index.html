@@ -520,7 +520,7 @@
     };
 
     // ==============================================================
-    // MAESTRA DE CLIENTES Y PROVEEDORES (Extraída de Ventas y Compras SII)
+    // Maestro de Clientes Y PROVEEDORES (Extraída de Ventas y Compras SII)
     // ==============================================================
     const DEFAULT_CLIENTS_DIRECTORY = [
       { id: 'cli-1', rut: '78310099-1', name: 'ALMACÉN JEANNETE MARIBEL CLAVERÍA JARA E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
@@ -745,7 +745,7 @@
         localStorage.setItem('olivar_workshop_consumables', JSON.stringify(consumablesCatalog));
       }, [consumablesCatalog]);
 
-      // MAESTRA DE CLIENTES Y PROVEEDORES (Con persistencia en localStorage)
+      // Maestro de Clientes Y PROVEEDORES (Con persistencia en localStorage)
       const [clientsMaster, setClientsMaster] = useState(() => {
         const saved = localStorage.getItem('olivar_clients_master');
         return saved ? JSON.parse(saved) : DEFAULT_CLIENTS_DIRECTORY;
@@ -767,7 +767,7 @@
         address: ''
       });
 
-      // Estados para Carga Masiva de Correos en Maestra de Clientes
+      // Estados para Carga Masiva de Correos en Maestro de Clientes
       const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
       const [bulkEmailText, setBulkEmailText] = useState('');
       const [bulkEmailParsed, setBulkEmailParsed] = useState([]);
@@ -1136,7 +1136,7 @@
         }
       };
 
-      // --- GESTIÓN DE LA MAESTRA DE CLIENTES Y PROVEEDORES ---
+      // --- GESTIÓN DEL MAESTRO DE CLIENTES Y PROVEEDORES ---
       const handleSelectClientFromMaster = (clientRut) => {
         if (!clientRut) return;
         const found = clientsMaster.find(c => c.rut === clientRut);
@@ -1157,7 +1157,7 @@
         const name = (intranetClientData.name || '').trim();
         const rut = (intranetClientData.documentId || '').trim();
         if (!name && !rut) {
-          alert('Por favor ingresa al menos la Razón Social o el RUT para registrar en la Maestra.');
+          alert('Por favor ingresa al menos la Razón Social o el RUT para registrar en el Maestro.');
           return;
         }
         setClientsMaster(prev => {
@@ -1186,7 +1186,7 @@
             }, ...prev];
           }
         });
-        showToast(`💾 Cliente guardado / actualizado en la Maestra`);
+        showToast(`💾 Cliente guardado / actualizado en el Maestro`);
       };
 
       const handleUpdateClientInMaster = (id, field, value) => {
@@ -1194,9 +1194,9 @@
       };
 
       const handleDeleteClientFromMaster = (id) => {
-        if (window.confirm('¿Seguro que deseas eliminar este cliente de la Maestra?')) {
+        if (window.confirm('¿Seguro que deseas eliminar este cliente del Maestro?')) {
           setClientsMaster(prev => prev.filter(c => c.id !== id));
-          showToast('🗑️ Cliente eliminado de la Maestra');
+          showToast('🗑️ Cliente eliminado del Maestro');
         }
       };
 
@@ -1237,10 +1237,10 @@
       };
 
       const handleResetClientsMaster = () => {
-        if (window.confirm('¿Restablecer la Maestra de Clientes al listado original del SII (82 clientes)?')) {
+        if (window.confirm('¿Restablecer el Maestro de Clientes al listado original del SII (82 clientes)?')) {
           setClientsMaster(DEFAULT_CLIENTS_DIRECTORY);
           localStorage.setItem('olivar_clients_master', JSON.stringify(DEFAULT_CLIENTS_DIRECTORY));
-          showToast('🔄 Maestra de clientes restablecida con éxito');
+          showToast('🔄 Maestro de Clientes restablecida con éxito');
         }
       };
 
@@ -1259,7 +1259,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `Maestra_Clientes_Letreros_Olivar_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute('download', `Maestro_Clientes_Letreros_Olivar_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1452,7 +1452,7 @@
         if (found) {
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Correo ${emailItem.fromEmail} sincronizado en la Maestra`);
+          showToast(`✅ Correo ${emailItem.fromEmail} sincronizado en el Maestro`);
         } else {
           const newClient = {
             id: `cli-${Date.now()}`,
@@ -1466,7 +1466,7 @@
           updatedMaster.unshift(newClient);
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Cliente ${newClient.name} agregado a la Maestra con correo ${newClient.email}`);
+          showToast(`✅ Cliente ${newClient.name} agregado al Maestro con correo ${newClient.email}`);
         }
       };
 
@@ -3521,7 +3521,7 @@
                             Administración & Cotizaciones
                           </h3>
                           <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-                            Cálculo de letreros, emisión formal de presupuestos con número correlativo oficial, recepción de solicitudes web, catálogo de precios por m² y maestra de clientes.
+                            Cálculo de letreros, emisión formal de presupuestos con número correlativo oficial, recepción de solicitudes web, catálogo de precios por m² y Maestro de Clientes.
                           </p>
 
                           <div className="mt-6 space-y-2 border-t border-zinc-800/80 pt-4">
@@ -3571,7 +3571,7 @@
                               }}
                               className="w-full text-left bg-zinc-900/80 hover:bg-zinc-800 px-3.5 py-2 rounded-xl text-xs text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-between transition"
                             >
-                              <span>👥 Maestra de Clientes & Proveedores</span>
+                              <span>👥 Maestro de Clientes & Proveedores</span>
                               <span className="text-[11px] text-zinc-500">{clientsMaster.length} registrados</span>
                             </button>
 
@@ -3761,7 +3761,7 @@
                           }`}
                         >
                           <Icon name="users" className="w-4 h-4" />
-                          <span>Maestra de Clientes ({clientsMaster.length})</span>
+                          <span>Maestro de Clientes ({clientsMaster.length})</span>
                         </button>
                       </div>
 
@@ -3811,18 +3811,18 @@
                             1. Datos del Cliente / Empresa
                           </h3>
 
-                          {/* Selector Rápido de Maestra de Clientes */}
+                          {/* Selector Rápido de Maestro de Clientes */}
                           <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
                             <div className="flex items-center justify-between">
                               <label className="text-[11px] font-bold text-red-400 flex items-center gap-1.5">
                                 <Icon name="users" className="w-3.5 h-3.5" />
-                                <span>Cargar desde Maestra de Clientes ({clientsMaster.length})</span>
+                                <span>Cargar desde Maestro de Clientes ({clientsMaster.length})</span>
                               </label>
                               <button
                                 type="button"
                                 onClick={() => setShowAddClientModal(true)}
                                 className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition"
-                                title="Registrar nuevo cliente en la Maestra"
+                                title="Registrar nuevo cliente en el Maestro"
                               >
                                 <Icon name="plus" className="w-3 h-3 text-red-500" />
                                 <span>+ Nuevo</span>
@@ -4006,10 +4006,10 @@
                               type="button"
                               onClick={handleSaveCurrentClientToMaster}
                               className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white py-2 rounded-xl border border-zinc-700 font-bold flex items-center justify-center gap-1.5 transition text-xs shadow-sm mt-2"
-                              title="Guardar estos datos del cliente en la Maestra permanente"
+                              title="Guardar estos datos del cliente en el Maestro permanente"
                             >
                               <Icon name="save" className="w-3.5 h-3.5 text-red-500" />
-                              <span>💾 Guardar / Actualizar en Maestra</span>
+                              <span>💾 Guardar / Actualizar en Maestro</span>
                             </button>
                           </div>
                         </div>
@@ -5339,7 +5339,7 @@
                   </div>
                 )}
 
-                {/* SUB-PESTAÑA 5: MAESTRA Y DIRECTORIO DE CLIENTES & PROVEEDORES (EXCEL) */}
+                {/* SUB-PESTAÑA 5: Maestro y Directorio DE CLIENTES & PROVEEDORES (EXCEL) */}
                 {intranetTab === 'clientes' && (
                   <div className="space-y-6">
                     {/* Header y Acciones */}
@@ -5350,7 +5350,7 @@
                           BASE DE DATOS DE TALLER (PLANILLA EXCEL)
                         </div>
                         <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
-                          Maestra y Directorio de Clientes
+                          Maestro y Directorio de Clientes
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
                           Edita la información de tus clientes y proveedores directamente en la tabla. Los cambios se guardan automáticamente en tu navegador y se autocompletan en el Cotizador.
@@ -5553,7 +5553,7 @@
                                         type="button"
                                         onClick={() => handleDeleteClientFromMaster(client.id)}
                                         className="p-1 text-zinc-600 hover:text-red-400 rounded transition"
-                                        title="Eliminar de la Maestra"
+                                        title="Eliminar del Maestro"
                                       >
                                         <Icon name="trash" className="w-3.5 h-3.5" />
                                       </button>
@@ -5574,7 +5574,7 @@
                           <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
                             <h3 className="font-heading font-bold text-white text-base flex items-center gap-2">
                               <Icon name="users" className="w-4 h-4 text-red-500" />
-                              <span>Agregar Nuevo Cliente a la Maestra</span>
+                              <span>Agregar Nuevo Cliente al Maestro</span>
                             </h3>
                             <button
                               type="button"
@@ -5706,7 +5706,7 @@
                                 <span>¿Cómo funciona la sincronización inteligente?</span>
                               </p>
                               <p className="text-zinc-400 text-[11px] leading-relaxed">
-                                Puedes copiar columnas completas desde Excel (por ejemplo: <strong className="text-zinc-200">Columna RUT</strong> y <strong className="text-zinc-200">Columna Correo</strong>) y pegarlas directamente en la caja inferior. El sistema reconocerá automáticamente los correos y buscará los clientes en la Maestra por su RUT o Nombre.
+                                Puedes copiar columnas completas desde Excel (por ejemplo: <strong className="text-zinc-200">Columna RUT</strong> y <strong className="text-zinc-200">Columna Correo</strong>) y pegarlas directamente en la caja inferior. El sistema reconocerá automáticamente los correos y buscará los clientes en el Maestro por su RUT o Nombre.
                               </p>
                               <div className="flex items-center gap-2 pt-1">
                                 <button
@@ -5750,7 +5750,7 @@
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="text-zinc-300 font-bold">
-                                    Vista Previa: <span className="text-emerald-400">{bulkEmailParsed.filter(p => p.status === 'matched').length} clientes encontrados en la Maestra</span>
+                                    Vista Previa: <span className="text-emerald-400">{bulkEmailParsed.filter(p => p.status === 'matched').length} clientes encontrados en el Maestro</span>
                                     {bulkEmailParsed.filter(p => p.status === 'unmatched').length > 0 && (
                                       <span className="text-amber-400 ml-2 font-normal">
                                         ({bulkEmailParsed.filter(p => p.status === 'unmatched').length} no encontrados)
@@ -5810,7 +5810,7 @@
                                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5"
                                 >
                                   <Icon name="check" className="w-3.5 h-3.5" />
-                                  <span>Actualizar {bulkEmailParsed.filter(p => p.status === 'matched').length} Correos en la Maestra</span>
+                                  <span>Actualizar {bulkEmailParsed.filter(p => p.status === 'matched').length} Correos en el Maestro</span>
                                 </button>
                               )}
 
@@ -6145,10 +6145,10 @@
                                       type="button"
                                       onClick={() => handleSaveInboxEmailToMaster(currentEmail)}
                                       className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-emerald-600/30"
-                                      title="Guarda o actualiza el correo de este cliente en la Maestra"
+                                      title="Guarda o actualiza el correo de este cliente en el Maestro"
                                     >
                                       <Icon name="users" className="w-3.5 h-3.5" />
-                                      <span>👥 Sincronizar en Maestra</span>
+                                      <span>👥 Sincronizar en Maestro</span>
                                     </button>
 
                                     <button
@@ -6285,7 +6285,7 @@
                                     defaultValue=""
                                     className="text-[10px] bg-zinc-950 text-zinc-400 border border-zinc-800 rounded px-2 py-0.5 focus:border-red-600 focus:outline-none"
                                   >
-                                    <option value="">-- Cargar de Maestra de Clientes --</option>
+                                    <option value="">-- Cargar de Maestro de Clientes --</option>
                                     {clientsMaster.filter(c => c.email).map(c => (
                                       <option key={c.id} value={c.email}>
                                         {c.name} ({c.email})

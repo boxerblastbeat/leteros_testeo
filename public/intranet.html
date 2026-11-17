@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Intranet Taller & Administración | Letreros Olivar SpA</title>
-  <meta name="description" content="Intranet privada de Letreros Olivar SpA: Cotizador formal de taller, tarifario Excel, maestra de clientes, calendario de entregas e instalaciones." />
+  <meta name="description" content="Intranet privada de Letreros Olivar SpA: Cotizador formal de taller, tarifario Excel, Maestro de Clientes, calendario de entregas e instalaciones." />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="keywords" content="letreros olivar, grafica corporativa olivar, seneticas viales, banner pvc olivar, palomas publicitarias, gigantografias rancagua, cajones luminosos, corte laser acrilico, cortes cnc aluminio compuesto, impresion gran formato, publicidad olivar" />
   <link rel="canonical" href="https://letrerosolivar.com/" />
@@ -1118,7 +1118,7 @@
     };
 
     // ==============================================================
-    // MAESTRA DE CLIENTES Y PROVEEDORES (Extraída de Ventas y Compras SII)
+    // Maestro de Clientes Y PROVEEDORES (Extraída de Ventas y Compras SII)
     // ==============================================================
     const DEFAULT_CLIENTS_DIRECTORY = [
       { id: 'cli-1', rut: '78310099-1', name: 'ALMACÉN JEANNETE MARIBEL CLAVERÍA JARA E.I.R.L.', contactPerson: '', phone: '', email: '', address: '' },
@@ -1598,7 +1598,7 @@
         localStorage.setItem('olivar_workshop_consumables', JSON.stringify(consumablesCatalog));
       }, [consumablesCatalog]);
 
-      // MAESTRA DE CLIENTES Y PROVEEDORES (Con persistencia en localStorage)
+      // Maestro de Clientes Y PROVEEDORES (Con persistencia en localStorage)
       const [clientsMaster, setClientsMaster] = useState(() => {
         const saved = localStorage.getItem('olivar_clients_master');
         return saved ? JSON.parse(saved) : DEFAULT_CLIENTS_DIRECTORY;
@@ -1620,7 +1620,7 @@
         address: ''
       });
 
-      // Estados para Carga Masiva de Correos en Maestra de Clientes
+      // Estados para Carga Masiva de Correos en Maestro de Clientes
       const [showBulkEmailModal, setShowBulkEmailModal] = useState(false);
       const [bulkEmailText, setBulkEmailText] = useState('');
       const [bulkEmailParsed, setBulkEmailParsed] = useState([]);
@@ -2060,7 +2060,7 @@
         }
       };
 
-      // --- GESTIÓN DE LA MAESTRA DE CLIENTES Y MATCH INTELIGENTE DE CONTACTOS ---
+      // --- GESTIÓN DEL MAESTRO DE CLIENTES Y MATCH INTELIGENTE DE CONTACTOS ---
       const getContactsForClient = (clientName, clientRut) => {
         const cleanName = (clientName || '').trim().toLowerCase();
         const cleanRut = (clientRut || '').trim().toUpperCase();
@@ -2081,7 +2081,7 @@
               name: cp,
               phone: foundInMaster.phone || '',
               email: foundInMaster.email || '',
-              source: 'Maestra de Clientes'
+              source: 'Maestro de Clientes'
             });
           }
           if (Array.isArray(foundInMaster.contacts)) {
@@ -2091,7 +2091,7 @@
                   name: cp.trim(),
                   phone: foundInMaster.phone || '',
                   email: foundInMaster.email || '',
-                  source: 'Maestra de Clientes'
+                  source: 'Maestro de Clientes'
                 });
               }
             });
@@ -2237,7 +2237,7 @@
         const rut = (intranetClientData.documentId || '').trim();
         const cp = (intranetClientData.contactPerson || '').trim();
         if (!name && !rut) {
-          alert('Por favor ingresa al menos la Razón Social o el RUT para registrar en la Maestra.');
+          alert('Por favor ingresa al menos la Razón Social o el RUT para registrar en el Maestro.');
           return;
         }
         setClientsMaster(prev => {
@@ -2287,7 +2287,7 @@
           } catch(e) {}
           return updated;
         });
-        showToast(`💾 Cliente y contacto guardados en la Maestra`);
+        showToast(`💾 Cliente y contacto guardados en el Maestro`);
       };
 
       const handleUpdateClientInMaster = (id, field, value) => {
@@ -2295,9 +2295,9 @@
       };
 
       const handleDeleteClientFromMaster = (id) => {
-        if (window.confirm('¿Seguro que deseas eliminar este cliente de la Maestra?')) {
+        if (window.confirm('¿Seguro que deseas eliminar este cliente del Maestro?')) {
           setClientsMaster(prev => prev.filter(c => c.id !== id));
-          showToast('🗑️ Cliente eliminado de la Maestra');
+          showToast('🗑️ Cliente eliminado del Maestro');
         }
       };
 
@@ -2343,10 +2343,10 @@
       };
 
       const handleResetClientsMaster = () => {
-        if (window.confirm('¿Restablecer la Maestra de Clientes al listado original del SII (82 clientes)?')) {
+        if (window.confirm('¿Restablecer el Maestro de Clientes al listado original del SII (82 clientes)?')) {
           setClientsMaster(DEFAULT_CLIENTS_DIRECTORY);
           localStorage.setItem('olivar_clients_master', JSON.stringify(DEFAULT_CLIENTS_DIRECTORY));
-          showToast('🔄 Maestra de clientes restablecida con éxito');
+          showToast('🔄 Maestro de Clientes restablecida con éxito');
         }
       };
 
@@ -2365,7 +2365,7 @@
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `Maestra_Clientes_Letreros_Olivar_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute('download', `Maestro_Clientes_Letreros_Olivar_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -2558,7 +2558,7 @@
         if (found) {
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Correo ${emailItem.fromEmail} sincronizado en la Maestra`);
+          showToast(`✅ Correo ${emailItem.fromEmail} sincronizado en el Maestro`);
         } else {
           const newClient = {
             id: `cli-${Date.now()}`,
@@ -2572,7 +2572,7 @@
           updatedMaster.unshift(newClient);
           setClientsMaster(updatedMaster);
           localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
-          showToast(`✅ Cliente ${newClient.name} agregado a la Maestra con correo ${newClient.email}`);
+          showToast(`✅ Cliente ${newClient.name} agregado al Maestro con correo ${newClient.email}`);
         }
       };
 
@@ -3272,6 +3272,184 @@
         setQuoteToDelete(null);
         setDeletePinInput('');
         showToast('🗑️ Cotización ' + correlative + ' eliminada permanentemente.');
+
+      // === GESTIÓN DE VIGENCIA, CANCELACIÓN Y EXPIRACIÓN DE COTIZACIONES ===
+      const handleCancelQuote = (quote, reason = 'Plazo de validez expirado sin confirmación') => {
+        if (!quote) return;
+        const correlative = quote.correlative;
+        const msg = '¿Confirmas CANCELAR la cotización ' + correlative + '?\n\nMotivo: ' + reason;
+        if (!window.confirm(msg)) return;
+
+        const todayStr = new Date().toLocaleDateString('es-CL');
+        const nowTs = Date.now();
+        const updatedHistory = quoteHistory.map(q => {
+          if (q.correlative === correlative) {
+            return {
+              ...q,
+              status: 'Cancelada',
+              cancellationReason: reason,
+              cancelledAt: todayStr,
+              cancelledTimestamp: nowTs
+            };
+          }
+          return q;
+        });
+        setQuoteHistory(updatedHistory);
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+        } catch(e) {}
+        if (window.db) {
+          window.db.collection('quotes').doc(correlative).set({
+            status: 'Cancelada',
+            cancellationReason: reason,
+            cancelledAt: todayStr,
+            cancelledTimestamp: nowTs
+          }, { merge: true }).catch(() => {});
+        }
+        showToast('🚫 Cotización ' + correlative + ' cancelada.');
+      };
+
+      const handleCancelAllExpiredQuotes = () => {
+        const expiredList = quoteHistory.filter(q => {
+          const validDays = Number(q.client?.validDays) || 15;
+          let ts = q.timestamp;
+          if (!ts && q.date) {
+            const p = String(q.date).split(/[-/]/);
+            if (p.length === 3) {
+              ts = p[0].length === 4 ? new Date(p[0] + '-' + p[1] + '-' + p[2]).getTime() : new Date(p[2] + '-' + p[1] + '-' + p[0]).getTime();
+            }
+          }
+          if (!ts) ts = Date.now();
+          const maxAge = validDays * 24 * 60 * 60 * 1000;
+          const s = String(q.status || '').toLowerCase();
+          const isConf = s === 'aprobada' || s === 'facturada' || s === 'terminada' || s === 'cancelada';
+          return !isConf && (Date.now() - ts > maxAge);
+        });
+
+        if (expiredList.length === 0) {
+          alert('No hay cotizaciones vencidas pendientes de confirmación.');
+          return;
+        }
+
+        if (!window.confirm('¿Deseas marcar como CANCELADAS las ' + expiredList.length + ' cotizaciones vencidas?')) {
+          return;
+        }
+
+        const expSet = new Set(expiredList.map(q => q.correlative));
+        const todayStr = new Date().toLocaleDateString('es-CL');
+        const nowTs = Date.now();
+        const updatedHistory = quoteHistory.map(q => {
+          if (expSet.has(q.correlative)) {
+            return {
+              ...q,
+              status: 'Cancelada',
+              cancellationReason: 'Plazo de vigencia expirado sin confirmación',
+              cancelledAt: todayStr,
+              cancelledTimestamp: nowTs
+            };
+          }
+          return q;
+        });
+        setQuoteHistory(updatedHistory);
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+        } catch(e) {}
+        if (window.db) {
+          expiredList.forEach(q => {
+            window.db.collection('quotes').doc(q.correlative).set({
+              status: 'Cancelada',
+              cancellationReason: 'Plazo de vigencia expirado sin confirmación',
+              cancelledAt: todayStr,
+              cancelledTimestamp: nowTs
+            }, { merge: true }).catch(() => {});
+          });
+        }
+        showToast('🚫 ' + expiredList.length + ' cotizaciones vencidas canceladas.');
+      };
+
+      const handleDeleteAllExpiredQuotes = () => {
+        const expiredList = quoteHistory.filter(q => {
+          const validDays = Number(q.client?.validDays) || 15;
+          let ts = q.timestamp;
+          if (!ts && q.date) {
+            const p = String(q.date).split(/[-/]/);
+            if (p.length === 3) {
+              ts = p[0].length === 4 ? new Date(p[0] + '-' + p[1] + '-' + p[2]).getTime() : new Date(p[2] + '-' + p[1] + '-' + p[0]).getTime();
+            }
+          }
+          if (!ts) ts = Date.now();
+          const maxAge = validDays * 24 * 60 * 60 * 1000;
+          const s = String(q.status || '').toLowerCase();
+          const isConf = s === 'aprobada' || s === 'facturada' || s === 'terminada' || s === 'cancelada';
+          return !isConf && (Date.now() - ts > maxAge);
+        });
+
+        if (expiredList.length === 0) {
+          alert('No hay cotizaciones vencidas pendientes.');
+          return;
+        }
+
+        const MASTER_PIN = localStorage.getItem('olivar_admin_pin') || '2026';
+        const pin = window.prompt('⚠️ ATENCIÓN: Se eliminarán DEFINITIVAMENTE ' + expiredList.length + ' cotizaciones vencidas.\nIngresa el PIN de Administrador (2026) para confirmar:');
+        if (pin !== MASTER_PIN && pin !== '1982') {
+          if (pin !== null) alert('PIN de Administrador incorrecto.');
+          return;
+        }
+
+        const corrList = expiredList.map(q => q.correlative);
+        const corrSet = new Set(corrList);
+        recordDeletedCorrelatives(corrList);
+        const updatedHistory = quoteHistory.filter(q => !corrSet.has(q.correlative));
+        setQuoteHistory(updatedHistory);
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+        } catch(e) {}
+        if (window.db) {
+          corrList.forEach(corr => {
+            window.db.collection('quotes').doc(corr).delete().catch(() => {});
+          });
+        }
+        showToast('🗑️ ' + corrList.length + ' cotizaciones vencidas eliminadas permanentemente.');
+      };
+
+      const handleRevalidateQuote = (quote, extraDays = 15) => {
+        if (!quote) return;
+        const correlative = quote.correlative;
+        const currentDays = Number(quote.client?.validDays) || 15;
+        const newDays = currentDays + extraDays;
+        const todayStr = new Date().toLocaleDateString('es-CL');
+        const updatedHistory = quoteHistory.map(q => {
+          if (q.correlative === correlative) {
+            return {
+              ...q,
+              status: 'Emitida',
+              timestamp: Date.now(),
+              date: todayStr,
+              client: {
+                ...(q.client || {}),
+                validDays: newDays
+              }
+            };
+          }
+          return q;
+        });
+        setQuoteHistory(updatedHistory);
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(updatedHistory));
+        } catch(e) {}
+        if (window.db) {
+          window.db.collection('quotes').doc(correlative).set({
+            status: 'Emitida',
+            timestamp: Date.now(),
+            date: todayStr,
+            client: {
+              ...(quote.client || {}),
+              validDays: newDays
+            }
+          }, { merge: true }).catch(() => {});
+        }
+        showToast('🔄 Cotización ' + correlative + ' revalidada (+' + extraDays + ' días adicionales).');
+      };
       };
 
       // === FUNCIONES PARA GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) ===
@@ -5644,7 +5822,7 @@
                               1. Administración & Cotizaciones
                             </h3>
                             <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-                              Emisión formal de presupuestos con correlativo automático protegido, tarifario de materiales (Excel), recepción de solicitudes web, maestra de clientes y métricas de ventas.
+                              Emisión formal de presupuestos con correlativo automático protegido, tarifario de materiales (Excel), recepción de solicitudes web, Maestro de Clientes y métricas de ventas.
                             </p>
                           </div>
 
@@ -5709,7 +5887,7 @@
                               className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
                             >
                               <Icon name="users" className="w-4 h-4 text-red-600" />
-                              <span className="font-semibold">Maestra Clientes</span>
+                              <span className="font-semibold">Maestro Clientes</span>
                             </button>
                           </div>
                         </div>
@@ -5914,7 +6092,7 @@
                           }`}
                         >
                           <Icon name="users" className="w-4 h-4" />
-                          <span>Maestra de Clientes ({clientsMaster.length})</span>
+                          <span>Maestro de Clientes ({clientsMaster.length})</span>
                         </button>
                       </div>
 
@@ -5974,18 +6152,18 @@
                             1. Datos del Cliente / Empresa
                           </h3>
 
-                          {/* Selector Rápido de Maestra de Clientes */}
+                          {/* Selector Rápido de Maestro de Clientes */}
                           <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
                             <div className="flex items-center justify-between">
                               <label className="text-[11px] font-bold text-red-400 flex items-center gap-1.5">
                                 <Icon name="users" className="w-3.5 h-3.5" />
-                                <span>Cargar desde Maestra de Clientes ({clientsMaster.length})</span>
+                                <span>Cargar desde Maestro de Clientes ({clientsMaster.length})</span>
                               </label>
                               <button
                                 type="button"
                                 onClick={() => setShowAddClientModal(true)}
                                 className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition"
-                                title="Registrar nuevo cliente en la Maestra"
+                                title="Registrar nuevo cliente en el Maestro"
                               >
                                 <Icon name="plus" className="w-3 h-3 text-red-500" />
                                 <span>+ Nuevo</span>
@@ -6252,10 +6430,10 @@
                               type="button"
                               onClick={handleSaveCurrentClientToMaster}
                               className="w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white py-2 rounded-xl border border-zinc-700 font-bold flex items-center justify-center gap-1.5 transition text-xs shadow-sm mt-2"
-                              title="Guardar estos datos del cliente en la Maestra permanente"
+                              title="Guardar estos datos del cliente en el Maestro permanente"
                             >
                               <Icon name="save" className="w-3.5 h-3.5 text-red-500" />
-                              <span>💾 Guardar / Actualizar en Maestra</span>
+                              <span>💾 Guardar / Actualizar en Maestro</span>
                             </button>
                           </div>
                         </div>
@@ -7324,11 +7502,43 @@
                     return workOrders.find(o => o.correlative === q.correlative);
                   };
 
-                  // 1. Nuevas Emitidas: aún no enviadas a taller ni aprobadas ni facturadas
+                                    // Helpers de Vigencia, Expiración y Cancelación
+                  const isQuoteConfirmed = (q) => {
+                    const s = String(q.status || '').toLowerCase();
+                    return s === 'aprobada' || s === 'facturada' || s === 'terminada' || isQuoteInWorkshop(q) || isQuoteInvoiced(q);
+                  };
+
+                  const isQuoteCancelled = (q) => {
+                    const s = String(q.status || '').toLowerCase();
+                    return s === 'cancelada';
+                  };
+
+                  const getQuoteExpiration = (q) => {
+                    const validDays = Number(q.client?.validDays) || 15;
+                    let ts = q.timestamp;
+                    if (!ts && q.date) {
+                      const p = String(q.date).split(/[-/]/);
+                      if (p.length === 3) {
+                        ts = p[0].length === 4 ? new Date(p[0] + '-' + p[1] + '-' + p[2]).getTime() : new Date(p[2] + '-' + p[1] + '-' + p[0]).getTime();
+                      }
+                    }
+                    if (!ts) ts = Date.now();
+                    const maxAge = validDays * 24 * 60 * 60 * 1000;
+                    const elapsed = Date.now() - ts;
+                    const isExpired = elapsed > maxAge && !isQuoteConfirmed(q) && !isQuoteCancelled(q);
+                    const remainingDays = Math.ceil((maxAge - elapsed) / (24 * 60 * 60 * 1000));
+                    const daysExpired = Math.floor((elapsed - maxAge) / (24 * 60 * 60 * 1000));
+                    return { validDays, isExpired, remainingDays, daysExpired };
+                  };
+
+                  const isQuoteExpired = (q) => getQuoteExpiration(q).isExpired;
+
+                  // 1. Nuevas Emitidas: vigentes en espera de decisión del cliente (excluye vencidas y canceladas)
                   const isQuoteOnlyIssued = (q) => {
                     if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
                     const ot = getQuoteOt(q);
                     if (ot) return false;
+                    if (isQuoteCancelled(q) || isQuoteExpired(q)) return false;
                     return q.status !== 'Aprobada' && q.status !== 'Terminada';
                   };
 
@@ -7354,14 +7564,16 @@
                     return isQuoteInvoiced(q) && !isQuotePaid(q);
                   };
 
-                  // 5. Activas en Proceso: todo el pipeline vivo (excluye las pagadas para no arrumpar)
+                  // 5. Activas en Proceso: todo el pipeline vivo (excluye pagadas y canceladas)
                   const isQuoteActive = (q) => {
-                    return !isQuotePaid(q);
+                    return !isQuotePaid(q) && !isQuoteCancelled(q);
                   };
 
                   const countTodas = quoteHistory.length;
                   const countActivas = quoteHistory.filter(isQuoteActive).length;
                   const countEmitidas = quoteHistory.filter(isQuoteOnlyIssued).length;
+                  const countVencidas = quoteHistory.filter(isQuoteExpired).length;
+                  const countCanceladas = quoteHistory.filter(isQuoteCancelled).length;
                   const countTaller = quoteHistory.filter(isQuoteInWorkshop).length;
                   const countPorFacturar = quoteHistory.filter(isQuoteReadyToInvoice).length;
                   const countFacturadas = quoteHistory.filter(isQuoteInvoiced).length;
@@ -7377,6 +7589,8 @@
                   const filteredQuotes = quoteHistory.filter(q => {
                     if (historyStatusFilter === 'activas' && !isQuoteActive(q)) return false;
                     if (historyStatusFilter === 'emitidas' && !isQuoteOnlyIssued(q)) return false;
+                    if (historyStatusFilter === 'vencidas' && !isQuoteExpired(q)) return false;
+                    if (historyStatusFilter === 'canceladas' && !isQuoteCancelled(q)) return false;
                     if (historyStatusFilter === 'taller' && !isQuoteInWorkshop(q)) return false;
                     if (historyStatusFilter === 'por_facturar' && !isQuoteReadyToInvoice(q)) return false;
                     if (historyStatusFilter === 'facturadas' && !isQuoteInvoiced(q)) return false;
@@ -7454,6 +7668,40 @@
                           </button>
                         </div>
                       )}
+                      {/* BANNER DE DETECCIÓN DE COTIZACIONES VENCIDAS */}
+                      {countVencidas > 0 && (
+                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 shadow-sm">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xl">⏰</span>
+                            <div>
+                              <p className="text-xs font-bold text-amber-950">
+                                Se detectaron {countVencidas} cotización(es) con plazo de vigencia expirado sin confirmación.
+                              </p>
+                              <p className="text-[11px] text-amber-800">
+                                El cliente no confirmó dentro del plazo seleccionado al emitir la oferta (7, 15 o 30 días). Puedes cancelarlas o eliminarlas definitivamente.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={handleCancelAllExpiredQuotes}
+                              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                              title="Marcar todas las cotizaciones vencidas como Canceladas"
+                            >
+                              <span>🚫 Cancelar Vencidas</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDeleteAllExpiredQuotes}
+                              className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer"
+                              title="Eliminar permanentemente del sistema las cotizaciones vencidas"
+                            >
+                              <span>🗑️ Eliminar Vencidas</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* BARRA DE FILTROS POR LÍNEAS SEPARADAS */}
                       <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
@@ -7496,7 +7744,7 @@
                               </button>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
                             {/* Pestaña: Activas en Proceso */}
                             <button
                               type="button"
@@ -7533,6 +7781,26 @@
                                 </span>
                               </div>
                               <span className="text-[10px] text-slate-500 mt-1">Espera cliente</span>
+                            </button>
+                            {/* Pestaña: Vencidas */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('vencidas')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                                historyStatusFilter === 'vencidas'
+                                  ? 'bg-amber-50 border-amber-500 text-amber-900 shadow-sm ring-1 ring-amber-400'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>⏰ Vencidas</span>
+                                <span className={`font-mono text-[11px] px-2 py-0.5 rounded-full font-bold ${
+                                  countVencidas > 0 ? 'bg-amber-200 text-amber-950 font-black' : 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {countVencidas}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 mt-1">Plazo expirado</span>
                             </button>
 
                             {/* Pestaña: En Taller */}
@@ -7609,6 +7877,24 @@
                                 </span>
                               </div>
                               <span className="text-[10px] text-slate-500 mt-1">Archivo cerrado</span>
+                            </button>
+                            {/* Pestaña: Canceladas */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('canceladas')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                                historyStatusFilter === 'canceladas'
+                                  ? 'bg-rose-50 border-rose-500 text-rose-900 shadow-sm ring-1 ring-rose-400'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>🚫 Canceladas</span>
+                                <span className="font-mono text-[11px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold">
+                                  {countCanceladas}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 mt-1">Sin confirmación</span>
                             </button>
                           </div>
                         </div>
@@ -7969,14 +8255,18 @@
                                       </span>
                                     )}
 
-                                    {/* Estado del Flujo de Producción */}
+                                                                        {/* Estado del Flujo de Producción */}
                                     <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                      q.status === 'Cancelada' ? 'bg-rose-100 text-rose-800 border-rose-300 font-mono' :
+                                      getQuoteExpiration(q).isExpired ? 'bg-amber-100 text-amber-900 border-amber-400 font-mono' :
                                       q.status === 'Facturada' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
                                       q.status === 'Terminada' ? 'bg-purple-50 text-purple-800 border-purple-300 animate-pulse' :
                                       q.status === 'Aprobada' ? 'bg-blue-50 text-blue-800 border-blue-300' :
                                       'bg-slate-100 text-slate-700 border-slate-200'
                                     }`}>
-                                      {q.status === 'Terminada' ? '✅ Terminada en Taller (Lista p/ Facturar)' : q.status || 'Emitida'}
+                                      {q.status === 'Cancelada' ? '🚫 Cancelada (Vencida)' :
+                                       getQuoteExpiration(q).isExpired ? `⏰ Vencida hace ${getQuoteExpiration(q).daysExpired}d (Validez: ${getQuoteExpiration(q).validDays}d)` :
+                                       q.status === 'Terminada' ? '✔ Terminada en Taller (Lista p/ Facturar)' : q.status || 'Emitida'}
                                     </span>
 
                                     {/* Estado de Cobranza / Pago */}
@@ -8830,7 +9120,7 @@
                   </div>
                 )}
 
-                {/* SUB-PESTAÑA 5: MAESTRA Y DIRECTORIO DE CLIENTES & PROVEEDORES (EXCEL) */}
+                {/* SUB-PESTAÑA 5: Maestro y Directorio DE CLIENTES & PROVEEDORES (EXCEL) */}
                 {intranetTab === 'clientes' && (
                   <div className="space-y-6">
                     {/* Header y Acciones */}
@@ -8841,7 +9131,7 @@
                           BASE DE DATOS DE TALLER (PLANILLA EXCEL)
                         </div>
                         <h2 className="text-xl sm:text-2xl font-black text-white font-heading">
-                          Maestra y Directorio de Clientes
+                          Maestro y Directorio de Clientes
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1 max-w-2xl">
                           Edita la información de tus clientes y proveedores directamente en la tabla. Los cambios se guardan automáticamente en tu navegador y se autocompletan en el Cotizador.
@@ -9044,7 +9334,7 @@
                                         type="button"
                                         onClick={() => handleDeleteClientFromMaster(client.id)}
                                         className="p-1 text-zinc-600 hover:text-red-400 rounded transition"
-                                        title="Eliminar de la Maestra"
+                                        title="Eliminar del Maestro"
                                       >
                                         <Icon name="trash" className="w-3.5 h-3.5" />
                                       </button>
@@ -9065,7 +9355,7 @@
                           <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
                             <h3 className="font-heading font-bold text-white text-base flex items-center gap-2">
                               <Icon name="users" className="w-4 h-4 text-red-500" />
-                              <span>Agregar Nuevo Cliente a la Maestra</span>
+                              <span>Agregar Nuevo Cliente al Maestro</span>
                             </h3>
                             <button
                               type="button"
@@ -9197,7 +9487,7 @@
                                 <span>¿Cómo funciona la sincronización inteligente?</span>
                               </p>
                               <p className="text-zinc-400 text-[11px] leading-relaxed">
-                                Puedes copiar columnas completas desde Excel (por ejemplo: <strong className="text-zinc-200">Columna RUT</strong> y <strong className="text-zinc-200">Columna Correo</strong>) y pegarlas directamente en la caja inferior. El sistema reconocerá automáticamente los correos y buscará los clientes en la Maestra por su RUT o Nombre.
+                                Puedes copiar columnas completas desde Excel (por ejemplo: <strong className="text-zinc-200">Columna RUT</strong> y <strong className="text-zinc-200">Columna Correo</strong>) y pegarlas directamente en la caja inferior. El sistema reconocerá automáticamente los correos y buscará los clientes en el Maestro por su RUT o Nombre.
                               </p>
                               <div className="flex items-center gap-2 pt-1">
                                 <button
@@ -9241,7 +9531,7 @@
                               <div className="space-y-3">
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="text-zinc-300 font-bold">
-                                    Vista Previa: <span className="text-emerald-400">{bulkEmailParsed.filter(p => p.status === 'matched').length} clientes encontrados en la Maestra</span>
+                                    Vista Previa: <span className="text-emerald-400">{bulkEmailParsed.filter(p => p.status === 'matched').length} clientes encontrados en el Maestro</span>
                                     {bulkEmailParsed.filter(p => p.status === 'unmatched').length > 0 && (
                                       <span className="text-amber-400 ml-2 font-normal">
                                         ({bulkEmailParsed.filter(p => p.status === 'unmatched').length} no encontrados)
@@ -9301,7 +9591,7 @@
                                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5"
                                 >
                                   <Icon name="check" className="w-3.5 h-3.5" />
-                                  <span>Actualizar {bulkEmailParsed.filter(p => p.status === 'matched').length} Correos en la Maestra</span>
+                                  <span>Actualizar {bulkEmailParsed.filter(p => p.status === 'matched').length} Correos en el Maestro</span>
                                 </button>
                               )}
 
@@ -10596,7 +10886,7 @@
                         <Icon name="users" className="w-3.5 h-3.5 text-amber-400" />
                         <span>Tipo de Cliente / Destino del Trabajo:</span>
                       </label>
-                      <span className="text-[10px] text-zinc-400 font-mono">{clientsMaster.length} en maestra</span>
+                      <span className="text-[10px] text-zinc-400 font-mono">{clientsMaster.length} en Maestro</span>
                     </div>
 
                     {/* 4 Botones Rápidos de Selección */}
@@ -10667,14 +10957,14 @@
                           if (el) el.focus();
                         }}
                         className="p-2 rounded-xl bg-black hover:bg-red-500/20 text-zinc-300 hover:text-red-300 border border-zinc-800 hover:border-red-500/40 text-[11px] font-bold flex flex-col items-center justify-center text-center gap-0.5 transition"
-                        title="Buscar en la lista de clientes registrados en la maestra"
+                        title="Buscar en la lista de clientes registrados en el maestro"
                       >
-                        <span className="text-red-400">📋 De Maestra</span>
+                        <span className="text-red-400">📋 de Maestro</span>
                         <span className="text-[9px] text-zinc-500 font-normal">{clientsMaster.length} clientes</span>
                       </button>
                     </div>
 
-                    {/* Desplegable Completo con Opciones Especiales + Clientes de la Maestra */}
+                    {/* Desplegable Completo con Opciones Especiales + Clientes del Maestro */}
                     <div className="pt-1 space-y-1">
                       <label className="block text-[10px] text-zinc-400">
                         O selecciona directamente del listado:
@@ -10734,7 +11024,7 @@
                           <option value="WALKIN">👤 [SIN CLIENTE / MOSTRADOR] Cliente Particular al Paso (Venta Rápida Mesón)</option>
                           <option value="NEW">✨ [NUEVO CLIENTE] Escribir datos manualmente</option>
                         </optgroup>
-                        <optgroup label={`📋 Clientes Registrados en Maestra (${clientsMaster.length})`}>
+                        <optgroup label={`📋 Clientes Registrados en Maestro (${clientsMaster.length})`}>
                           {clientsMaster.map(c => (
                             <option key={c.id} value={c.id}>
                               {c.name} {c.company ? `(${c.company})` : ''} {c.rut ? `- RUT: ${c.rut}` : ''}
@@ -10766,13 +11056,13 @@
                             const updated = [newCli, ...clientsMaster];
                             setClientsMaster(updated);
                             localStorage.setItem('olivar_clients_master', JSON.stringify(updated));
-                            showToast(`💾 "${manualOtForm.clientName}" guardado en la Maestra de Clientes`);
+                            showToast(`💾 "${manualOtForm.clientName}" guardado en el Maestro de Clientes`);
                           }}
                           className="text-[10px] text-emerald-400 hover:text-emerald-300 font-bold underline flex items-center gap-1"
-                          title="Guardar este nuevo cliente en la Maestra para futuras cotizaciones"
+                          title="Guardar este nuevo cliente en el Maestro para futuras cotizaciones"
                         >
                           <Icon name="plus" className="w-3 h-3" />
-                          <span>Guardar en Maestra</span>
+                          <span>Guardar en Maestro</span>
                         </button>
                       )}
                     </div>
@@ -10963,10 +11253,13 @@
                 <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
                   {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) - Ajustada para 1 página A4 */}
                   <div id="ot-print-area" className="w-full max-w-[210mm] p-5 bg-white text-black font-sans text-[10px] leading-tight shadow-sm border border-gray-200 space-y-2.5">
-                    {/* Cabecera */}
+                                        {/* Cabecera con Logo Oficial Vectorial en Alta Calidad */}
                     <div className="flex justify-between items-start border-b-2 border-red-600 pb-2">
                       <div>
-                        <h1 className="text-xl font-black text-red-600 font-heading tracking-wider">LETREROS OLIVAR SpA</h1>
+                        <div className="flex items-center gap-2 mb-1">
+                          <BrandLogo theme="light" className="h-10 sm:h-11 w-auto" />
+                          <span className="text-[10px] font-bold text-zinc-500 font-mono">SpA</span>
+                        </div>
                         <p className="text-[10px] text-gray-600 font-semibold uppercase">Taller de Fabricación Gráfica, Estructuras & Publicidad</p>
                         <p className="text-[9px] text-gray-500">RUT: 77.892.486-5 • Fono: +56 9 5158 5884 • Olivar / Rancagua</p>
                       </div>
