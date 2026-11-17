@@ -1549,21 +1549,7 @@
         unit: 'm²'
       });
 
-      const [quoteItems, setQuoteItems] = useState([
-        {
-          id: 'item-1',
-          name: 'Tela PVC 340gr (1.10m)',
-          calcType: 'sqm',
-          width: 3.0,
-          height: 1.0,
-          quantity: 1,
-          unitPrice: 14000,
-          unitLabel: 'm²',
-          selectedOptions: ['Termosellado perimetral con ojetillos (+$2.500/m²)'],
-          optionsTotal: 7500,
-          subtotal: 49500
-        }
-      ]);
+      const [quoteItems, setQuoteItems] = useState([]);
 
       // Fotografías y Renders Adjuntos a la Cotización (Requerimiento Camila)
       const [quoteImages, setQuoteImages] = useState([]);
@@ -1689,12 +1675,12 @@
         };
       }, [quoteHistory, workOrders, receivedRequests, kpiMonth]);
 
-      const [itemDesc, setItemDesc] = useState('Tela PVC 340gr (1.10m)');
+      const [itemDesc, setItemDesc] = useState('');
       const [itemDetail, setItemDetail] = useState('');
-      const [itemWidth, setItemWidth] = useState(3.0);
-      const [itemHeight, setItemHeight] = useState(1.0);
+      const [itemWidth, setItemWidth] = useState('');
+      const [itemHeight, setItemHeight] = useState('');
       const [itemQty, setItemQty] = useState(1);
-      const [itemPrice, setItemPrice] = useState(14000);
+      const [itemPrice, setItemPrice] = useState(0);
       const [priceMode, setPriceMode] = useState('sqm'); // 'sqm' | 'unit_piece'
       const [installationFee, setInstallationFee] = useState(0);
       const [freightFee, setFreightFee] = useState(0);
@@ -5197,6 +5183,9 @@
                             onClick={() => {
                               setIntranetSection('admin');
                               setIntranetTab('cotizador');
+                              if (!editingCorrelative) {
+                                handleStartNewQuote(true);
+                              }
                             }}
                             className="w-full py-3.5 px-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-red-600/30 group-hover:shadow-red-600/50"
                           >
