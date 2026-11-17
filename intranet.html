@@ -196,7 +196,7 @@
     }
 
     /* ============================================================== */
-    /* ESTILOS DE FONDO BLANCO / MODO CLARO PARA INTRANET            */
+    /* PALETA ARMÓNICA DE ALTO CONTRASTE - MODO CLARO CORPORATIVO     */
     /* ============================================================== */
     html, body {
       background-color: #f8fafc !important;
@@ -212,31 +212,39 @@
       color: #0f172a !important;
       box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05) !important;
     }
-    .bg-black {
+    /* Contenedores y tarjetas principales */
+    .bg-black, .bg-zinc-950, .bg-zinc-900, .bg-zinc-850 {
       background-color: #ffffff !important;
       border-color: #e2e8f0 !important;
       color: #0f172a !important;
     }
-    .bg-zinc-950, .bg-zinc-900 {
-      background-color: #ffffff !important;
-      border-color: #e2e8f0 !important;
-      color: #0f172a !important;
-    }
-    .bg-zinc-900\/90, .bg-zinc-900\/80, .bg-zinc-900\/70, .bg-zinc-900\/60, .bg-zinc-900\/40, .bg-zinc-900\/20 {
+    .bg-zinc-900\/90, .bg-zinc-900\/80, .bg-zinc-900\/70, .bg-zinc-900\/60,
+    .bg-zinc-900\/50, .bg-zinc-900\/40, .bg-zinc-900\/30, .bg-zinc-900\/20,
+    .bg-zinc-950\/40, .bg-zinc-950\/20 {
       background-color: #f8fafc !important;
       border-color: #e2e8f0 !important;
       color: #0f172a !important;
+    }
+    .bg-zinc-800, .bg-zinc-700 {
+      background-color: #f1f5f9 !important;
+      border-color: #cbd5e1 !important;
+      color: #1e293b !important;
     }
     .bg-gradient-to-r, .bg-gradient-to-t, .bg-gradient-to-b {
       background: #ffffff !important;
       border-color: #e2e8f0 !important;
       color: #0f172a !important;
     }
+
+    /* Tipografía y jerarquía */
     .text-white {
       color: #0f172a !important;
     }
-    .text-zinc-100, .text-zinc-200, .text-zinc-300 {
+    .text-zinc-100, .text-zinc-200 {
       color: #1e293b !important;
+    }
+    .text-zinc-300 {
+      color: #334155 !important;
     }
     .text-zinc-400 {
       color: #475569 !important;
@@ -247,32 +255,104 @@
     .border-zinc-900, .border-zinc-800, .border-zinc-700 {
       border-color: #e2e8f0 !important;
     }
-    /* Preservar texto blanco en botones de colores y badges sólidos */
+
+    /* BOTONES PRIMARIOS SÓLIDOS (Texto blanco vibrante garantizado) */
     .bg-red-600, .bg-red-500,
-    .bg-emerald-600, .bg-emerald-500,
-    .bg-blue-600, .bg-blue-500,
     button.bg-red-600, button.bg-red-500,
+    .bg-emerald-600, .bg-emerald-500,
     button.bg-emerald-600, button.bg-emerald-500,
+    .bg-blue-600, .bg-blue-500,
     button.bg-blue-600, button.bg-blue-500 {
       color: #ffffff !important;
     }
     .bg-red-600 *, .bg-red-500 *,
+    button.bg-red-600 *, button.bg-red-500 *,
     .bg-emerald-600 *, .bg-emerald-500 *,
-    .bg-blue-600 *, .bg-blue-500 * {
+    button.bg-emerald-600 *, button.bg-emerald-500 *,
+    .bg-blue-600 *, .bg-blue-500 *,
+    button.bg-blue-600 *, button.bg-blue-500 * {
       color: #ffffff !important;
     }
+
+    /* BOTONES SECUNDARIOS / OUTLINE (Elimina el 'negro sobre plomo' y 'verde sobre plomo') */
+    button.bg-zinc-900, button.bg-zinc-800,
+    a.bg-zinc-900, a.bg-zinc-800 {
+      background-color: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+      color: #1e293b !important;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+    }
+    button.bg-zinc-900:hover, button.bg-zinc-800:hover,
+    a.bg-zinc-900:hover, a.bg-zinc-800:hover {
+      background-color: #f8fafc !important;
+      border-color: #94a3b8 !important;
+      color: #0f172a !important;
+    }
+
+    /* BADGES Y CHIPS CON VERDE INSTITUCIONAL Y TONOS PASTEL DE ALTO CONTRASTE */
+    .text-emerald-400, .text-emerald-500 {
+      color: #047857 !important; /* verde esmeralda profundo legible */
+    }
+    .bg-emerald-500\/10, .bg-emerald-500\/20, .bg-emerald-900\/30, .bg-emerald-950\/40 {
+      background-color: #ecfdf5 !important;
+      border-color: #a7f3d0 !important;
+      color: #047857 !important;
+    }
+    .text-amber-400, .text-amber-500 {
+      color: #b45309 !important; /* ámbar oscuro */
+    }
+    .bg-amber-500\/10, .bg-amber-500\/20, .bg-amber-900\/30, .bg-amber-950\/40 {
+      background-color: #fffbeb !important;
+      border-color: #fde68a !important;
+      color: #b45309 !important;
+    }
+    .text-blue-400, .text-blue-500 {
+      color: #1d4ed8 !important;
+    }
+    .bg-blue-500\/10, .bg-blue-500\/20, .bg-blue-600\/20, .bg-blue-900\/30 {
+      background-color: #eff6ff !important;
+      border-color: #bfdbfe !important;
+      color: #1d4ed8 !important;
+    }
+    .text-red-400, .text-red-500 {
+      color: #b91c1c !important;
+    }
+    .bg-red-500\/10, .bg-red-500\/20, .bg-red-600\/15, .bg-red-950\/30 {
+      background-color: #fef2f2 !important;
+      border-color: #fecaca !important;
+      color: #b91c1c !important;
+    }
+    .text-purple-400, .text-purple-500 {
+      color: #6d28d9 !important;
+    }
+    .bg-purple-500\/10, .bg-purple-500\/20 {
+      background-color: #f5f3ff !important;
+      border-color: #ddd6fe !important;
+      color: #6d28d9 !important;
+    }
+
     /* Inputs y controles de formulario */
     input, select, textarea {
       background-color: #ffffff !important;
       color: #0f172a !important;
       border-color: #cbd5e1 !important;
     }
+    input:focus, select:focus, textarea:focus {
+      border-color: #dc2626 !important;
+      box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important;
+    }
     input::placeholder, textarea::placeholder {
       color: #94a3b8 !important;
     }
-    /* Tablas y tarjetas */
+
+    /* Tablas y filas hover */
     table tbody tr:hover {
       background-color: #f1f5f9 !important;
+    }
+
+    /* Modales flotantes (Ficha OT, Vista de Impresión, Edición) */
+    .fixed.inset-0.bg-black\/80, .fixed.inset-0.bg-black\/90, .fixed.inset-0.bg-black\/70 {
+      background-color: rgba(15, 23, 42, 0.6) !important;
     }
   </style>
 </head>
@@ -1569,7 +1649,7 @@
           }
         ];
       });
-      const [otFilterStatus, setOtFilterStatus] = useState('todos');
+      const [otFilterStatus, setOtFilterStatus] = useState('activas');
       const [otSearch, setOtSearch] = useState('');
       const [selectedOtForPrint, setSelectedOtForPrint] = useState(null);
       const [showOtPrintModal, setShowOtPrintModal] = useState(false);
@@ -1799,7 +1879,7 @@
       const [invoiceOcNumber, setInvoiceOcNumber] = useState('');
 
       // Estados para Filtros Avanzados del Historial y Cobranzas
-      const [historyStatusFilter, setHistoryStatusFilter] = useState('todas'); // 'todas', 'emitidas', 'taller', 'facturadas', 'pagadas', 'pendientes_pago'
+      const [historyStatusFilter, setHistoryStatusFilter] = useState('activas'); // 'activas', 'emitidas', 'taller', 'por_facturar', 'facturadas', 'pagadas', 'todas'
       const [historySearchQuery, setHistorySearchQuery] = useState('');
       const [showSupervisorDashboard, setShowSupervisorDashboard] = useState(false);
       const [supervisorFilter, setSupervisorFilter] = useState('retrasadas'); // 'retrasadas', 'todas_activas', 'urgentes'
@@ -3571,6 +3651,95 @@
         } else {
           showToast(`↩️ Cotización ${correlative} devuelta a Pendiente de Pago.`);
         }
+      };
+
+      // === DETECCIÓN Y RESOLUCIÓN INTELIGENTE DE COTIZACIONES DUPLICADAS ===
+      const duplicateQuotesInfo = useMemo(() => {
+        const map = new Map(); // correlative -> originalQuote
+        const signatures = new Map(); // signature -> firstQuote
+
+        // Ordenar de la más antigua a la más nueva para conservar siempre la primera emitida
+        const sorted = [...quoteHistory].sort((a, b) => {
+          const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+          const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+          return numA - numB;
+        });
+
+        sorted.forEach(q => {
+          const clientName = (q.client?.name || '').trim().toLowerCase();
+          const total = Math.round(q.totals?.total || 0);
+          const firstItem = ((q.items && q.items[0] && q.items[0].name) || '').trim().toLowerCase();
+          const itemsCount = (q.items || []).length;
+          
+          if (clientName && total > 0) {
+            // Mismo cliente + mismo total + misma cantidad de ítems + mismo primer ítem
+            const sig = `${clientName}__${total}__${itemsCount}__${firstItem}`;
+            if (signatures.has(sig)) {
+              const original = signatures.get(sig);
+              if (original.correlative !== q.correlative) {
+                map.set(q.correlative, original);
+              }
+            } else {
+              signatures.set(sig, q);
+            }
+          }
+        });
+
+        return map;
+      }, [quoteHistory]);
+
+      const handleResolveDuplicates = () => {
+        if (duplicateQuotesInfo.size === 0) {
+          showToast('ℹ️ No se detectan cotizaciones duplicadas en el historial.');
+          return;
+        }
+
+        const dupEntries = Array.from(duplicateQuotesInfo.entries());
+        const sumDups = dupEntries.reduce((sum, [corr, orig]) => {
+          const q = quoteHistory.find(item => item.correlative === corr);
+          return sum + (q?.totals?.total || 0);
+        }, 0);
+
+        const confirmMsg = `Se detectaron ${dupEntries.length} cotizaciones duplicadas en el historial (Monto inflado: ${formatCLP(sumDups)}):\n\n` +
+          dupEntries.map(([dupCorr, orig]) => `• ${dupCorr} (copia idéntica de ${orig.correlative} - ${orig.client?.name} - ${formatCLP(orig.totals?.total)})`).join('\n') +
+          `\n\n¿Deseas eliminarlas y dejar únicamente las cotizaciones originales?`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        const dupSet = new Set(duplicateQuotesInfo.keys());
+        const cleanedHistory = quoteHistory.filter(q => !dupSet.has(q.correlative));
+
+        setQuoteHistory(cleanedHistory);
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(cleanedHistory));
+        } catch(e) {}
+
+        if (window.db) {
+          dupEntries.forEach(([dupCorr]) => {
+            window.db.collection('quotes').doc(dupCorr).delete()
+              .then(() => console.log('🗑️ Duplicado eliminado de Firebase:', dupCorr))
+              .catch(err => console.warn('Error eliminando de Firebase:', dupCorr, err));
+          });
+        }
+
+        showToast(`✅ Se eliminaron ${dupEntries.length} duplicados. El historial ahora refleja exactamente los montos reales.`);
+      };
+
+      const handleDeleteSingleDuplicate = (correlative) => {
+        const orig = duplicateQuotesInfo.get(correlative);
+        const confirmMsg = `¿Eliminar la cotización duplicada ${correlative}${orig ? ` (copia de ${orig.correlative})` : ''}?`;
+        if (!window.confirm(confirmMsg)) return;
+
+        const cleanedHistory = quoteHistory.filter(q => q.correlative !== correlative);
+        setQuoteHistory(cleanedHistory);
+        try {
+          localStorage.setItem('olivar_quotes_history', JSON.stringify(cleanedHistory));
+        } catch(e) {}
+
+        if (window.db) {
+          window.db.collection('quotes').doc(correlative).delete().catch(() => {});
+        }
+        showToast(`✅ Cotización duplicada ${correlative} eliminada.`);
       };
 
       // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---
@@ -7071,43 +7240,68 @@
                     return q.status === 'Facturada' || Boolean(q.invoiceNumber);
                   };
 
-                  const isQuoteInWorkshop = (q) => {
-                    const hasOt = workOrders.some(o => o.correlative === q.correlative);
-                    return q.status === 'Aprobada' || q.status === 'Terminada' || hasOt;
+                  const getQuoteOt = (q) => {
+                    return workOrders.find(o => o.correlative === q.correlative);
                   };
 
+                  // 1. Nuevas Emitidas: aún no enviadas a taller ni aprobadas ni facturadas
                   const isQuoteOnlyIssued = (q) => {
-                    const hasOt = workOrders.some(o => o.correlative === q.correlative);
-                    return !hasOt && q.status !== 'Aprobada' && q.status !== 'Terminada' && q.status !== 'Facturada' && !q.invoiceNumber;
+                    if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
+                    const ot = getQuoteOt(q);
+                    if (ot) return false;
+                    return q.status !== 'Aprobada' && q.status !== 'Terminada';
+                  };
+
+                  // 2. En Fabricación / Taller: tiene OT en taller que no ha finalizado (no completada)
+                  const isQuoteInWorkshop = (q) => {
+                    if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
+                    const ot = getQuoteOt(q);
+                    if (ot) {
+                      return ot.status !== 'completado';
+                    }
+                    return q.status === 'Aprobada';
+                  };
+
+                  // 3. Por Facturar: terminada en taller (OT completada o q.status === 'Terminada') pero aún no facturada
+                  const isQuoteReadyToInvoice = (q) => {
+                    if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
+                    const ot = getQuoteOt(q);
+                    return q.status === 'Terminada' || (ot && ot.status === 'completado');
+                  };
+
+                  // 4. Facturadas pendientes de cobro (Cobranza activa)
+                  const isQuoteInvoicedPending = (q) => {
+                    return isQuoteInvoiced(q) && !isQuotePaid(q);
+                  };
+
+                  // 5. Activas en Proceso: todo el pipeline vivo (excluye las pagadas para no arrumpar)
+                  const isQuoteActive = (q) => {
+                    return !isQuotePaid(q);
                   };
 
                   const countTodas = quoteHistory.length;
+                  const countActivas = quoteHistory.filter(isQuoteActive).length;
                   const countEmitidas = quoteHistory.filter(isQuoteOnlyIssued).length;
                   const countTaller = quoteHistory.filter(isQuoteInWorkshop).length;
+                  const countPorFacturar = quoteHistory.filter(isQuoteReadyToInvoice).length;
+                  const countFacturadas = quoteHistory.filter(isQuoteInvoiced).length;
+                  const countFacturasPendientes = quoteHistory.filter(isQuoteInvoicedPending).length;
+                  const countPagadas = quoteHistory.filter(isQuotePaid).length;
 
                   // Facturas emitidas oficialmente (SII)
                   const invoicedQuotes = quoteHistory.filter(isQuoteInvoiced);
-                  const countFacturadas = invoicedQuotes.length;
-
-                  // Facturas pendientes de cobro real (Cobranza Semanal: SOLO FACTURADAS SIN PAGAR)
-                  const facturasPendientesCobro = invoicedQuotes.filter(q => !isQuotePaid(q));
-                  const countFacturasPendientes = facturasPendientesCobro.length;
-                  const totalFacturasPorCobrar = facturasPendientesCobro.reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
-
-                  // Facturas ya cobradas / pagadas
-                  const facturasPagadas = invoicedQuotes.filter(isQuotePaid);
-                  const countFacturasPagadas = facturasPagadas.length;
+                  const totalFacturasPorCobrar = quoteHistory.filter(isQuoteInvoicedPending).reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
+                  const facturasPagadas = quoteHistory.filter(isQuotePaid);
                   const totalFacturasPagadas = facturasPagadas.reduce((sum, q) => sum + (parseFloat(q.totals?.total) || 0), 0);
 
-                  const countPagadas = quoteHistory.filter(isQuotePaid).length;
-
                   const filteredQuotes = quoteHistory.filter(q => {
+                    if (historyStatusFilter === 'activas' && !isQuoteActive(q)) return false;
                     if (historyStatusFilter === 'emitidas' && !isQuoteOnlyIssued(q)) return false;
                     if (historyStatusFilter === 'taller' && !isQuoteInWorkshop(q)) return false;
+                    if (historyStatusFilter === 'por_facturar' && !isQuoteReadyToInvoice(q)) return false;
                     if (historyStatusFilter === 'facturadas' && !isQuoteInvoiced(q)) return false;
+                    if (historyStatusFilter === 'pendientes_pago' && !isQuoteInvoicedPending(q)) return false;
                     if (historyStatusFilter === 'pagadas' && !isQuotePaid(q)) return false;
-                    // REVISIÓN SEMANAL DE COBRANZA: SOLO FACTURADAS SIN PAGAR
-                    if (historyStatusFilter === 'pendientes_pago' && (!isQuoteInvoiced(q) || isQuotePaid(q))) return false;
 
                     if (historySearchQuery.trim()) {
                       const qStr = historySearchQuery.trim().toLowerCase();
@@ -7125,23 +7319,23 @@
                   return (
                     <div className="space-y-4">
                       {/* Cabecera Principal y Acciones */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-black border border-zinc-800">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
                         <div>
-                          <h2 className="text-lg font-bold text-white font-heading flex items-center gap-2">
+                          <h2 className="text-lg font-bold text-slate-900 font-heading flex items-center gap-2">
                             <span>Historial de Cotizaciones & Gestión de Cobranzas</span>
-                            <span className="text-xs font-mono bg-zinc-800 text-zinc-300 px-2.5 py-0.5 rounded-full">
+                            <span className="text-xs font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-bold">
                               {countTodas} en total
                             </span>
                           </h2>
-                          <p className="text-xs text-zinc-400 mt-0.5">
-                            Control del ciclo completo: emisión, aprobación, órdenes en taller, facturación electrónica y pagos.
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Control del ciclo completo: emisión, órdenes en taller, listado para facturar, cobranzas y archivo de pagadas.
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={handleSyncAllCloud}
-                            className="px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
                             title="Sincronizar y forzar la descarga de cotizaciones desde Firebase"
                           >
                             <Icon name="refresh" className="w-3.5 h-3.5" />
@@ -7149,7 +7343,7 @@
                           </button>
                           <button
                             onClick={() => handleStartNewQuote()}
-                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-2 transition shadow-md shadow-red-600/20 cursor-pointer"
                           >
                             <Icon name="plus" className="w-4 h-4" />
                             <span>➕ Crear Nueva Cotización</span>
@@ -7157,8 +7351,32 @@
                         </div>
                       </div>
 
+                      {/* BANNER DE DETECCIÓN Y LIMPIEZA DE DUPLICADOS */}
+                      {duplicateQuotesInfo.size > 0 && (
+                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 shadow-sm">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xl">⚠️</span>
+                            <div>
+                              <p className="text-xs font-bold text-amber-900">
+                                Se detectaron {duplicateQuotesInfo.size} cotizaciones duplicadas (inflan el total emitido).
+                              </p>
+                              <p className="text-[11px] text-amber-700">
+                                Copias idénticas emitidas en la misma fecha (Altafe, Fripack, Sergio Cortés). Al limpiarlas, se conservan las cotizaciones originales intactas.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleResolveDuplicates}
+                            className="px-3.5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
+                          >
+                            <span>🧹 Limpiar {duplicateQuotesInfo.size} Duplicados</span>
+                          </button>
+                        </div>
+                      )}
+
                       {/* BARRA DE FILTROS POR LÍNEAS SEPARADAS */}
-                      <div className="p-4 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-3">
+                      <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
                         {/* Línea 1: Buscador en tiempo real */}
                         <div className="relative">
                           <input
@@ -7166,121 +7384,151 @@
                             placeholder="🔍 Buscar por cliente, correlativo COT-XXXX, RUT, N° Factura u Orden de Compra (OC)..."
                             value={historySearchQuery}
                             onChange={(e) => setHistorySearchQuery(e.target.value)}
-                            className="w-full bg-black text-white text-xs px-4 py-2.5 pl-10 rounded-xl border border-zinc-700 focus:border-red-500 focus:outline-none font-mono"
+                            className="w-full bg-slate-50 text-slate-800 text-xs px-4 py-2.5 pl-10 rounded-xl border border-slate-300 focus:border-red-500 focus:bg-white focus:outline-none font-mono transition"
                           />
-                          <div className="absolute left-3.5 top-3 text-zinc-500 text-xs">
+                          <div className="absolute left-3.5 top-3 text-slate-400 text-xs">
                             <Icon name="search" className="w-4 h-4" />
                           </div>
                           {historySearchQuery && (
                             <button
                               type="button"
                               onClick={() => setHistorySearchQuery('')}
-                              className="absolute right-3 top-2.5 text-zinc-400 hover:text-white text-xs font-bold"
+                              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 text-xs font-bold"
                             >
                               ✕ Limpiar
                             </button>
                           )}
                         </div>
 
-                        {/* Línea 2: Filtros por Estado del Ciclo de Producción (En líneas y botones claros) */}
+                        {/* Línea 2: Flujo Operativo Separado (Sin arrumpar) */}
                         <div>
-                          <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider block mb-1.5">
-                            Filtrar por Etapa del Trabajo:
-                          </span>
-                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                            {/* Pestaña / Botón 1: Todas */}
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                              Listados del Ciclo de Producción & Facturación:
+                            </span>
+                            {historyStatusFilter !== 'activas' && (
+                              <button
+                                type="button"
+                                onClick={() => setHistoryStatusFilter('activas')}
+                                className="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
+                              >
+                                ← Volver a Activas
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                            {/* Pestaña: Activas en Proceso */}
                             <button
                               type="button"
-                              onClick={() => setHistoryStatusFilter('todas')}
-                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
-                                historyStatusFilter === 'todas'
-                                  ? 'bg-zinc-800 border-white text-white shadow-md'
-                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                              onClick={() => setHistoryStatusFilter('activas')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                                historyStatusFilter === 'activas'
+                                  ? 'bg-red-50 border-red-500 text-red-900 shadow-sm ring-1 ring-red-400'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold">
-                                <span>📋 Todas</span>
-                                <span className="font-mono text-[11px] bg-zinc-700/60 text-white px-2 py-0.5 rounded">
-                                  {countTodas}
+                                <span>📋 Activas</span>
+                                <span className="font-mono text-[11px] bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-bold">
+                                  {countActivas}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-zinc-500 mt-1">Historial total</span>
+                              <span className="text-[10px] text-slate-500 mt-1">En flujo diario</span>
                             </button>
 
-                            {/* Pestaña / Botón 2: Cotizaciones Emitidas */}
+                            {/* Pestaña: Emitidas */}
                             <button
                               type="button"
                               onClick={() => setHistoryStatusFilter('emitidas')}
-                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                                 historyStatusFilter === 'emitidas'
-                                  ? 'bg-red-950/40 border-red-500 text-red-200 shadow-md shadow-red-900/20'
-                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                                  ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-sm ring-1 ring-blue-400'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold">
-                                <span>📄 Emitidas</span>
-                                <span className="font-mono text-[11px] bg-red-900/60 text-red-300 px-2 py-0.5 rounded">
+                                <span>📥 1. Emitidas</span>
+                                <span className="font-mono text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold">
                                   {countEmitidas}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-zinc-500 mt-1">En espera cliente</span>
+                              <span className="text-[10px] text-slate-500 mt-1">Espera cliente</span>
                             </button>
 
-                            {/* Pestaña / Botón 3: En Taller / Aceptadas */}
+                            {/* Pestaña: En Taller */}
                             <button
                               type="button"
                               onClick={() => setHistoryStatusFilter('taller')}
-                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                                 historyStatusFilter === 'taller'
-                                  ? 'bg-blue-950/40 border-blue-500 text-blue-200 shadow-md shadow-blue-900/20'
-                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                                  ? 'bg-amber-50 border-amber-500 text-amber-900 shadow-sm ring-1 ring-amber-400'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold">
-                                <span>🏭 En Taller</span>
-                                <span className="font-mono text-[11px] bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded">
+                                <span>⚡ 2. En Taller</span>
+                                <span className="font-mono text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
                                   {countTaller}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-zinc-500 mt-1">Aprobadas c/ OT</span>
+                              <span className="text-[10px] text-slate-500 mt-1">Fabricándose</span>
                             </button>
 
-                            {/* Pestaña / Botón 4: Facturadas */}
+                            {/* Pestaña: Por Facturar */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter('por_facturar')}
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                                historyStatusFilter === 'por_facturar'
+                                  ? 'bg-purple-50 border-purple-500 text-purple-900 shadow-sm ring-1 ring-purple-400'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold">
+                                <span>📦 3. P/ Facturar</span>
+                                <span className="font-mono text-[11px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold">
+                                  {countPorFacturar}
+                                </span>
+                              </div>
+                              <span className="text-[10px] text-slate-500 mt-1">Listas de taller</span>
+                            </button>
+
+                            {/* Pestaña: Facturadas */}
                             <button
                               type="button"
                               onClick={() => setHistoryStatusFilter('facturadas')}
-                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                                 historyStatusFilter === 'facturadas'
-                                  ? 'bg-emerald-950/50 border-emerald-500 text-emerald-200 shadow-md shadow-emerald-900/20'
-                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                                  ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm ring-1 ring-emerald-400'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold">
-                                <span>🧾 Facturadas</span>
-                                <span className="font-mono text-[11px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">
+                                <span>🧾 4. Facturadas</span>
+                                <span className="font-mono text-[11px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
                                   {countFacturadas}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-zinc-500 mt-1">Con factura SII</span>
+                              <span className="text-[10px] text-slate-500 mt-1">Con Factura SII</span>
                             </button>
 
-                            {/* Pestaña / Botón 5: Pagadas */}
+                            {/* Pestaña: Pagadas */}
                             <button
                               type="button"
                               onClick={() => setHistoryStatusFilter('pagadas')}
-                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                              className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                                 historyStatusFilter === 'pagadas'
-                                  ? 'bg-emerald-900/60 border-emerald-400 text-white shadow-md shadow-emerald-600/30'
-                                  : 'bg-black border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                                  ? 'bg-emerald-100 border-emerald-600 text-emerald-950 shadow-sm ring-2 ring-emerald-500'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold">
-                                <span>💵 Pagadas</span>
-                                <span className="font-mono text-[11px] bg-emerald-600 text-white px-2 py-0.5 rounded">
+                                <span>📁 5. Pagadas</span>
+                                <span className="font-mono text-[11px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
                                   {countPagadas}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-zinc-500 mt-1">100% cobradas</span>
+                              <span className="text-[10px] text-slate-500 mt-1">Archivo cerrado</span>
                             </button>
                           </div>
                         </div>
@@ -7288,24 +7536,24 @@
                         {/* Línea 3: MÓDULO EXCLUSIVO DE COBRANZAS (SOLO FACTURAS PENDIENTES DE PAGO) */}
                         <div className={`p-3.5 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                           historyStatusFilter === 'pendientes_pago'
-                            ? 'bg-amber-950/50 border-amber-500 shadow-lg shadow-amber-500/20'
-                            : 'bg-zinc-900/60 border-zinc-800'
+                            ? 'bg-amber-50 border-amber-500 shadow-sm ring-1 ring-amber-400'
+                            : 'bg-slate-50 border-slate-200'
                         }`}>
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-lg">
+                            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 border border-amber-300 flex items-center justify-center text-lg shrink-0">
                               ⏳
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="font-heading font-black text-white text-xs sm:text-sm">
+                                <span className="font-heading font-black text-slate-800 text-xs sm:text-sm">
                                   Revisión Semanal de Cobranzas (Solo Facturas Emitidas)
                                 </span>
-                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
                                   {countFacturasPendientes} facturas por cobrar
                                 </span>
                               </div>
-                              <p className="text-[11px] text-zinc-400 mt-0.5">
-                                Total Facturas por cobrar: <strong className="text-amber-400 font-mono font-bold text-xs">{formatCLP(totalFacturasPorCobrar)}</strong> • Facturas cobradas: <strong className="text-emerald-400 font-mono font-bold text-xs">{formatCLP(totalFacturasPagadas)}</strong>
+                              <p className="text-[11px] text-slate-600 mt-0.5">
+                                Total Facturas por cobrar: <strong className="text-amber-800 font-mono font-bold text-xs">{formatCLP(totalFacturasPorCobrar)}</strong> • Facturas cobradas: <strong className="text-emerald-700 font-mono font-bold text-xs">{formatCLP(totalFacturasPagadas)}</strong>
                               </p>
                             </div>
                           </div>
@@ -7313,24 +7561,26 @@
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              onClick={() => setHistoryStatusFilter(historyStatusFilter === 'pendientes_pago' ? 'todas' : 'pendientes_pago')}
-                              className={`px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow ${
+                              onClick={() => setHistoryStatusFilter(historyStatusFilter === 'pendientes_pago' ? 'activas' : 'pendientes_pago')}
+                              className={`px-3.5 py-2 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-sm ${
                                 historyStatusFilter === 'pendientes_pago'
-                                  ? 'bg-amber-500 text-black hover:bg-amber-400 ring-2 ring-amber-300'
-                                  : 'bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white border border-amber-500/40'
+                                  ? 'bg-amber-600 text-white hover:bg-amber-700 ring-2 ring-amber-300'
+                                  : 'bg-white hover:bg-amber-50 text-amber-800 border border-amber-300'
                               }`}
                             >
                               <span>{historyStatusFilter === 'pendientes_pago' ? '✓ Viendo Solo Facturas por Cobrar' : '🔍 Filtrar Facturas Pendientes de Cobro'}</span>
                             </button>
-                            {historyStatusFilter !== 'todas' && (
-                              <button
-                                type="button"
-                                onClick={() => setHistoryStatusFilter('todas')}
-                                className="px-3 py-2 rounded-xl text-xs font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
-                              >
-                                Ver Todas
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryStatusFilter(historyStatusFilter === 'todas' ? 'activas' : 'todas')}
+                              className={`px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                                historyStatusFilter === 'todas'
+                                  ? 'bg-slate-800 text-white border-slate-800'
+                                  : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
+                              }`}
+                            >
+                              {historyStatusFilter === 'todas' ? '📋 Ver Activas' : `📋 Ver Todas (${countTodas})`}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -7621,46 +7871,53 @@
                             return (
                               <div
                                 key={q.correlative}
-                                className={`p-5 rounded-2xl bg-black border transition flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                                className={`p-5 rounded-2xl bg-white border transition flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm ${
                                   paid
-                                    ? 'border-zinc-800 hover:border-emerald-500/40'
-                                    : 'border-zinc-800 hover:border-amber-500/50'
+                                    ? 'border-emerald-200 hover:border-emerald-400 bg-emerald-50/20'
+                                    : 'border-slate-200 hover:border-slate-300'
                                 }`}
                               >
                                 <div>
                                   <div className="flex flex-wrap items-center gap-2.5">
-                                    <span className="text-base font-mono font-bold text-red-500">{q.correlative}</span>
-                                    <span className="text-xs text-zinc-400">📅 {q.date}</span>
+                                    <span className="text-base font-mono font-bold text-red-600">{q.correlative}</span>
+                                    <span className="text-xs text-slate-500 font-medium">📅 {q.date}</span>
                                     
+                                    {/* Indicador de Duplicado si aplica */}
+                                    {duplicateQuotesInfo.has(q.correlative) && (
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                        ⚠️ DUPLICADO ({duplicateQuotesInfo.get(q.correlative)?.correlative})
+                                      </span>
+                                    )}
+
                                     {/* Estado del Flujo de Producción */}
                                     <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                                      q.status === 'Facturada' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40' :
-                                      q.status === 'Terminada' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 animate-pulse' :
-                                      q.status === 'Aprobada' ? 'bg-blue-600/20 text-blue-300 border-blue-500/40' :
-                                      'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                      q.status === 'Facturada' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                      q.status === 'Terminada' ? 'bg-purple-50 text-purple-800 border-purple-300 animate-pulse' :
+                                      q.status === 'Aprobada' ? 'bg-blue-50 text-blue-800 border-blue-300' :
+                                      'bg-slate-100 text-slate-700 border-slate-200'
                                     }`}>
                                       {q.status === 'Terminada' ? '✅ Terminada en Taller (Lista p/ Facturar)' : q.status || 'Emitida'}
                                     </span>
 
                                     {/* Estado de Cobranza / Pago */}
                                     {paid ? (
-                                      <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-600/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1">
+                                      <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                                         <span>💵 PAGADA</span>
                                         {q.paidDate && <span className="opacity-80">({q.paidDate})</span>}
                                       </span>
                                     ) : (
-                                      <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 flex items-center gap-1">
+                                      <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1">
                                         <span>⏳ PENDIENTE DE PAGO</span>
                                       </span>
                                     )}
 
                                     {q.purchaseOrderNumber && (
-                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-950/40 text-blue-300 border border-blue-500/40">
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
                                         📄 OC: {q.purchaseOrderNumber}
                                       </span>
                                     )}
                                     {q.invoiceNumber && (
-                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-950/40 text-emerald-300 border border-emerald-500/40">
+                                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200">
                                         🧾 Fac: {q.invoiceNumber}
                                       </span>
                                     )}
@@ -7673,7 +7930,7 @@
                                       const dl = getOtDeadlineInfo(ot);
                                       return (
                                         <div className="inline-flex items-center gap-1.5">
-                                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                                             ⏱️ {daysInShop}d en taller
                                           </span>
                                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${dl.badgeClass}`}>
@@ -7683,9 +7940,9 @@
                                       );
                                     })()}
                                   </div>
-                                  <div className="font-bold text-white text-sm mt-1">{q.client?.name}</div>
-                                  <div className="text-xs text-zinc-400 mt-0.5">
-                                    {q.items?.length || 0} trabajos • Modalidad: <strong className="text-zinc-200">{q.client?.deliveryMethod === 'instalacion' ? 'Instalación' : q.client?.deliveryMethod === 'entrega' ? 'Despacho a Cliente' : 'Retiro en Taller'}</strong> • Total: <strong className="text-white font-mono text-sm">{formatCLP(q.totals?.total)}</strong>
+                                  <div className="font-bold text-slate-900 text-sm mt-1">{q.client?.name}</div>
+                                  <div className="text-xs text-slate-600 mt-0.5">
+                                    {q.items?.length || 0} trabajos • Modalidad: <strong className="text-slate-800">{q.client?.deliveryMethod === 'instalacion' ? 'Instalación' : q.client?.deliveryMethod === 'entrega' ? 'Despacho a Cliente' : 'Retiro en Taller'}</strong> • Total: <strong className="text-slate-900 font-mono text-sm">{formatCLP(q.totals?.total)}</strong>
                                   </div>
                                 </div>
 
@@ -7695,7 +7952,7 @@
                                     <button
                                       type="button"
                                       onClick={() => handleTogglePaidStatus(q)}
-                                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50 cursor-pointer"
+                                      className="bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-300 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
                                       title="Registrar que el cliente pagó esta orden"
                                     >
                                       <Icon name="check" className="w-3.5 h-3.5" />
@@ -7705,10 +7962,10 @@
                                     <button
                                       type="button"
                                       onClick={() => handleTogglePaidStatus(q)}
-                                      className="bg-emerald-950/60 hover:bg-zinc-800 text-emerald-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-500/40 flex items-center gap-1.5 transition cursor-pointer"
+                                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-950 px-3 py-2 rounded-xl text-xs font-bold border border-emerald-400 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
                                       title="Esta orden está pagada. Clic para desmarcar o cambiar a pendiente."
                                     >
-                                      <Icon name="check" className="w-3.5 h-3.5 text-emerald-400" />
+                                      <Icon name="check" className="w-3.5 h-3.5 text-emerald-700" />
                                       <span>✅ Pagada ↩️</span>
                                     </button>
                                   )}
@@ -7722,7 +7979,7 @@
                                           <button
                                             type="button"
                                             onClick={() => handleViewOtDirectly(q)}
-                                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-emerald-600/30 cursor-pointer"
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
                                             title="Ver Ficha Técnica de Taller, plano de corte y cubicación en pantalla"
                                           >
                                             <Icon name="file-text" className="w-3.5 h-3.5" />
@@ -7731,10 +7988,10 @@
                                           <button
                                             type="button"
                                             onClick={() => handleJumpToWorkshopBoard(q)}
-                                            className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white px-2.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1 transition cursor-pointer"
+                                            className="bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-2 rounded-xl text-xs font-bold border border-slate-300 shadow-sm flex items-center gap-1 transition cursor-pointer"
                                             title="Ir al Tablero de Producción del Taller"
                                           >
-                                            <Icon name="tool" className="w-3.5 h-3.5" />
+                                            <Icon name="tool" className="w-3.5 h-3.5 text-slate-500" />
                                             <span>🏭 Tablero</span>
                                           </button>
                                         </div>
@@ -7744,7 +8001,7 @@
                                       <button
                                         type="button"
                                         onClick={() => handleOpenApproveModal(q)}
-                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/30 ring-1 ring-emerald-400/50 cursor-pointer"
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-emerald-600/20 cursor-pointer"
                                         title="Aprobar esta cotización, registrar Orden de Compra (OC) y enviar a Taller"
                                       >
                                         <Icon name="check" className="w-3.5 h-3.5" />
@@ -7757,17 +8014,17 @@
                                   {(() => {
                                     const existingOt = workOrders.find(o => o.correlative === q.correlative);
                                     const isAlreadyInvoiced = q.status === 'Facturada' || !!q.invoiceNumber;
-                                    const isReadyToInvoice = q.status === 'Terminada' || q.status === 'Aprobada' || (existingOt && (existingOt.status === 'completado' || existingOt.status === 'fabricacion'));
+                                    const isReadyToInvoice = q.status === 'Terminada' || (existingOt && existingOt.status === 'completado');
 
                                     if (isAlreadyInvoiced) {
                                       return (
                                         <button
                                           type="button"
                                           onClick={() => handleOpenInvoiceModal(q)}
-                                          className="bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-500/50 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                          className="bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 px-3.5 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
                                           title="Ver datos de Facturación y Cierre"
                                         >
-                                          <Icon name="file-text" className="w-3.5 h-3.5 text-emerald-400" />
+                                          <Icon name="file-text" className="w-3.5 h-3.5 text-purple-700" />
                                           <span>🧾 Fac. #{q.invoiceNumber || 'Emitida'}</span>
                                         </button>
                                       );
@@ -7778,8 +8035,8 @@
                                         <button
                                           type="button"
                                           onClick={() => handleOpenInvoiceModal(q)}
-                                          className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400 animate-pulse cursor-pointer"
-                                          title="Facturar esta orden de trabajo"
+                                          className="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-purple-600/30 cursor-pointer"
+                                          title="Facturar esta orden de trabajo terminada"
                                         >
                                           <Icon name="file-text" className="w-3.5 h-3.5" />
                                           <span>🧾 Facturar</span>
@@ -7801,46 +8058,58 @@
                                       });
                                       setIntranetTab('calendario');
                                     }}
-                                    className="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                    className="bg-blue-50 hover:bg-blue-100 text-blue-900 px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
                                     title="Agendar fecha de entrega o instalación en el calendario del taller"
                                   >
-                                    <Icon name="calendar" className="w-3.5 h-3.5" />
+                                    <Icon name="calendar" className="w-3.5 h-3.5 text-blue-700" />
                                     <span>📅 Agendar Entrega</span>
                                   </button>
 
                                   <button
                                     onClick={() => handleEditExistingQuote(q)}
-                                    className="bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                    className="bg-amber-50 hover:bg-amber-100 text-amber-900 px-3.5 py-2 rounded-xl text-xs font-bold border border-amber-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
                                     title="Editar esta cotización directamente conservando el mismo correlativo"
                                   >
-                                    <Icon name="file-text" className="w-3.5 h-3.5" />
+                                    <Icon name="file-text" className="w-3.5 h-3.5 text-amber-700" />
                                     <span>✏️ Editar Orden</span>
                                   </button>
                                   <button
                                     onClick={() => handleReuseQuote(q)}
-                                    className="bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-500/40 flex items-center gap-1.5 transition shadow-sm"
+                                    className="bg-white hover:bg-slate-50 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
                                     title="Cargar estos datos en el cotizador para emitir una NUEVA cotización sin alterar la original"
                                   >
-                                    <Icon name="refresh" className="w-3.5 h-3.5" />
+                                    <Icon name="refresh" className="w-3.5 h-3.5 text-slate-500" />
                                     <span>Reutilizar / Clonar</span>
                                   </button>
                                   <button
                                     onClick={() => handleOpenPrintModal(q)}
-                                    className="bg-zinc-900 hover:bg-zinc-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
+                                    className="bg-white hover:bg-slate-50 text-slate-800 px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                                    title="Ver e imprimir PDF oficial de la cotización"
                                   >
-                                    <Icon name="printer" className="w-3.5 h-3.5 text-red-500" />
+                                    <Icon name="printer" className="w-3.5 h-3.5 text-slate-700" />
                                     <span>Ver / Imprimir PDF</span>
                                   </button>
                                   <button
                                     onClick={() => handleSendWhatsAppQuote(q)}
-                                    className="bg-zinc-900 hover:bg-zinc-800 text-emerald-400 px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-700 flex items-center gap-1.5 transition"
+                                    className="bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                                    title="Enviar detalle por WhatsApp al cliente"
                                   >
                                     <Icon name="whatsapp" className="w-3.5 h-3.5" />
                                     <span>WhatsApp</span>
                                   </button>
+                                  {duplicateQuotesInfo.has(q.correlative) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteSingleDuplicate(q.correlative)}
+                                      className="bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-amber-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                                      title="Eliminar esta copia clonada duplicada"
+                                    >
+                                      <span>🧹 Quitar Duplicado</span>
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => handleRequestDeleteQuote(q)}
-                                    className="bg-red-950/30 hover:bg-red-600 text-red-500 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-red-900/50 hover:border-red-600 flex items-center gap-1.5 transition shadow-sm"
+                                    className="bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-rose-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
                                     title="Eliminar cotización permanentemente (Requiere PIN de Administrador)"
                                   >
                                     <Icon name="trash" className="w-3.5 h-3.5" />
@@ -9109,22 +9378,23 @@
                     </div>
 
                     {/* Filtros y Buscador */}
-                    <div className="p-4 rounded-xl bg-black border border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {[
-                          { id: 'todos', label: 'Todas las OTs' },
+                          { id: 'activas', label: '⚡ OTs Activas en Taller' },
                           { id: 'por_iniciar', label: '📥 Por Iniciar' },
                           { id: 'diseno', label: '📐 Archivo & Medidas' },
                           { id: 'fabricacion', label: '⚡ En Fabricación' },
                           { id: 'calidad', label: '🔍 Control Calidad' },
-                          { id: 'completado', label: '✅ Terminadas' }
+                          { id: 'completado', label: '✅ Terminadas (P/ Facturar)' },
+                          { id: 'todos', label: '📋 Todas las OTs' }
                         ].map(tab => (
                           <button
                             key={tab.id}
                             type="button"
                             onClick={() => setOtFilterStatus(tab.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                              otFilterStatus === tab.id ? 'bg-red-600 text-white shadow-sm' : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800'
+                              otFilterStatus === tab.id ? 'bg-red-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
                             }`}
                           >
                             {tab.label}
@@ -9138,16 +9408,16 @@
                           placeholder="Buscar OT, cotización, cliente..."
                           value={otSearch}
                           onChange={(e) => setOtSearch(e.target.value)}
-                          className="w-full bg-zinc-900 text-white text-xs pl-8 pr-3 py-2 rounded-xl border border-zinc-700 focus:border-red-600 focus:outline-none"
+                          className="w-full bg-slate-50 text-slate-800 text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-300 focus:border-red-600 focus:bg-white focus:outline-none"
                         />
-                        <div className="absolute left-2.5 top-2.5 text-zinc-500">
+                        <div className="absolute left-2.5 top-2.5 text-slate-400">
                           <Icon name="search" className="w-3.5 h-3.5" />
                         </div>
                         {otSearch && (
                           <button
                             type="button"
                             onClick={() => setOtSearch('')}
-                            className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white text-xs"
+                            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 text-xs"
                           >
                             ✕
                           </button>
@@ -9159,7 +9429,12 @@
                     {(() => {
                       const searchLower = (otSearch || '').toLowerCase().trim();
                       const filteredWorkOrders = workOrders.filter(ot => {
-                        const matchStatus = otFilterStatus === 'todos' || ot.status === otFilterStatus;
+                        let matchStatus = true;
+                        if (otFilterStatus === 'activas') {
+                          matchStatus = ot.status !== 'completado';
+                        } else if (otFilterStatus !== 'todos') {
+                          matchStatus = ot.status === otFilterStatus;
+                        }
                         const matchSearch = !searchLower ||
                           (ot.otFolio || '').toLowerCase().includes(searchLower) ||
                           (ot.correlative || '').toLowerCase().includes(searchLower) ||
