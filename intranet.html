@@ -1819,57 +1819,234 @@
         }
       };
 
-      // --- GESTIÓN DE LA MAESTRA DE CLIENTES Y PROVEEDORES ---
+      // --- GESTIÓN DE LA MAESTRA DE CLIENTES Y MATCH INTELIGENTE DE CONTACTOS ---
+      const getContactsForClient = (clientName, clientRut) => {
+        const cleanName = (clientName || '').trim().toLowerCase();
+        const cleanRut = (clientRut || '').trim().toUpperCase();
+        if (!cleanName && !cleanRut) return [];
+
+        const contactMap = new Map();
+
+        // 1. Buscar en clientsMaster
+        const foundInMaster = clientsMaster.find(c => 
+          (cleanRut && c.rut && c.rut.toUpperCase() === cleanRut) ||
+          (cleanName && c.name && c.name.toLowerCase() === cleanName)
+        );
+
+        if (foundInMaster) {
+          if (foundInMaster.contactPerson && foundInMaster.contactPerson.trim()) {
+            const cp = foundInMaster.contactPerson.trim();
+            contactMap.set(cp.toLowerCase(), {
+              name: cp,
+              phone: foundInMaster.phone || '',
+              email: foundInMaster.email || '',
+              source: 'Maestra de Clientes'
+            });
+          }
+          if (Array.isArray(foundInMaster.contacts)) {
+            foundInMaster.contacts.forEach(cp => {
+              if (cp && typeof cp === 'string' && cp.trim() && !contactMap.has(cp.trim().toLowerCase())) {
+                contactMap.set(cp.trim().toLowerCase(), {
+                  name: cp.trim(),
+                  phone: foundInMaster.phone || '',
+                  email: foundInMaster.email || '',
+                  source: 'Maestra de Clientes'
+                });
+              }
+            });
+          }
+        }
+
+        // 2. Buscar en quoteHistory (historial de ventas y cotizaciones emitidas a este ente)
+        quoteHistory.forEach(q => {
+          if (!q.client) return;
+          const qName = (q.client.name || '').trim().toLowerCase();
+          const qRut = (q.client.documentId || '').trim().toUpperCase();
+          const isMatch = (cleanRut && qRut && qRut === cleanRut) ||
+                          (cleanName && qName && (qName === cleanName || qName.includes(cleanName) || cleanName.includes(qName)));
+
+          if (isMatch && q.client.contactPerson && q.client.contactPerson.trim()) {
+            const cp = q.client.contactPerson.trim();
+            const key = cp.toLowerCase();
+            if (!contactMap.has(key)) {
+              contactMap.set(key, {
+                name: cp,
+                phone: q.client.phone || '',
+                email: q.client.email || '',
+                source: `Cotización ${q.correlative}`
+              });
+            } else {
+              const existing = contactMap.get(key);
+              if (!existing.phone && q.client.phone) existing.phone = q.client.phone;
+              if (!existing.email && q.client.email) existing.email = q.client.email;
+            }
+          }
+        });
+
+        return Array.from(contactMap.values());
+      };
+
       const handleSelectClientFromMaster = (clientRut) => {
         if (!clientRut) return;
         const found = clientsMaster.find(c => c.rut === clientRut);
         if (!found) return;
+
+        const contacts = getContactsForClient(found.name, found.rut);
+        const preferredContact = (found.contactPerson && found.contactPerson.trim()) 
+          ? found.contactPerson.trim() 
+          : (contacts.length > 0 ? contacts[0].name : '');
+
+        const preferredPhone = found.phone || (contacts.length > 0 ? contacts[0].phone : '');
+        const preferredEmail = found.email || (contacts.length > 0 ? contacts[0].email : '');
+
         setIntranetClientData(prev => ({
           ...prev,
           name: found.name || prev.name,
           documentId: found.rut || prev.documentId,
-          contactPerson: found.contactPerson || prev.contactPerson,
-          phone: found.phone || prev.phone,
-          email: found.email || prev.email,
+          contactPerson: preferredContact || prev.contactPerson,
+          phone: preferredPhone || prev.phone,
+          email: preferredEmail || prev.email,
           deliveryAddress: found.address || prev.deliveryAddress
         }));
-        showToast(`🏢 Cliente cargado: ${found.name}`);
+
+        showToast(`🏢 Cliente cargado: ${found.name}${preferredContact ? ` • Contacto: ${preferredContact}` : ''}`);
+      };
+
+      const handleClientNameChange = (newName) => {
+        const trimmed = (newName || '').trim();
+        const found = clientsMaster.find(c => 
+          c.name.toLowerCase() === trimmed.toLowerCase() || 
+          (c.rut && c.rut.toUpperCase() === trimmed.toUpperCase())
+        );
+
+        if (found) {
+          const contacts = getContactsForClient(found.name, found.rut);
+          const preferredContact = (found.contactPerson && found.contactPerson.trim()) 
+            ? found.contactPerson.trim() 
+            : (contacts.length > 0 ? contacts[0].name : '');
+
+          setIntranetClientData(prev => ({
+            ...prev,
+            name: found.name,
+            documentId: found.rut || prev.documentId,
+            contactPerson: preferredContact || prev.contactPerson,
+            phone: found.phone || (contacts[0]?.phone) || prev.phone,
+            email: found.email || (contacts[0]?.email) || prev.email,
+            deliveryAddress: found.address || prev.deliveryAddress
+          }));
+          showToast(`✨ Match automático con ${found.name}${preferredContact ? ` (${preferredContact})` : ''}`);
+        } else {
+          setIntranetClientData(prev => {
+            const nextData = { ...prev, name: newName };
+            if (!prev.contactPerson && trimmed.length >= 4) {
+              const historyMatch = quoteHistory.find(q => q.client?.name && q.client.name.toLowerCase().includes(trimmed.toLowerCase()));
+              if (historyMatch && historyMatch.client?.contactPerson) {
+                nextData.contactPerson = historyMatch.client.contactPerson;
+                if (!prev.documentId && historyMatch.client.documentId) nextData.documentId = historyMatch.client.documentId;
+                if (!prev.phone && historyMatch.client.phone) nextData.phone = historyMatch.client.phone;
+                if (!prev.email && historyMatch.client.email) nextData.email = historyMatch.client.email;
+              }
+            }
+            return nextData;
+          });
+        }
+      };
+
+      const handleContactPersonChange = (newContact) => {
+        setIntranetClientData(prev => ({ ...prev, contactPerson: newContact }));
+        const cName = (intranetClientData.name || '').trim();
+        const cRut = (intranetClientData.documentId || '').trim();
+        if ((cName || cRut) && newContact.trim().length >= 2) {
+          setClientsMaster(prev => {
+            const updated = prev.map(c => {
+              const isMatch = (cRut && c.rut && c.rut.toUpperCase() === cRut.toUpperCase()) ||
+                              (cName && c.name && c.name.toLowerCase() === cName.toLowerCase());
+              if (!isMatch) return c;
+              const currentContacts = Array.isArray(c.contacts) ? [...c.contacts] : (c.contactPerson ? [c.contactPerson] : []);
+              if (!currentContacts.includes(newContact.trim())) {
+                currentContacts.push(newContact.trim());
+              }
+              return {
+                ...c,
+                contactPerson: newContact.trim(),
+                contacts: currentContacts
+              };
+            });
+            try {
+              localStorage.setItem('olivar_clients_master', JSON.stringify(updated));
+            } catch(e) {}
+            return updated;
+          });
+        }
+      };
+
+      const handleApplyContact = (contactObj) => {
+        if (!contactObj) return;
+        setIntranetClientData(prev => ({
+          ...prev,
+          contactPerson: contactObj.name,
+          phone: contactObj.phone || prev.phone,
+          email: contactObj.email || prev.email
+        }));
+        showToast(`👤 Contacto seleccionado: ${contactObj.name}`);
       };
 
       const handleSaveCurrentClientToMaster = () => {
         const name = (intranetClientData.name || '').trim();
         const rut = (intranetClientData.documentId || '').trim();
+        const cp = (intranetClientData.contactPerson || '').trim();
         if (!name && !rut) {
           alert('Por favor ingresa al menos la Razón Social o el RUT para registrar en la Maestra.');
           return;
         }
         setClientsMaster(prev => {
           const index = prev.findIndex(c => (rut && c.rut.toUpperCase() === rut.toUpperCase()) || (name && c.name.toLowerCase() === name.toLowerCase()));
+          let updated;
           if (index >= 0) {
-            const updated = [...prev];
+            updated = [...prev];
+            const currentContacts = Array.isArray(updated[index].contacts) ? [...updated[index].contacts] : (updated[index].contactPerson ? [updated[index].contactPerson] : []);
+            if (cp && !currentContacts.includes(cp)) {
+              currentContacts.push(cp);
+            }
             updated[index] = {
               ...updated[index],
               name: name || updated[index].name,
               rut: rut || updated[index].rut,
-              contactPerson: intranetClientData.contactPerson || updated[index].contactPerson,
+              contactPerson: cp || updated[index].contactPerson,
+              contacts: currentContacts,
               phone: intranetClientData.phone || updated[index].phone,
               email: intranetClientData.email || updated[index].email,
               address: intranetClientData.deliveryAddress || updated[index].address
             };
-            return updated;
           } else {
-            return [{
+            updated = [{
               id: 'cli-' + Date.now(),
               name,
               rut,
-              contactPerson: intranetClientData.contactPerson || '',
+              contactPerson: cp,
+              contacts: cp ? [cp] : [],
               phone: intranetClientData.phone || '',
               email: intranetClientData.email || '',
               address: intranetClientData.deliveryAddress || ''
             }, ...prev];
           }
+          try {
+            localStorage.setItem('olivar_clients_master', JSON.stringify(updated));
+            if (window.db) {
+              const docId = rut || `cli-${Date.now()}`;
+              window.db.collection('clients').doc(docId).set({
+                name,
+                rut,
+                contactPerson: cp,
+                phone: intranetClientData.phone || '',
+                email: intranetClientData.email || '',
+                address: intranetClientData.deliveryAddress || ''
+              }, { merge: true });
+            }
+          } catch(e) {}
+          return updated;
         });
-        showToast(`💾 Cliente guardado / actualizado en la Maestra`);
+        showToast(`💾 Cliente y contacto guardados en la Maestra`);
       };
 
       const handleUpdateClientInMaster = (id, field, value) => {
@@ -1905,18 +2082,23 @@
       };
 
       const handleQuoteThisClient = (client) => {
+        const contacts = getContactsForClient(client.name, client.rut);
+        const preferredContact = (client.contactPerson && client.contactPerson.trim()) 
+          ? client.contactPerson.trim() 
+          : (contacts.length > 0 ? contacts[0].name : '');
+
         setIntranetClientData(prev => ({
           ...prev,
           name: client.name || '',
           documentId: client.rut || '',
-          contactPerson: client.contactPerson || '',
-          phone: client.phone || '',
-          email: client.email || '',
+          contactPerson: preferredContact || '',
+          phone: client.phone || (contacts[0]?.phone) || '',
+          email: client.email || (contacts[0]?.email) || '',
           deliveryAddress: client.address || ''
         }));
         setIntranetSection('admin');
         setIntranetTab('cotizador');
-        showToast(`📋 Datos de ${client.name} cargados en el Cotizador`);
+        showToast(`📋 Datos de ${client.name} cargados en el Cotizador${preferredContact ? ` (${preferredContact})` : ''}`);
       };
 
       const handleResetClientsMaster = () => {
@@ -2711,31 +2893,57 @@
         if (intranetClientData.name || intranetClientData.documentId) {
           const cName = (intranetClientData.name || '').trim();
           const cRut = (intranetClientData.documentId || '').trim();
+          const cp = (intranetClientData.contactPerson || '').trim();
           setClientsMaster(prev => {
             const idx = prev.findIndex(c => (cRut && c.rut.toUpperCase() === cRut.toUpperCase()) || (cName && c.name.toLowerCase() === cName.toLowerCase()));
+            let updatedMaster;
             if (idx >= 0) {
               const updated = [...prev];
+              const currentContacts = Array.isArray(updated[idx].contacts) 
+                ? [...updated[idx].contacts] 
+                : (updated[idx].contactPerson ? [updated[idx].contactPerson] : []);
+              if (cp && !currentContacts.includes(cp)) {
+                currentContacts.push(cp);
+              }
               updated[idx] = {
                 ...updated[idx],
                 name: cName || updated[idx].name,
                 rut: cRut || updated[idx].rut,
-                contactPerson: intranetClientData.contactPerson || updated[idx].contactPerson,
+                contactPerson: cp || updated[idx].contactPerson,
+                contacts: currentContacts,
                 phone: intranetClientData.phone || updated[idx].phone,
                 email: intranetClientData.email || updated[idx].email,
                 address: intranetClientData.deliveryAddress || updated[idx].address
               };
-              return updated;
+              updatedMaster = updated;
             } else {
-              return [{
+              updatedMaster = [{
                 id: 'cli-' + Date.now(),
                 name: cName,
                 rut: cRut,
-                contactPerson: intranetClientData.contactPerson || '',
+                contactPerson: cp,
+                contacts: cp ? [cp] : [],
                 phone: intranetClientData.phone || '',
                 email: intranetClientData.email || '',
                 address: intranetClientData.deliveryAddress || ''
               }, ...prev];
             }
+            try {
+              localStorage.setItem('olivar_clients_master', JSON.stringify(updatedMaster));
+              if (window.db) {
+                const docId = cRut || `cli-${Date.now()}`;
+                window.db.collection('clients').doc(docId).set({
+                  name: cName,
+                  rut: cRut,
+                  contactPerson: cp,
+                  contacts: idx >= 0 ? updatedMaster[idx].contacts : (cp ? [cp] : []),
+                  phone: intranetClientData.phone || '',
+                  email: intranetClientData.email || '',
+                  address: intranetClientData.deliveryAddress || ''
+                }, { merge: true });
+              }
+            } catch(e) {}
+            return updatedMaster;
           });
         }
 
@@ -5460,34 +5668,117 @@
                               className="w-full bg-zinc-900 text-zinc-200 px-2.5 py-1.5 rounded-lg border border-zinc-700 text-xs focus:border-red-500 focus:outline-none"
                             >
                               <option value="">-- Seleccionar cliente / empresa registrada --</option>
-                              {clientsMaster.map(c => (
-                                <option key={c.id} value={c.rut}>
-                                  {c.name} ({c.rut})
-                                </option>
-                              ))}
+                              {clientsMaster.map(c => {
+                                const contacts = getContactsForClient(c.name, c.rut);
+                                const contactDisplay = c.contactPerson || (contacts[0]?.name) || '';
+                                return (
+                                  <option key={c.id} value={c.rut}>
+                                    {c.name} ({c.rut}){contactDisplay ? ` • Contacto: ${contactDisplay}` : ''}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
 
                           <div className="space-y-3 text-xs">
                             <div>
-                              <label className="block text-zinc-300 font-semibold mb-1">Razón Social o Nombre del Cliente / Empresa *</label>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-zinc-300 font-semibold">Razón Social o Nombre del Cliente / Empresa *</label>
+                                {intranetClientData.documentId && (
+                                  <span className="text-[10px] text-emerald-400 font-mono font-bold bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
+                                    RUT: {intranetClientData.documentId}
+                                  </span>
+                                )}
+                              </div>
                               <input
                                 type="text"
+                                list="clients-master-datalist"
                                 placeholder="Ej: Distribuidora Cachapoal Ltda."
                                 value={intranetClientData.name}
-                                onChange={(e) => setIntranetClientData({ ...intranetClientData, name: e.target.value })}
-                                className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none"
+                                onChange={(e) => handleClientNameChange(e.target.value)}
+                                className="w-full bg-zinc-950 text-white px-3.5 py-2.5 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none font-medium"
                               />
+                              <datalist id="clients-master-datalist">
+                                {clientsMaster.map(c => (
+                                  <option key={c.id} value={c.name}>
+                                    {c.rut ? `RUT: ${c.rut}` : ''} {c.contactPerson ? `(Contacto: ${c.contactPerson})` : ''}
+                                  </option>
+                                ))}
+                              </datalist>
                             </div>
+
                             <div>
-                              <label className="block text-zinc-300 font-semibold mb-1">Persona de Contacto / Atención (Opcional)</label>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-zinc-300 font-semibold">Persona de Contacto / Atención (Opcional)</label>
+                                {intranetClientData.name && (
+                                  <span className="text-[9px] text-zinc-500 font-mono truncate max-w-[200px]">
+                                    Match con: {intranetClientData.name}
+                                  </span>
+                                )}
+                              </div>
                               <input
                                 type="text"
+                                list="client-contacts-datalist"
                                 placeholder="Ej: Juan Pérez / Depto. Adquisiciones"
                                 value={intranetClientData.contactPerson}
-                                onChange={(e) => setIntranetClientData({ ...intranetClientData, contactPerson: e.target.value })}
+                                onChange={(e) => handleContactPersonChange(e.target.value)}
                                 className="w-full bg-zinc-950 text-white px-3.5 py-2 rounded-xl border border-zinc-800 focus:border-red-600 focus:outline-none text-xs"
                               />
+                              {(() => {
+                                const currentContacts = getContactsForClient(intranetClientData.name, intranetClientData.documentId);
+                                return (
+                                  <>
+                                    <datalist id="client-contacts-datalist">
+                                      {currentContacts.map((c, idx) => (
+                                        <option key={idx} value={c.name}>
+                                          {c.phone ? `Tel: ${c.phone}` : ''} {c.source ? `[${c.source}]` : ''}
+                                        </option>
+                                      ))}
+                                    </datalist>
+
+                                    {currentContacts.length > 0 && (
+                                      <div className="mt-1.5 p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-1">
+                                        <div className="flex items-center justify-between text-[10px]">
+                                          <span className="flex items-center gap-1 font-bold text-zinc-300">
+                                            <Icon name="users" className="w-3 h-3 text-red-500" />
+                                            <span>Contactos vinculados a esta empresa:</span>
+                                          </span>
+                                          <span className="text-[9px] text-zinc-500 font-mono">1 clic p/ autocompletar</span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                                          {currentContacts.map((c, idx) => {
+                                            const isSelected = intranetClientData.contactPerson === c.name;
+                                            return (
+                                              <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => handleApplyContact(c)}
+                                                className={`text-[10px] px-2.5 py-1 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
+                                                  isSelected
+                                                    ? 'bg-red-600 text-white border-red-500 font-bold shadow-sm shadow-red-900/40 ring-1 ring-red-400'
+                                                    : 'bg-black text-zinc-300 hover:text-white hover:bg-zinc-800 border-zinc-700'
+                                                }`}
+                                                title={`Seleccionar: ${c.name} ${c.phone ? `• Tel: ${c.phone}` : ''}`}
+                                              >
+                                                <Icon name="check" className={`w-3 h-3 ${isSelected ? 'text-white' : 'text-zinc-500'}`} />
+                                                <span>{c.name}</span>
+                                                {c.phone && <span className="opacity-75 font-mono text-[9px]">({c.phone})</span>}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {intranetClientData.name && intranetClientData.contactPerson && (
+                                      <div className="text-[10px] text-emerald-400 font-medium flex items-center gap-1 mt-1">
+                                        <Icon name="check" className="w-3 h-3" />
+                                        <span>Se guardará y vinculará a la ficha de {intranetClientData.name}</span>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
