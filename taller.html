@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optimizador de Cortes 2D & Dimensionado | Letreros Olivar SpA</title>
+  <meta name="description" content="Optimizador de corte de planchas 2D tipo OptiCutter para taller de letreros (ACM, Trovicel, Acrílico, Lata Galvanizada). Cálculo con sangría de disco de 3 mm y planos para taller." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <link rel="shortcut icon" href="favicon.ico" />
+  <meta name="theme-color" content="#0a0a0c" />
+
+  <!-- Google Fonts: Space Grotesk & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              red: '#dc2626',
+              dark: '#0a0a0c',
+              card: '#111116',
+              border: '#27272a'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            heading: ['"Space Grotesk"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & Babel Standalone -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #print-area, #print-area * {
+        visibility: visible !important;
+      }
+      #print-area {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+    }
+
+    /* Scrollbar personalizada oscura */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0c;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46;
+    }
+  </style>
+</head>
+<body class="bg-[#0a0a0c] text-zinc-100 font-sans antialiased selection:bg-red-600 selection:text-white min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- LOGO OFICIAL VECTORIAL EN SVG (Letreros Olivar SpA) ---
+    const BrandLogo = ({ theme = 'light', className = "h-9 w-auto" }) => {
+      const primaryColor = theme === 'dark' ? '#ffffff' : '#111113';
+      const redColor = '#dc2626';
+      return (
+        <div className={"flex items-center gap-2 " + (className || "")}>
+          <img 
+            src="logo.svg" 
+            alt="Letreros Olivar SpA" 
+            className="h-full w-auto max-w-full drop-shadow-sm object-contain" 
+            onError={(e) => { e.target.src = 'logo-oficial.png'; }}
+          />
+        </div>
+      );
+    };
+
+    // --- ÍCONOS SVG SIMPLES Y ELEGANTES ---
+    const Icon = ({ name, className = "w-4 h-4" }) => {
+      switch (name) {
+        case 'scissors':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>;
+        case 'plus':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
+        case 'trash':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
+        case 'printer':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>;
+        case 'refresh':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>;
+        case 'check':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>;
+        case 'download':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
+        case 'layers':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>;
+        case 'arrow-left':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>;
+        case 'info':
+          return <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+        default:
+          return null;
+      }
+    };
+
+    // --- PRESETS DE MATERIALES ESTÁNDAR DE LETREROS OLIVAR ---
+    const MATERIAL_PRESETS = [
+      { id: 'acm-122-244', name: 'ACM Aluminio Compuesto 3mm (1220 x 2440)', width: 1220, height: 2440, cost: 38000, category: 'ACM' },
+      { id: 'acm-150-300', name: 'ACM Gran Formato 4mm (1500 x 3000)', width: 1500, height: 3000, cost: 58000, category: 'ACM' },
+      { id: 'trovicel-3mm', name: 'Trovicel / PVC Espumado 3mm (1220 x 2440)', width: 1220, height: 2440, cost: 24000, category: 'PVC' },
+      { id: 'trovicel-5mm', name: 'Trovicel / PVC Espumado 5mm (1220 x 2440)', width: 1220, height: 2440, cost: 36000, category: 'PVC' },
+      { id: 'trovicel-10mm', name: 'Trovicel / PVC Espumado 10mm (1220 x 2440)', width: 1220, height: 2440, cost: 68000, category: 'PVC' },
+      { id: 'acrilico-3mm', name: 'Acrílico Transparente 3mm (1220 x 2440)', width: 1220, height: 2440, cost: 62000, category: 'Acrílico' },
+      { id: 'acrilico-jumbo', name: 'Acrílico Blanco Ópalo 4mm (2050 x 3050)', width: 2050, height: 3050, cost: 145000, category: 'Acrílico' },
+      { id: 'lata-galv', name: 'Lata Galvanizada 0.8mm (1000 x 3000)', width: 1000, height: 3000, cost: 22000, category: 'Metal' },
+      { id: 'policarb-210-290', name: 'Policarbonato Alveolar 6mm (2100 x 2900)', width: 2100, height: 2900, cost: 32000, category: 'Policarbonato' },
+      { id: 'policarb-210-580', name: 'Policarbonato Alveolar 8mm (2100 x 5800)', width: 2100, height: 5800, cost: 64000, category: 'Policarbonato' },
+      { id: 'custom', name: 'Plancha Personalizada a Medida...', width: 1220, height: 2440, cost: 35000, category: 'Otro' }
+    ];
+
+    // Paleta de colores atractiva y contrastante para piezas
+    const PIECE_COLORS = [
+      '#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6',
+      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+      '#14b8a6', '#eab308', '#d946ef', '#64748b'
+    ];
+
+    // --- ALGORITMO DE NESTING 2D GUILLOTINA (BEST SHORT SIDE FIT CON DISCO DE 3MM) ---
+    function run2DCutOptimization(sheetW, sheetH, kerf, trim, pieces, globalRotateAllowed) {
+      const usableW = Math.max(0, sheetW - (2 * trim));
+      const usableH = Math.max(0, sheetH - (2 * trim));
+
+      // Expandir piezas por cantidad
+      const expandedPieces = [];
+      pieces.forEach((p, pIdx) => {
+        const qty = parseInt(p.qty, 10) || 1;
+        const w = parseFloat(p.w) || 0;
+        const h = parseFloat(p.h) || 0;
+        const canRot = globalRotateAllowed && (p.canRotate !== false);
+        const color = p.color || PIECE_COLORS[pIdx % PIECE_COLORS.length];
+
+        for (let i = 0; i < qty; i++) {
+          expandedPieces.push({
+            origId: p.id,
+            subId: `${p.id}-${i + 1}`,
+            label: p.label || `Pieza ${pIdx + 1}`,
+            w,
+            h,
+            area: (w * h) / 1000000, // m2
+            canRotate: canRot,
+            color
+          });
+        }
+      });
+
+      // Ordenar piezas por lado mayor y área descendente (Mejor heurística para bin packing)
+      expandedPieces.sort((a, b) => {
+        const maxA = Math.max(a.w, a.h);
+        const maxB = Math.max(b.w, b.h);
+        if (maxB !== maxA) return maxB - maxA;
+        return (b.w * b.h) - (a.w * a.h);
+      });
+
+      const sheets = [];
+      const unplaced = [];
+
+      function createNewSheet() {
+        return {
+          sheetIndex: sheets.length + 1,
+          sheetW,
+          sheetH,
+          usableW,
+          usableH,
+          trim,
+          kerf,
+          freeRects: [{ x: trim, y: trim, w: usableW, h: usableH }],
+          placed: [],
+          offcuts: []
+        };
+      }
+
+      let activeSheet = createNewSheet();
+      sheets.push(activeSheet);
+
+      expandedPieces.forEach((piece) => {
+        // Verificar si la pieza cabe físicamente en una plancha vacía
+        const fitsNormal = piece.w <= usableW && piece.h <= usableH;
+        const fitsRotated = piece.canRotate && piece.h <= usableW && piece.w <= usableH;
+        if (!fitsNormal && !fitsRotated) {
+          unplaced.push({ ...piece, reason: 'Excede las dimensiones máximas de la plancha' });
+          return;
+        }
+
+        let placed = false;
+
+        // Intentar colocar en las planchas existentes
+        for (let sIdx = 0; sIdx < sheets.length; sIdx++) {
+          const sheet = sheets[sIdx];
+          let bestRectIdx = -1;
+          let bestRotate = false;
+          let minShortSide = Infinity;
+          let minWaste = Infinity;
+
+          for (let rIdx = 0; rIdx < sheet.freeRects.length; rIdx++) {
+            const r = sheet.freeRects[rIdx];
+
+            // 1. Orientación normal
+            if (piece.w <= r.w && piece.h <= r.h) {
+              const remW = r.w - piece.w;
+              const remH = r.h - piece.h;
+              const shortSide = Math.min(remW, remH);
+              const waste = (r.w * r.h) - (piece.w * piece.h);
+
+              if (shortSide < minShortSide || (shortSide === minShortSide && waste < minWaste)) {
+                minShortSide = shortSide;
+                minWaste = waste;
+                bestRectIdx = rIdx;
+                bestRotate = false;
+              }
+            }
+
+            // 2. Orientación rotada 90°
+            if (piece.canRotate && piece.h <= r.w && piece.w <= r.h) {
+              const remW = r.w - piece.h;
+              const remH = r.h - piece.w;
+              const shortSide = Math.min(remW, remH);
+              const waste = (r.w * r.h) - (piece.w * piece.h);
+
+              if (shortSide < minShortSide || (shortSide === minShortSide && waste < minWaste)) {
+                minShortSide = shortSide;
+                minWaste = waste;
+                bestRectIdx = rIdx;
+                bestRotate = true;
+              }
+            }
+          }
+
+          if (bestRectIdx >= 0) {
+            const r = sheet.freeRects.splice(bestRectIdx, 1)[0];
+            const pw = bestRotate ? piece.h : piece.w;
+            const ph = bestRotate ? piece.w : piece.h;
+
+            sheet.placed.push({
+              ...piece,
+              x: r.x,
+              y: r.y,
+              w: pw,
+              h: ph,
+              isRotated: bestRotate
+            });
+
+            // División por guillotina (Shorter Axis Split Rule con Kerf de disco)
+            const rightW = r.w - pw - kerf;
+            const rightH = r.h;
+            const topW = pw;
+            const topH = r.h - ph - kerf;
+
+            if (rightW > 0 && r.h > 0) {
+              sheet.freeRects.push({ x: r.x + pw + kerf, y: r.y, w: rightW, h: r.h });
+            }
+            if (topW > 0 && topH > 0) {
+              sheet.freeRects.push({ x: r.x, y: r.y + ph + kerf, w: topW, h: topH });
+            }
+
+            // Ordenar rectángulos libres para priorizar las esquinas inferiores
+            sheet.freeRects.sort((a, b) => (a.y - b.y) || (a.x - b.x));
+            placed = true;
+            break;
+          }
+        }
+
+        // Si no cupo en ninguna plancha existente, abrir una nueva plancha
+        if (!placed) {
+          const newSheet = createNewSheet();
+          sheets.push(newSheet);
+          const r = newSheet.freeRects.shift();
+
+          const canRotNew = piece.canRotate && piece.h <= r.w && piece.w <= r.h;
+          // Preferir orientación que alinee el lado más largo a lo largo de la plancha
+          const bestRotate = canRotNew && (piece.h > piece.w);
+          const pw = bestRotate ? piece.h : piece.w;
+          const ph = bestRotate ? piece.w : piece.h;
+
+          newSheet.placed.push({
+            ...piece,
+            x: r.x,
+            y: r.y,
+            w: pw,
+            h: ph,
+            isRotated: bestRotate
+          });
+
+          const rightW = r.w - pw - kerf;
+          const topH = r.h - ph - kerf;
+          if (rightW > 0) newSheet.freeRects.push({ x: r.x + pw + kerf, y: r.y, w: rightW, h: r.h });
+          if (topH > 0) newSheet.freeRects.push({ x: r.x, y: r.y + ph + kerf, w: pw, h: topH });
+        }
+      });
+
+      // Calcular estadísticas de cada plancha y clasificar retazos útiles (>= 300x300mm o >= 0.12 m2)
+      let totalPiecesPlaced = 0;
+      let totalCutAreaM2 = 0;
+      const sheetAreaM2 = (sheetW * sheetH) / 1000000;
+
+      sheets.forEach((sheet) => {
+        let sheetCutArea = 0;
+        sheet.placed.forEach((p) => {
+          sheetCutArea += (p.w * p.h) / 1000000;
+          totalPiecesPlaced++;
+        });
+        sheet.cutAreaM2 = sheetCutArea;
+        sheet.efficiencyPercent = Math.min(100, Math.round((sheetCutArea / sheetAreaM2) * 1000) / 10);
+        sheet.wastePercent = Math.max(0, Math.round((100 - sheet.efficiencyPercent) * 10) / 10);
+
+        // Identificar retazos útiles
+        sheet.offcuts = sheet.freeRects.filter(r => (r.w >= 250 && r.h >= 250) || ((r.w * r.h) >= 120000));
+        sheet.offcuts.sort((a, b) => (b.w * b.h) - (a.w * a.h));
+
+        totalCutAreaM2 += sheetCutArea;
+      });
+
+      const totalSheetsCount = sheets.length;
+      const totalStockAreaM2 = totalSheetsCount * sheetAreaM2;
+      const overallEfficiency = totalStockAreaM2 > 0 ? Math.round((totalCutAreaM2 / totalStockAreaM2) * 1000) / 10 : 0;
+      const overallWaste = Math.max(0, Math.round((100 - overallEfficiency) * 10) / 10);
+
+      return {
+        sheets,
+        unplaced,
+        totalPiecesPlaced,
+        totalCutAreaM2,
+        totalStockAreaM2,
+        overallEfficiency,
+        overallWaste
+      };
+    }
+
+    // --- COMPONENTE PRINCIPAL: OPTIMIZADOR DE CORTES DE TALLER ---
+    function WorkshopCutOptimizerApp() {
+      // Estado de Plancha / Material Stock
+      const [selectedPreset, setSelectedPreset] = useState('acm-122-244');
+      const [materialName, setMaterialName] = useState('ACM Aluminio Compuesto 3mm');
+      const [sheetWidth, setSheetWidth] = useState(1220);
+      const [sheetHeight, setSheetHeight] = useState(2440);
+      const [sheetCost, setSheetCost] = useState(38000);
+      const [stockAvailable, setStockAvailable] = useState(10);
+
+      // Parámetros de Corte de Taller
+      const [cuttingKerf, setCuttingKerf] = useState(3); // 3 mm por defecto para disco de corte
+      const [trimMargin, setTrimMargin] = useState(5); // 5 mm refilado perimetral
+      const [allowRotation, setAllowRotation] = useState(true);
+
+      // Lista de Piezas a Cortar
+      const [pieces, setPieces] = useState([
+        { id: 'p1', label: 'Letrero Fachada Principal', w: 1800, h: 600, qty: 1, canRotate: true, color: '#ef4444' },
+        { id: 'p2', label: 'Tapa Inferior Caja de Luz', w: 1800, h: 180, qty: 1, canRotate: true, color: '#3b82f6' },
+        { id: 'p3', label: 'Tapas Laterales Escuadra', w: 600, h: 180, qty: 2, canRotate: true, color: '#10b981' },
+        { id: 'p4', label: 'Placa Señalética Acceso', w: 400, h: 300, qty: 4, canRotate: true, color: '#f59e0b' },
+        { id: 'p5', label: 'Bandeja Trasera Montaje', w: 850, h: 420, qty: 2, canRotate: true, color: '#8b5cf6' }
+      ]);
+
+      // Estado de navegación visual de planchas
+      const [activeSheetTab, setActiveSheetTab] = useState(1);
+      const [showLabelsOnDiagram, setShowLabelsOnDiagram] = useState(true);
+      const [showDimensionsOnDiagram, setShowDimensionsOnDiagram] = useState(true);
+      const [showCutLines, setShowCutLines] = useState(true);
+      const [selectedPieceHover, setSelectedPieceHover] = useState(null);
+
+      // Datos de Orden de Trabajo (OT)
+      const [otFolio, setOtFolio] = useState('OT-TALLER-001');
+      const [assignedMaster, setAssignedMaster] = useState('Maestro Juan / Taller Matriz Olivar');
+      const [jobDescription, setJobDescription] = useState('Letreros Luminosos & Señalética');
+
+      // Modal para cargar OTs desde Intranet
+      const [showOtModal, setShowOtModal] = useState(false);
+      const [availableOts, setAvailableOts] = useState([]);
+
+      // Cargar OTs desde localStorage al iniciar
+      useEffect(() => {
+        try {
+          const savedOts = localStorage.getItem('olivar_work_orders');
+          if (savedOts) {
+            const parsed = JSON.parse(savedOts);
+            if (Array.isArray(parsed)) setAvailableOts(parsed);
+          }
+        } catch(e) {}
+      }, []);
+
+      // Manejar cambio de Preset de Material
+      const handlePresetChange = (presetId) => {
+        setSelectedPreset(presetId);
+        const preset = MATERIAL_PRESETS.find(p => p.id === presetId);
+        if (preset) {
+          setMaterialName(preset.name);
+          setSheetWidth(preset.width);
+          setSheetHeight(preset.height);
+          setSheetCost(preset.cost);
+        }
+      };
+
+      // Agregar nueva pieza a la lista
+      const handleAddPiece = () => {
+        const nextId = 'p' + (Date.now() % 10000);
+        const nextColor = PIECE_COLORS[pieces.length % PIECE_COLORS.length];
+        setPieces([
+          ...pieces,
+          {
+            id: nextId,
+            label: `Corte #${pieces.length + 1}`,
+            w: 500,
+            h: 300,
+            qty: 1,
+            canRotate: true,
+            color: nextColor
+          }
+        ]);
+      };
+
+      // Actualizar campo de una pieza
+      const handleUpdatePiece = (idx, field, val) => {
+        setPieces(prev => {
+          const next = [...prev];
+          next[idx] = { ...next[idx], [field]: val };
+          return next;
+        });
+      };
+
+      // Eliminar pieza
+      const handleDeletePiece = (idx) => {
+        if (pieces.length <= 1) {
+          alert('Debe existir al menos una pieza en la lista.');
+          return;
+        }
+        setPieces(pieces.filter((_, i) => i !== idx));
+      };
+
+      // Duplicar pieza
+      const handleDuplicatePiece = (idx) => {
+        const target = pieces[idx];
+        const nextColor = PIECE_COLORS[(pieces.length + 1) % PIECE_COLORS.length];
+        setPieces([
+          ...pieces.slice(0, idx + 1),
+          {
+            ...target,
+            id: 'p' + (Date.now() % 10000),
+            label: `${target.label} (Copia)`,
+            color: nextColor
+          },
+          ...pieces.slice(idx + 1)
+        ]);
+      };
+
+      // Cargar Trabajo de Ejemplo de Taller
+      const handleLoadDemoProject = () => {
+        handlePresetChange('acm-122-244');
+        setCuttingKerf(3);
+        setTrimMargin(5);
+        setAllowRotation(true);
+        setOtFolio('OT-2026-DEMO');
+        setJobDescription('Caja Luminosa Bifaz + Cenefa + Señaléticas');
+        setPieces([
+          { id: 'p1', label: 'Cenefa Superior Frontal', w: 2100, h: 450, qty: 1, canRotate: true, color: '#ef4444' },
+          { id: 'p2', label: 'Frente Caja de Luz', w: 1200, h: 800, qty: 1, canRotate: true, color: '#3b82f6' },
+          { id: 'p3', label: 'Espalda Caja de Luz', w: 1200, h: 800, qty: 1, canRotate: true, color: '#10b981' },
+          { id: 'p4', label: 'Tapas Perimetrales Marco', w: 1200, h: 140, qty: 2, canRotate: true, color: '#f59e0b' },
+          { id: 'p5', label: 'Costados de Marco 14cm', w: 800, h: 140, qty: 2, canRotate: true, color: '#8b5cf6' },
+          { id: 'p6', label: 'Placas Señalética Ruta', w: 400, h: 300, qty: 6, canRotate: true, color: '#ec4899' }
+        ]);
+      };
+
+      // Cargar datos desde una OT de la Intranet
+      const handleLoadFromOt = (ot) => {
+        if (!ot) return;
+        setOtFolio(ot.otFolio || ot.correlative || 'OT-CARGADA');
+        setJobDescription(ot.client?.name ? `Cliente: ${ot.client.name}` : (ot.description || 'Orden de Taller'));
+        if (ot.assignedTech) setAssignedMaster(ot.assignedTech);
+
+        // Convertir ítems de la OT a piezas de corte
+        const importedPieces = [];
+        (ot.items || []).forEach((item, idx) => {
+          const w = Math.round((parseFloat(item.width) || 1) * 1000); // metros a mm
+          const h = Math.round((parseFloat(item.height) || 0.5) * 1000);
+          const qty = parseInt(item.quantity, 10) || 1;
+          const color = PIECE_COLORS[idx % PIECE_COLORS.length];
+          importedPieces.push({
+            id: `ot-p-${idx + 1}`,
+            label: item.name || item.detail || `Ítem #${idx + 1}`,
+            w,
+            h,
+            qty,
+            canRotate: true,
+            color
+          });
+        });
+
+        if (importedPieces.length > 0) {
+          setPieces(importedPieces);
+        }
+        setShowOtModal(false);
+      };
+
+      // Ejecutar el motor de optimización (Memoizado reactivamente)
+      const optimizationResults = useMemo(() => {
+        return run2DCutOptimization(
+          sheetWidth,
+          sheetHeight,
+          cuttingKerf,
+          trimMargin,
+          pieces,
+          allowRotation
+        );
+      }, [sheetWidth, sheetHeight, cuttingKerf, trimMargin, pieces, allowRotation]);
+
+      // Asegurar que la pestaña activa sea válida
+      useEffect(() => {
+        if (activeSheetTab > optimizationResults.sheets.length) {
+          setActiveSheetTab(1);
+        }
+      }, [optimizationResults.sheets.length]);
+
+      const currentSheet = optimizationResults.sheets[activeSheetTab - 1] || optimizationResults.sheets[0];
+
+      return (
+        <div className="min-h-screen flex flex-col bg-[#0a0a0c]">
+          
+          {/* HEADER PRINCIPAL CON IDENTIDAD DE MARCA OFICIAL */}
+          <header className="border-b border-zinc-800/80 bg-[#111116]/90 backdrop-blur sticky top-0 z-40 no-print">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+              
+              <div className="flex items-center gap-4">
+                <a href="index.html" title="Volver al Sitio Principal">
+                  <BrandLogo theme="dark" className="h-9 w-auto" />
+                </a>
+                <div className="h-6 w-px bg-zinc-800 hidden sm:block"></div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-extrabold font-heading text-white tracking-wide">
+                      OPTIMIZADOR DE CORTES 2D
+                    </span>
+                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-red-600/20 text-red-400 border border-red-500/30 rounded-full">
+                      TALLER
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-medium">
+                    Nesting 2D con Sangría de Disco ({cuttingKerf} mm) • Letreros Olivar SpA
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de Acción Superior */}
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowOtModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700/60 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                  title="Cargar piezas automáticamente desde una Orden de Trabajo registrada en la Intranet"
+                >
+                  <Icon name="layers" className="w-3.5 h-3.5 text-red-400" />
+                  <span>Cargar desde OT ({availableOts.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLoadDemoProject}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 text-xs font-bold border border-zinc-700/60 flex items-center gap-1.5 transition cursor-pointer"
+                  title="Cargar un conjunto de piezas de ejemplo de un letrero luminoso real"
+                >
+                  <Icon name="refresh" className="w-3.5 h-3.5 text-zinc-400" />
+                  <span className="hidden sm:inline">Ejemplo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-1.5 transition shadow-lg shadow-red-600/30 cursor-pointer"
+                  title="Imprimir plan de corte en hoja A4 para el maestro en taller"
+                >
+                  <Icon name="printer" className="w-3.5 h-3.5" />
+                  <span>Imprimir Plan</span>
+                </button>
+
+                <a
+                  href="intranet.html"
+                  className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold border border-zinc-800 transition"
+                >
+                  Intranet &rarr;
+                </a>
+              </div>
+
+            </div>
+          </header>
+
+          {/* CUERPO PRINCIPAL EN DOS COLUMNAS (CONFIGURACIÓN + RESULTADOS) */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full space-y-6 no-print">
+
+            {/* BARRA SUPERIOR DE RESUMEN EJECUTIVO (KPIs DE CORTE) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              
+              <div className="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800/80">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Planchas Necesarias</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-mono font-black text-white">{optimizationResults.sheets.length}</span>
+                  <span className="text-xs text-zinc-400">ud ({sheetWidth}x{sheetHeight}mm)</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800/80">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Aprovechamiento</span>
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <span className={`text-2xl font-mono font-black ${
+                    optimizationResults.overallEfficiency >= 85 ? 'text-emerald-400' :
+                    optimizationResults.overallEfficiency >= 70 ? 'text-amber-400' : 'text-red-400'
+                  }`}>
+                    {optimizationResults.overallEfficiency}%
+                  </span>
+                  <span className="text-[10px] text-zinc-500">eficiencia</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800/80">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Merma / Desperdicio</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-mono font-black text-zinc-300">{optimizationResults.overallWaste}%</span>
+                  <span className="text-[10px] text-zinc-500">de material</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800/80">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Piezas Colocadas</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-2xl font-mono font-black text-emerald-400">
+                    {optimizationResults.totalPiecesPlaced}
+                  </span>
+                  <span className="text-xs text-zinc-400">cortes</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800/80">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Área Útil / Total</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-mono font-black text-white">{optimizationResults.totalCutAreaM2.toFixed(2)}</span>
+                  <span className="text-xs text-zinc-400 font-mono">/ {optimizationResults.totalStockAreaM2.toFixed(2)} m²</span>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#111116] border border-zinc-800/80">
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Costo de Sustrato</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-lg font-mono font-black text-red-400">
+                    ${(optimizationResults.sheets.length * sheetCost).toLocaleString('es-CL')}
+                  </span>
+                  <span className="text-[10px] text-zinc-500 font-mono">CLP</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* CONTENIDO PRINCIPAL EN 2 COLUMNAS */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+              {/* COLUMNA IZQUIERDA: CONFIGURACIÓN DE PLANCHA Y PIEZAS (5 COLUMNAS) */}
+              <div className="lg:col-span-5 space-y-5">
+                
+                {/* 1. SELECCIÓN DE PLANCHA Y PARÁMETROS */}
+                <div className="p-5 rounded-2xl bg-[#111116] border border-zinc-800/80 space-y-4 shadow-xl">
+                  
+                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+                      <h2 className="text-sm font-bold text-white uppercase tracking-wider font-heading">
+                        1. Plancha Matriz (Stock)
+                      </h2>
+                    </div>
+                    <span className="text-[11px] font-mono text-zinc-400 font-bold">
+                      {sheetWidth} × {sheetHeight} mm
+                    </span>
+                  </div>
+
+                  {/* Selector Rápido de Presets */}
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
+                      Catálogo de Material de Taller:
+                    </label>
+                    <select
+                      value={selectedPreset}
+                      onChange={(e) => handlePresetChange(e.target.value)}
+                      className="w-full bg-zinc-950 text-white text-xs px-3 py-2.5 rounded-xl border border-zinc-700 focus:border-red-500 focus:outline-none transition"
+                    >
+                      {MATERIAL_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Dimensiones Manuales de la Plancha */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">Ancho (mm)</label>
+                      <input
+                        type="number"
+                        value={sheetWidth}
+                        onChange={(e) => setSheetWidth(Math.max(100, parseInt(e.target.value, 10) || 0))}
+                        className="w-full bg-zinc-950 text-white text-xs font-mono font-bold px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">Largo/Alto (mm)</label>
+                      <input
+                        type="number"
+                        value={sheetHeight}
+                        onChange={(e) => setSheetHeight(Math.max(100, parseInt(e.target.value, 10) || 0))}
+                        className="w-full bg-zinc-950 text-white text-xs font-mono font-bold px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">Costo Plancha ($)</label>
+                      <input
+                        type="number"
+                        value={sheetCost}
+                        onChange={(e) => setSheetCost(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        className="w-full bg-zinc-950 text-white text-xs font-mono font-bold px-3 py-2 rounded-xl border border-zinc-800 focus:border-red-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Parámetros Técnicos de Corte de Disco */}
+                  <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-red-400 tracking-wider block">
+                      ⚙️ Parámetros de Sierra & Refilado
+                    </span>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-bold text-zinc-300">
+                            Espesor Disco (Kerf):
+                          </label>
+                          <span className="text-xs font-mono font-black text-red-400">{cuttingKerf} mm</span>
+                        </div>
+                        <select
+                          value={cuttingKerf}
+                          onChange={(e) => setCuttingKerf(parseFloat(e.target.value) || 0)}
+                          className="w-full bg-zinc-900 text-white text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700"
+                        >
+                          <option value="0">0 mm (Guillotina / Cizalla)</option>
+                          <option value="0.2">0.2 mm (Corte Láser)</option>
+                          <option value="2">2 mm (Fresa Router CNC)</option>
+                          <option value="3">3 mm (Disco Sierra Estándar)</option>
+                          <option value="4">4 mm (Disco Sierra Grueso)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-[11px] font-bold text-zinc-300">
+                            Refilado Perimetral:
+                          </label>
+                          <span className="text-xs font-mono font-black text-zinc-300">{trimMargin} mm</span>
+                        </div>
+                        <select
+                          value={trimMargin}
+                          onChange={(e) => setTrimMargin(parseFloat(e.target.value) || 0)}
+                          className="w-full bg-zinc-900 text-white text-xs px-2.5 py-1.5 rounded-lg border border-zinc-700"
+                        >
+                          <option value="0">0 mm (Sin refilar bordes)</option>
+                          <option value="5">5 mm (Saneado estándar)</option>
+                          <option value="10">10 mm (Bordes dañados)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 text-xs">
+                      <span className="text-zinc-400">Permitir Rotación Libre (90°):</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={allowRotation}
+                          onChange={(e) => setAllowRotation(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
+                      </label>
+                    </div>
+
+                  </div>
+
+                </div>
+
+                {/* 2. TABLA DE PIEZAS A CORTAR (CUT LIST) */}
+                <div className="p-5 rounded-2xl bg-[#111116] border border-zinc-800/80 space-y-4 shadow-xl">
+                  
+                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                      <h2 className="text-sm font-bold text-white uppercase tracking-wider font-heading">
+                        2. Piezas a Cortar ({pieces.length})
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddPiece}
+                      className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-black flex items-center gap-1 transition shadow cursor-pointer"
+                    >
+                      <Icon name="plus" className="w-3.5 h-3.5" />
+                      <span>+ Agregar Pieza</span>
+                    </button>
+                  </div>
+
+                  {/* Tabla con scroll horizontal */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-zinc-800 text-[10px] text-zinc-400 uppercase font-mono tracking-wider">
+                          <th className="py-2 px-1">#</th>
+                          <th className="py-2 px-2">Descripción / Ítem</th>
+                          <th className="py-2 px-1 w-20">Ancho (mm)</th>
+                          <th className="py-2 px-1 w-20">Alto (mm)</th>
+                          <th className="py-2 px-1 w-14">Cant.</th>
+                          <th className="py-2 px-1 text-center w-12">Girar</th>
+                          <th className="py-2 px-1 text-right w-16">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-900 font-mono">
+                        {pieces.map((p, idx) => (
+                          <tr key={p.id} className="hover:bg-zinc-950/50 transition">
+                            <td className="py-2 px-1">
+                              <span
+                                className="w-3.5 h-3.5 rounded-full inline-block shadow-sm"
+                                style={{ backgroundColor: p.color }}
+                                title={`Color asignado a ${p.label}`}
+                              ></span>
+                            </td>
+                            <td className="py-2 px-2">
+                              <input
+                                type="text"
+                                value={p.label}
+                                onChange={(e) => handleUpdatePiece(idx, 'label', e.target.value)}
+                                className="w-full bg-zinc-950 text-zinc-100 text-xs px-2 py-1 rounded-lg border border-zinc-800 focus:border-red-500 focus:outline-none font-sans"
+                                placeholder="Nombre de la pieza"
+                              />
+                            </td>
+                            <td className="py-2 px-1">
+                              <input
+                                type="number"
+                                value={p.w}
+                                onChange={(e) => handleUpdatePiece(idx, 'w', Math.max(1, parseInt(e.target.value, 10) || 0))}
+                                className="w-full bg-zinc-950 text-white text-xs px-2 py-1 rounded-lg border border-zinc-800 focus:border-red-500 focus:outline-none font-bold"
+                              />
+                            </td>
+                            <td className="py-2 px-1">
+                              <input
+                                type="number"
+                                value={p.h}
+                                onChange={(e) => handleUpdatePiece(idx, 'h', Math.max(1, parseInt(e.target.value, 10) || 0))}
+                                className="w-full bg-zinc-950 text-white text-xs px-2 py-1 rounded-lg border border-zinc-800 focus:border-red-500 focus:outline-none font-bold"
+                              />
+                            </td>
+                            <td className="py-2 px-1">
+                              <input
+                                type="number"
+                                value={p.qty}
+                                min="1"
+                                onChange={(e) => handleUpdatePiece(idx, 'qty', Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                className="w-full bg-zinc-950 text-emerald-400 text-xs px-1.5 py-1 rounded-lg border border-zinc-800 focus:border-red-500 focus:outline-none font-bold text-center"
+                              />
+                            </td>
+                            <td className="py-2 px-1 text-center">
+                              <input
+                                type="checkbox"
+                                checked={p.canRotate !== false}
+                                onChange={(e) => handleUpdatePiece(idx, 'canRotate', e.target.checked)}
+                                className="accent-red-600 rounded cursor-pointer"
+                                title="Permitir girar esta pieza 90°"
+                              />
+                            </td>
+                            <td className="py-2 px-1 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDuplicatePiece(idx)}
+                                  className="text-zinc-500 hover:text-white p-1 transition"
+                                  title="Duplicar pieza"
+                                >
+                                  📑
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePiece(idx)}
+                                  className="text-zinc-500 hover:text-red-400 p-1 transition"
+                                  title="Eliminar pieza"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Aviso de piezas que exceden la plancha */}
+                  {optimizationResults.unplaced.length > 0 && (
+                    <div className="p-3 rounded-xl bg-red-950/40 border border-red-700/50 text-red-300 text-xs flex items-center gap-2">
+                      <span className="text-base">⚠️</span>
+                      <div>
+                        <strong>{optimizationResults.unplaced.length} pieza(s) no caben en la plancha:</strong>
+                        <p className="text-[11px] opacity-80 mt-0.5">
+                          {optimizationResults.unplaced.map(p => `${p.label} (${p.w}x${p.h}mm)`).join(', ')}. Selecciona una plancha más grande.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+
+              {/* COLUMNA DERECHA: PLANO DE CORTE VECTORIAL E INTERACTIVO (7 COLUMNAS) */}
+              <div className="lg:col-span-7 space-y-4">
+                
+                {/* CABECERA DEL VISOR DE PLANCHAS */}
+                <div className="p-4 rounded-2xl bg-[#111116] border border-zinc-800/80 flex flex-wrap items-center justify-between gap-3 shadow-xl">
+                  
+                  {/* Selector de pestañas de plancha */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-zinc-400 font-heading uppercase mr-1">
+                      Planchas ({optimizationResults.sheets.length}):
+                    </span>
+                    {optimizationResults.sheets.map((s, idx) => (
+                      <button
+                        key={s.sheetIndex}
+                        type="button"
+                        onClick={() => setActiveSheetTab(s.sheetIndex)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold font-mono transition flex items-center gap-1.5 cursor-pointer ${
+                          activeSheetTab === s.sheetIndex
+                            ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                            : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800'
+                        }`}
+                      >
+                        <span>Plancha {s.sheetIndex}</span>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                          activeSheetTab === s.sheetIndex ? 'bg-black/30 text-white' : 'bg-zinc-800 text-zinc-400'
+                        }`}>
+                          {s.efficiencyPercent}%
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Opciones de visualización */}
+                  <div className="flex items-center gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setShowLabelsOnDiagram(!showLabelsOnDiagram)}
+                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
+                        showLabelsOnDiagram ? 'bg-zinc-800 text-white border-zinc-600' : 'bg-transparent text-zinc-500 border-zinc-800'
+                      }`}
+                    >
+                      Nombres
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowDimensionsOnDiagram(!showDimensionsOnDiagram)}
+                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition ${
+                        showDimensionsOnDiagram ? 'bg-zinc-800 text-white border-zinc-600' : 'bg-transparent text-zinc-500 border-zinc-800'
+                      }`}
+                    >
+                      Cotas (mm)
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* DIAGRAMA VECTORIAL SVG DE LA PLANCHA SELECCIONADA */}
+                {currentSheet && (
+                  <div className="p-5 rounded-2xl bg-[#111116] border border-zinc-800/80 shadow-2xl space-y-4">
+                    
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <strong className="text-white text-sm font-heading">
+                          Plancha #{currentSheet.sheetIndex} • {materialName}
+                        </strong>
+                        <span className="text-zinc-400 ml-2 font-mono text-[11px]">
+                          ({currentSheet.sheetW} mm de ancho × {currentSheet.sheetH} mm de largo)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono text-xs">
+                        <span className="text-emerald-400 font-bold">
+                          {currentSheet.placed.length} piezas
+                        </span>
+                        <span className="text-zinc-600">•</span>
+                        <span className="text-zinc-300">
+                          {currentSheet.efficiencyPercent}% utilizado
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* LIENZO VECTORIAL SVG CON COTAS Y NESTING A ESCALA */}
+                    <div className="w-full bg-[#070709] border border-zinc-800 rounded-xl p-3 overflow-hidden flex items-center justify-center">
+                      {(() => {
+                        // Dimensiones para el viewBox del SVG
+                        const padX = 60; // margen exterior para reglas
+                        const padY = 45;
+                        const svgW = 1000;
+                        const drawW = svgW - (padX * 2);
+                        const scale = drawW / currentSheet.sheetW;
+                        const drawH = currentSheet.sheetH * scale;
+                        const svgH = drawH + (padY * 2);
+
+                        return (
+                          <svg
+                            viewBox={`0 0 ${svgW} ${svgH}`}
+                            className="w-full h-auto max-h-[620px] select-none"
+                            style={{ filter: 'drop-shadow(0 10px 25px rgba(0,0,0,0.5))' }}
+                          >
+                            {/* Fondo de la plancha completa (Borde exterior de stock) */}
+                            <rect
+                              x={padX}
+                              y={padY}
+                              width={drawW}
+                              height={drawH}
+                              fill="#18181f"
+                              stroke="#52525b"
+                              strokeWidth="2"
+                              rx="3"
+                            />
+
+                            {/* Margen de refilado perimetral (Trim) con línea discontinua */}
+                            {currentSheet.trim > 0 && (
+                              <rect
+                                x={padX + (currentSheet.trim * scale)}
+                                y={padY + (currentSheet.trim * scale)}
+                                width={drawW - (2 * currentSheet.trim * scale)}
+                                height={drawH - (2 * currentSheet.trim * scale)}
+                                fill="none"
+                                stroke="#dc2626"
+                                strokeWidth="1"
+                                strokeDasharray="4 3"
+                                opacity="0.6"
+                              />
+                            )}
+
+                            {/* Áreas de Retazos Útiles (Offcuts) sombreadas en verde oliva */}
+                            {currentSheet.offcuts.map((off, oIdx) => (
+                              <g key={`off-${oIdx}`}>
+                                <rect
+                                  x={padX + (off.x * scale)}
+                                  y={padY + (off.y * scale)}
+                                  width={off.w * scale}
+                                  height={off.h * scale}
+                                  fill="#14532d"
+                                  fillOpacity="0.25"
+                                  stroke="#22c55e"
+                                  strokeWidth="1"
+                                  strokeDasharray="3 3"
+                                />
+                                {off.w * scale > 60 && off.h * scale > 30 && (
+                                  <text
+                                    x={padX + (off.x * scale) + (off.w * scale / 2)}
+                                    y={padY + (off.y * scale) + (off.h * scale / 2) + 4}
+                                    fill="#4ade80"
+                                    fontSize="11"
+                                    fontFamily="JetBrains Mono"
+                                    fontWeight="bold"
+                                    textAnchor="middle"
+                                    opacity="0.9"
+                                  >
+                                    Retazo {Math.round(off.w)}×{Math.round(off.h)}mm
+                                  </text>
+                                )}
+                              </g>
+                            ))}
+
+                            {/* Piezas cortadas colocadas */}
+                            {currentSheet.placed.map((piece, pIdx) => {
+                              const px = padX + (piece.x * scale);
+                              const py = padY + (piece.y * scale);
+                              const pw = piece.w * scale;
+                              const ph = piece.h * scale;
+                              const isHovered = selectedPieceHover === piece.subId;
+
+                              return (
+                                <g
+                                  key={piece.subId}
+                                  onMouseEnter={() => setSelectedPieceHover(piece.subId)}
+                                  onMouseLeave={() => setSelectedPieceHover(null)}
+                                  className="cursor-pointer transition-opacity"
+                                >
+                                  {/* Rectángulo de la pieza con su color */}
+                                  <rect
+                                    x={px}
+                                    y={py}
+                                    width={pw}
+                                    height={ph}
+                                    fill={piece.color}
+                                    fillOpacity={isHovered ? 0.95 : 0.85}
+                                    stroke={isHovered ? '#ffffff' : '#0a0a0c'}
+                                    strokeWidth={isHovered ? 2.5 : 1.5}
+                                    rx="2"
+                                  />
+
+                                  {/* Línea de corte / Sangría de disco visible si se activa */}
+                                  {showCutLines && cuttingKerf > 0 && (
+                                    <>
+                                      <line
+                                        x1={px + pw}
+                                        y1={py}
+                                        x2={px + pw}
+                                        y2={py + ph}
+                                        stroke="#f87171"
+                                        strokeWidth={Math.max(1.5, cuttingKerf * scale)}
+                                        opacity="0.4"
+                                      />
+                                      <line
+                                        x1={px}
+                                        y1={py + ph}
+                                        x2={px + pw}
+                                        y2={py + ph}
+                                        stroke="#f87171"
+                                        strokeWidth={Math.max(1.5, cuttingKerf * scale)}
+                                        opacity="0.4"
+                                      />
+                                    </>
+                                  )}
+
+                                  {/* Etiqueta y Dimensiones legibles dentro de la pieza */}
+                                  {pw > 45 && ph > 25 && (
+                                    <g>
+                                      {/* Número de corte */}
+                                      <circle
+                                        cx={px + 14}
+                                        cy={py + 14}
+                                        r="9"
+                                        fill="#000000"
+                                        fillOpacity="0.75"
+                                      />
+                                      <text
+                                        x={px + 14}
+                                        y={py + 17.5}
+                                        fill="#ffffff"
+                                        fontSize="10"
+                                        fontFamily="JetBrains Mono"
+                                        fontWeight="bold"
+                                        textAnchor="middle"
+                                      >
+                                        {pIdx + 1}
+                                      </text>
+
+                                      {/* Nombre / Descripción */}
+                                      {showLabelsOnDiagram && pw > 90 && ph > 35 && (
+                                        <text
+                                          x={px + pw / 2}
+                                          y={py + (ph / 2) - 2}
+                                          fill="#ffffff"
+                                          fontSize={Math.min(13, Math.max(9, pw / 15))}
+                                          fontFamily="Plus Jakarta Sans"
+                                          fontWeight="bold"
+                                          textAnchor="middle"
+                                          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+                                        >
+                                          {piece.label}
+                                        </text>
+                                      )}
+
+                                      {/* Dimensiones Milimétricas */}
+                                      {showDimensionsOnDiagram && (
+                                        <text
+                                          x={px + pw / 2}
+                                          y={showLabelsOnDiagram && ph > 35 ? (py + (ph / 2) + 14) : (py + (ph / 2) + 4)}
+                                          fill="#ffffff"
+                                          fontSize="11"
+                                          fontFamily="JetBrains Mono"
+                                          fontWeight="600"
+                                          textAnchor="middle"
+                                          opacity="0.95"
+                                          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}
+                                        >
+                                          {Math.round(piece.w)} × {Math.round(piece.h)} mm
+                                          {piece.isRotated ? ' ⟳' : ''}
+                                        </text>
+                                      )}
+                                    </g>
+                                  )}
+
+                                </g>
+                              );
+                            })}
+
+                            {/* REGLAS MILIMÉTRICAS EXTERIORES */}
+                            {/* Regla Superior (Ancho) */}
+                            <line
+                              x1={padX}
+                              y1={padY - 14}
+                              x2={padX + drawW}
+                              y2={padY - 14}
+                              stroke="#71717a"
+                              strokeWidth="1.5"
+                            />
+                            <line x1={padX} y1={padY - 20} x2={padX} y2={padY - 8} stroke="#71717a" strokeWidth="1.5" />
+                            <line x1={padX + drawW} y1={padY - 20} x2={padX + drawW} y2={padY - 8} stroke="#71717a" strokeWidth="1.5" />
+                            <text
+                              x={padX + (drawW / 2)}
+                              y={padY - 20}
+                              fill="#d4d4d8"
+                              fontSize="12"
+                              fontFamily="JetBrains Mono"
+                              fontWeight="bold"
+                              textAnchor="middle"
+                            >
+                              ANCHO: {currentSheet.sheetW} mm
+                            </text>
+
+                            {/* Regla Izquierda (Largo/Alto) */}
+                            <line
+                              x1={padX - 16}
+                              y1={padY}
+                              x2={padX - 16}
+                              y2={padY + drawH}
+                              stroke="#71717a"
+                              strokeWidth="1.5"
+                            />
+                            <line x1={padX - 22} y1={padY} x2={padX - 10} y2={padY} stroke="#71717a" strokeWidth="1.5" />
+                            <line x1={padX - 22} y1={padY + drawH} x2={padX - 10} y2={padY + drawH} stroke="#71717a" strokeWidth="1.5" />
+                            <text
+                              x={padX - 26}
+                              y={padY + (drawH / 2)}
+                              fill="#d4d4d8"
+                              fontSize="12"
+                              fontFamily="JetBrains Mono"
+                              fontWeight="bold"
+                              textAnchor="middle"
+                              transform={`rotate(-90, ${padX - 26}, ${padY + (drawH / 2)})`}
+                            >
+                              LARGO: {currentSheet.sheetH} mm
+                            </text>
+
+                          </svg>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Leyenda y Detalles de la Plancha Activa */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                      
+                      {/* Piezas en esta plancha */}
+                      <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-2">
+                          Piezas a Cortar en Plancha #{currentSheet.sheetIndex}:
+                        </span>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                          {currentSheet.placed.map((p, idx) => (
+                            <div
+                              key={p.subId}
+                              className={`flex items-center justify-between p-1.5 rounded-lg text-[11px] transition ${
+                                selectedPieceHover === p.subId ? 'bg-zinc-800 text-white font-bold' : 'text-zinc-300 hover:bg-zinc-900'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color }}></span>
+                                <span>#{idx + 1} {p.label}</span>
+                              </div>
+                              <span className="font-mono text-zinc-400">
+                                {Math.round(p.w)}×{Math.round(p.h)}mm {p.isRotated ? '(Giro 90°)' : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Retazos útiles para bodega */}
+                      <div className="p-3 rounded-xl bg-zinc-950/70 border border-zinc-800">
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-2">
+                          ♻️ Retazos Útiles Sobrantes (Bodega):
+                        </span>
+                        {currentSheet.offcuts.length > 0 ? (
+                          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                            {currentSheet.offcuts.map((off, oIdx) => (
+                              <div key={oIdx} className="flex items-center justify-between p-1.5 rounded-lg bg-emerald-950/20 border border-emerald-900/40 text-[11px] text-emerald-300 font-mono">
+                                <span>Retazo #{oIdx + 1}</span>
+                                <strong>{Math.round(off.w)} mm × {Math.round(off.h)} mm ({((off.w * off.h)/1000000).toFixed(2)} m²)</strong>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-zinc-500 italic">
+                            No quedan retazos mayores a 250×250mm en esta plancha (Aprovechamiento óptimo).
+                          </p>
+                        )}
+                      </div>
+
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+
+          </main>
+
+          {/* ========================================================================= */}
+          {/* HOJA DE IMPRESIÓN EXCLUSIVA PARA TALLER (ID: print-area)                  */}
+          {/* Formato A4 profesional con logotipo oficial, cotas y lista de corte        */}
+          {/* ========================================================================= */}
+          <div id="print-area" className="hidden p-8 bg-white text-black font-sans text-xs space-y-4">
+            
+            {/* Membrete Oficial */}
+            <div className="flex justify-between items-start border-b-2 border-red-600 pb-3">
+              <div>
+                <BrandLogo theme="light" className="h-11 w-auto mb-1" />
+                <p className="text-[10px] text-gray-700 font-bold uppercase">
+                  Taller de Fabricación Gráfica, Estructuras & Publicidad
+                </p>
+                <p className="text-[9px] text-gray-500">
+                  RUT: 77.892.486-5 • Fono: +56 9 5158 5884 • Olivar, Región de O'Higgins
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="inline-block bg-black text-white px-3 py-1 font-mono font-black text-xs rounded mb-1">
+                  PLAN DE CORTE 2D • {otFolio}
+                </div>
+                <p className="text-[10px] text-gray-700"><strong>Fecha:</strong> {new Date().toLocaleDateString('es-CL')}</p>
+                <p className="text-[10px] text-red-600 font-bold"><strong>Operario:</strong> {assignedMaster}</p>
+              </div>
+            </div>
+
+            {/* Ficha Resumen del Trabajo */}
+            <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded border border-gray-300 text-[11px]">
+              <div>
+                <span className="text-[9px] uppercase font-bold text-gray-500 block">Sustrato Matriz:</span>
+                <strong className="text-xs text-black block">{materialName}</strong>
+                <p className="text-gray-700">Plancha: {sheetWidth} × {sheetHeight} mm • Refilado: {trimMargin} mm</p>
+              </div>
+              <div>
+                <span className="text-[9px] uppercase font-bold text-gray-500 block">Especificaciones de Sierra:</span>
+                <p className="text-gray-800">
+                  Espesor Disco (Kerf): <strong>{cuttingKerf} mm</strong> • Total Planchas: <strong>{optimizationResults.sheets.length} ud</strong>
+                </p>
+                <p className="text-emerald-700 font-bold">
+                  Aprovechamiento: {optimizationResults.overallEfficiency}% (Merma: {optimizationResults.overallWaste}%)
+                </p>
+              </div>
+            </div>
+
+            {/* Planos de cada Plancha para Imprimir */}
+            <div className="space-y-6 pt-2">
+              {optimizationResults.sheets.map((sheet, sIdx) => (
+                <div key={sheet.sheetIndex} className="border border-gray-300 rounded-lg p-3 space-y-2 page-break-inside-avoid">
+                  
+                  <div className="flex justify-between items-center border-b border-gray-200 pb-1">
+                    <span className="font-bold text-xs uppercase text-red-700 font-mono">
+                      PLANCHA #{sheet.sheetIndex} de {optimizationResults.sheets.length}
+                    </span>
+                    <span className="text-[10px] text-gray-600 font-mono">
+                      {sheet.placed.length} piezas • {sheet.efficiencyPercent}% utilizado
+                    </span>
+                  </div>
+
+                  {/* Diagrama SVG para Impresión */}
+                  <div className="w-full flex justify-center py-2">
+                    {(() => {
+                      const scale = 500 / sheet.sheetW;
+                      const drawW = sheet.sheetW * scale;
+                      const drawH = sheet.sheetH * scale;
+
+                      return (
+                        <svg width={drawW + 40} height={drawH + 30} viewBox={`-20 -15 ${drawW + 40} ${drawH + 30}`} className="border border-gray-400 bg-white">
+                          <rect x="0" y="0" width={drawW} height={drawH} fill="#f8fafc" stroke="#000" strokeWidth="1" />
+                          
+                          {sheet.placed.map((p, idx) => (
+                            <g key={p.subId}>
+                              <rect
+                                x={p.x * scale}
+                                y={p.y * scale}
+                                width={p.w * scale}
+                                height={p.h * scale}
+                                fill="#e2e8f0"
+                                stroke="#000000"
+                                strokeWidth="1"
+                              />
+                              <text
+                                x={(p.x * scale) + (p.w * scale / 2)}
+                                y={(p.y * scale) + (p.h * scale / 2) - 2}
+                                fontSize="9"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                fill="#000"
+                              >
+                                #{idx + 1} {p.label.slice(0, 15)}
+                              </text>
+                              <text
+                                x={(p.x * scale) + (p.w * scale / 2)}
+                                y={(p.y * scale) + (p.h * scale / 2) + 9}
+                                fontSize="8"
+                                fontFamily="monospace"
+                                textAnchor="middle"
+                                fill="#333"
+                              >
+                                {Math.round(p.w)}×{Math.round(p.h)}
+                              </text>
+                            </g>
+                          ))}
+                        </svg>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Tabla de Piezas para Marcar Conforme se Cortan */}
+                  <table className="w-full text-left text-[9px] border-collapse mt-2">
+                    <thead>
+                      <tr className="border-b border-gray-300 font-bold bg-gray-100">
+                        <th className="p-1">Check</th>
+                        <th className="p-1">#</th>
+                        <th className="p-1">Descripción</th>
+                        <th className="p-1">Ancho (mm)</th>
+                        <th className="p-1">Alto (mm)</th>
+                        <th className="p-1">Giro 90°</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sheet.placed.map((p, idx) => (
+                        <tr key={p.subId} className="border-b border-gray-200">
+                          <td className="p-1 w-6 text-center">
+                            <input type="checkbox" className="w-3.5 h-3.5" />
+                          </td>
+                          <td className="p-1 font-mono font-bold">#{idx + 1}</td>
+                          <td className="p-1 font-semibold">{p.label}</td>
+                          <td className="p-1 font-mono">{Math.round(p.w)} mm</td>
+                          <td className="p-1 font-mono">{Math.round(p.h)} mm</td>
+                          <td className="p-1 text-gray-600">{p.isRotated ? 'SÍ (Giro 90°)' : 'NO'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                </div>
+              ))}
+            </div>
+
+            {/* Firmas de Control de Calidad */}
+            <div className="pt-6 grid grid-cols-2 gap-8 text-center text-[10px]">
+              <div>
+                <div className="border-b border-black w-48 mx-auto mb-1"></div>
+                <strong>Firma Maestro / Operario de Sierra</strong>
+                <p className="text-gray-500">Dimensionado y Verificación de Medidas</p>
+              </div>
+              <div>
+                <div className="border-b border-black w-48 mx-auto mb-1"></div>
+                <strong>Control de Calidad / Taller Matriz</strong>
+                <p className="text-gray-500">Inspección de Borde y Escuadra</p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* ============================================================== */}
+          {/* MODAL: CARGAR TRABAJO DESDE ORDEN DE TRABAJO (INTRANET)        */}
+          {/* ============================================================== */}
+          {showOtModal && (
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+              <div className="bg-[#111116] border border-zinc-800 rounded-2xl w-full max-w-xl p-6 space-y-4 shadow-2xl">
+                
+                <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-bold">
+                      <Icon name="layers" className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white font-heading">
+                        Cargar Piezas desde Orden de Trabajo (OT)
+                      </h3>
+                      <p className="text-[11px] text-zinc-400">
+                        Selecciona una OT activa para transferir sus cortes al optimizador
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowOtModal(false)}
+                    className="text-zinc-500 hover:text-white text-lg font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {availableOts.length > 0 ? (
+                    availableOts.map((ot) => (
+                      <div
+                        key={ot.id || ot.otFolio}
+                        onClick={() => handleLoadFromOt(ot)}
+                        className="p-3 rounded-xl bg-zinc-950/80 hover:bg-zinc-900 border border-zinc-800/80 hover:border-red-500/50 transition cursor-pointer flex items-center justify-between gap-3"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-xs text-red-400">{ot.otFolio}</span>
+                            <span className="text-xs text-white font-semibold">{ot.client?.name || 'Cliente Taller'}</span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 mt-0.5">
+                            {(ot.items || []).length} trabajos • Entrega: {ot.deadline || 'Coordinada'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="px-2.5 py-1 rounded-lg bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white text-[11px] font-bold border border-red-500/30 transition"
+                        >
+                          Cargar &rarr;
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-zinc-500 text-xs">
+                      No hay órdenes de trabajo guardadas en este navegador. Puedes ingresar las piezas manualmente en la tabla.
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowOtModal(false)}
+                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* FOOTER DEL SISTEMA */}
+          <footer className="border-t border-zinc-800/80 py-4 px-6 text-center text-xs text-zinc-600 no-print">
+            <p>
+              &copy; 2026 Letreros Olivar SpA • Taller Matriz de Fabricación • Optimizador de Cortes 2D con Sangría de Sierra ({cuttingKerf} mm)
+            </p>
+          </footer>
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<WorkshopCutOptimizerApp />);
+  </script>
+</body>
+</html>
