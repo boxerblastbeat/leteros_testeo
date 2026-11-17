@@ -153,76 +153,112 @@
       margin: 6mm 7mm !important;
     }
     @media print {
-      /* Ocultar TODO el contenido normal de pantalla */
+      /* 1. Bloqueo estricto del documento a exactamente 1 sola página A4 (sin páginas extras ni desbordes) */
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* 2. Contenedor raíz y vistas base de React bloqueados a 1 página sin scrollbars */
+      #root, .min-h-screen {
+        width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      /* 3. Colapso total de todo elemento de pantalla fuera de la impresión */
       header,
       main,
       footer,
       nav,
+      aside,
+      form,
       .no-print,
       .print-hide-sqm {
         display: none !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
-      /* Evitar que modales 'fixed' se repitan en múltiples páginas */
+      /* 4. Colapso de hermanos directos dentro del layout para liberar el flujo */
+      #root > div > *:not(.fixed) {
+        display: none !important;
+        height: 0 !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      /* 5. Aplanar modales para que no se comporten como encabezados fixed repetitivos */
       .fixed,
       .fixed.inset-0,
       .overflow-hidden,
       .overflow-y-auto {
         position: static !important;
+        inset: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        max-height: 100% !important;
+        min-height: 0 !important;
         overflow: visible !important;
         background: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
         border: none !important;
         box-shadow: none !important;
-        max-height: none !important;
-        height: auto !important;
-        width: 100% !important;
       }
 
-      html, body {
-        background: #ffffff !important;
-        color: #000000 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        height: auto !important;
-        min-height: 0 !important;
-        max-height: 100% !important;
-        overflow: visible !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
       body * {
         visibility: hidden !important;
       }
-      #print-area, #print-area *, #ot-print-area, #ot-print-area * {
+
+      #print-area,
+      #print-area *,
+      #ot-print-area,
+      #ot-print-area * {
         visibility: visible !important;
       }
-      #print-area, #ot-print-area {
+
+      /* 6. Anclar el área de cotización/OT arriba a la izquierda exactamente en Página 1 */
+      #print-area,
+      #ot-print-area {
         display: block !important;
-        position: relative !important;
-        left: auto !important;
-        top: auto !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
         background: #ffffff !important;
         color: #000000 !important;
-        padding: 0 !important;
         border: none !important;
         box-shadow: none !important;
-        margin: 0 auto !important;
-        box-sizing: border-box !important;
-        overflow: visible !important;
+        overflow: hidden !important;
+        page-break-before: avoid !important;
         page-break-inside: avoid !important;
-        break-inside: avoid !important;
         page-break-after: avoid !important;
+        break-before: avoid !important;
+        break-inside: avoid !important;
         break-after: avoid !important;
       }
+
       .print-avoid-break, .avoid-break, table, tr, td, th {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-      }
-      table, tr, td, th {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }

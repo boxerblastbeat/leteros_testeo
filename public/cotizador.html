@@ -355,13 +355,17 @@
                 padding: 0 !important;
                 margin: 0 !important;
                 width: 100% !important;
-                height: auto !important;
-                min-height: 0 !important;
+                height: 100% !important;
                 max-height: 100% !important;
-                overflow: visible !important;
+                overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .nav-back-bar, .btn-print, .btn-add, .btn-remove, .folio-controls {
                 display: none !important;
+                height: 0 !important;
+                max-height: 0 !important;
+                overflow: hidden !important;
             }
             .container {
                 box-shadow: none !important;
@@ -372,9 +376,12 @@
                 color: black !important;
                 padding: 0 !important;
                 margin: 0 auto !important;
+                overflow: hidden !important;
+                page-break-before: avoid !important;
                 page-break-inside: avoid !important;
-                break-inside: avoid !important;
                 page-break-after: avoid !important;
+                break-before: avoid !important;
+                break-inside: avoid !important;
                 break-after: avoid !important;
             }
             .brand-title {
@@ -382,33 +389,6 @@
             }
             .brand-title span {
                 color: #E50914;
-            }
-            .section-title {
-                color: #E50914;
-            }
-            .card-box, .bank-details, .totals-box, input, select, textarea {
-                background: #F9F9F9 !important;
-                color: black !important;
-                border: 1px solid #CCC !important;
-            }
-            .quote-number-box {
-                background: #FFF !important;
-                border: 1px solid #E50914 !important;
-                color: #E50914 !important;
-            }
-            th {
-                background: #EEE !important;
-                color: #E50914 !important;
-            }
-            td {
-                border-bottom: 1px solid #EEE;
-            }
-            .btn-add, .btn-remove, .btn-print, .folio-controls {
-                display: none !important;
-            }
-            input, select, textarea {
-                border: none !important;
-                background: transparent !important;
             }
         }
     </style>
