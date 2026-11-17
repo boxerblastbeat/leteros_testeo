@@ -3334,6 +3334,7 @@
         setQuoteToDelete(null);
         setDeletePinInput('');
         showToast('🗑️ Cotización ' + correlative + ' eliminada permanentemente.');
+      };
 
       // === GESTIÓN DE VIGENCIA, CANCELACIÓN Y EXPIRACIÓN DE COTIZACIONES ===
       const handleCancelQuote = (quote, reason = 'Plazo de validez expirado sin confirmación') => {
@@ -3511,7 +3512,6 @@
           }, { merge: true }).catch(() => {});
         }
         showToast('🔄 Cotización ' + correlative + ' revalidada (+' + extraDays + ' días adicionales).');
-      };
       };
 
       // === FUNCIONES PARA GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) ===
@@ -6480,7 +6480,10 @@
                                   onChange={(e) => setIntranetClientData({ ...intranetClientData, validDays: parseInt(e.target.value, 10) })}
                                   className="w-full bg-zinc-950 text-white px-3 py-2 rounded-xl border border-zinc-800 text-xs"
                                 >
-                                  <option value="7">7 días</option>
+                                  <option value="3">3 días corridos</option>
+                                    <option value="5">5 días hábiles</option>
+                                    <option value="7">7 días</option>
+                                    <option value="10">10 días</option>
                                   <option value="15">15 días hábiles</option>
                                   <option value="30">30 días</option>
                                 </select>
@@ -8539,6 +8542,26 @@
                                     <Icon name="whatsapp" className="w-3.5 h-3.5" />
                                     <span>WhatsApp</span>
                                   </button>
+                                  {getQuoteExpiration(q).isExpired && q.status !== 'Cancelada' && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCancelQuote(q)}
+                                        className="bg-amber-100 hover:bg-amber-600 text-amber-900 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-amber-400 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                                        title="Cancelar esta cotización por haber expirado el plazo de validez sin confirmación"
+                                      >
+                                        <span>🚫 Cancelar (Vencida)</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRevalidateQuote(q, 15)}
+                                        className="bg-blue-50 hover:bg-blue-600 text-blue-800 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-blue-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                                        title="Extender el plazo de vigencia por 15 días adicionales"
+                                      >
+                                        <span>📅 +15 Días</span>
+                                      </button>
+                                    </>
+                                  )}
                                   {duplicateQuotesInfo.has(q.correlative) && (
                                     <button
                                       type="button"
