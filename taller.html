@@ -97,15 +97,15 @@
 
     // --- LOGO OFICIAL VECTORIAL EN SVG (Letreros Olivar SpA) ---
     const BrandLogo = ({ theme = 'light', className = "h-9 w-auto" }) => {
-      const primaryColor = theme === 'dark' ? '#ffffff' : '#111113';
-      const redColor = '#dc2626';
+      const src = theme === 'dark' ? 'logo-white.svg' : 'logo.svg';
+      const fallback = theme === 'dark' ? 'logo-white.png' : 'logo-oficial.png';
       return (
         <div className={"flex items-center gap-2 " + (className || "")}>
           <img 
-            src="logo.svg" 
+            src={src} 
             alt="Letreros Olivar SpA" 
             className="h-full w-auto max-w-full drop-shadow-sm object-contain" 
-            onError={(e) => { e.target.src = 'logo-oficial.png'; }}
+            onError={(e) => { e.target.src = fallback; }}
           />
         </div>
       );
