@@ -99,21 +99,84 @@
         overflow: visible !important;
       }
 
-      @page {
-        size: A4 portrait;
-        margin: 8mm 8mm !important;
+          @page {
+      size: A4 landscape;
+      margin: 8mm 10mm !important;
+    }
+
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
 
-      .print-sheet-page {
+      /* Ocultar interfaz web interactiva */
+      .no-print,
+      header,
+      main,
+      footer,
+      nav {
+        display: none !important;
+      }
+
+      body * {
+        visibility: hidden;
+      }
+
+      #print-area,
+      #print-area * {
+        visibility: visible !important;
+      }
+
+      #print-area {
+        display: block !important;
+        position: relative !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+      }
+
+      /* LÁMINA 1: DIBUJO CAD GIGANTE QUE OCUPA TODA LA HOJA A4 */
+      .print-sheet-hero-page {
         page-break-after: always !important;
         break-after: page !important;
-        margin-bottom: 24px !important;
+        height: 190mm !important;
+        max-height: 190mm !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
-      .print-sheet-page:last-child {
+      /* LÁMINA 2: ANEXO DE CORTE CON TABLA DE PIEZAS Y FIRMAS */
+      .print-sheet-details-page {
+        page-break-after: always !important;
+        break-after: page !important;
+        box-sizing: border-box !important;
+        padding-top: 4mm !important;
+      }
+
+      .print-sheet-details-page:last-child {
         page-break-after: avoid !important;
         break-after: avoid !important;
-        margin-bottom: 0 !important;
       }
 
       .page-break-inside-avoid,
@@ -1410,359 +1473,456 @@
 
           </main>
 
-                    {/* ========================================================================= */}
+                              {/* ========================================================================= */}
           {/* PLANO TÉCNICO DE CORTE 2D PARA TALLER / PDF (ID: print-area)              */}
-          {/* Formato A4 profesional: Trazos nítidos, cotas milimétricas, sin colores   */}
+          {/* Prioridad: Dibujo técnico GIGANTE en Pág. 1 • Detalles en Pág. Extra       */}
+          {/* Formato: A4 Horizontal (Landscape) especializado para planchas 2D         */}
           {/* ========================================================================= */}
-          <div id="print-area" className="bg-white text-black font-sans text-xs">
+          <div id="print-area" className="bg-white text-black font-sans">
             {optimizationResults.sheets.map((sheet, sIdx) => {
-              const padLeft = 85;
-              const padTop = 60;
+              const padLeft = 90;
+              const padTop = 70;
               const padRight = 35;
-              const padBottom = 50;
+              const padBottom = 45;
               const totalW = sheet.sheetW + padLeft + padRight;
               const totalH = sheet.sheetH + padTop + padBottom;
 
               return (
-                <div key={sheet.sheetIndex} className="print-sheet-page p-4 bg-white text-black space-y-3">
+                <div key={sheet.sheetIndex}>
                   
-                  {/* Membrete Oficial en Alta Calidad con Logo Negro para Fondo Blanco */}
-                  <div className="flex justify-between items-start border-b-2 border-red-600 pb-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <BrandLogo theme="light" className="h-10 w-auto" />
-                        <span className="text-[10px] font-bold text-zinc-600 font-mono">SpA</span>
+                  {/* ===================================================================== */}
+                  {/* PÁGINA 1: EL DIBUJO CAD VECTORIAL GIGANTE EN PÁGINA COMPLETA          */}
+                  {/* ===================================================================== */}
+                  <div className="print-sheet-hero-page bg-white text-black p-4 flex flex-col justify-between">
+                    
+                    {/* Membrete Compacto de Alta Calidad (Solo datos clave) */}
+                    <div className="flex justify-between items-center border-b-2 border-red-600 pb-2 mb-2">
+                      <div className="flex items-center gap-3">
+                        <BrandLogo theme="light" className="h-9 w-auto" />
+                        <div>
+                          <span className="text-xs font-black tracking-wider uppercase text-black font-heading block">
+                            PLANO TÉCNICO DE CORTE 2D • PLANCHA #{sheet.sheetIndex} DE {optimizationResults.sheets.length}
+                          </span>
+                          <span className="text-[10px] text-gray-600 font-mono">
+                            {materialName} ({sheet.sheetW} × {sheet.sheetH} mm) • Refilado: {sheet.trim} mm • Disco: {cuttingKerf} mm
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-gray-700 font-bold uppercase tracking-wide">
-                        Taller Matriz de Fabricación Gráfica, Estructuras & Publicidad
-                      </p>
-                      <p className="text-[9px] text-gray-500 font-mono">
-                        RUT: 77.892.486-5 • Fono: +56 9 5158 5884 • Olivar, Región de O'Higgins
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="inline-block bg-black text-white px-3 py-1 font-mono font-black text-xs rounded mb-1">
-                        PLANO TÉCNICO DE CORTE 2D
+
+                      <div className="text-right flex items-center gap-3">
+                        <div className="bg-black text-white px-3 py-1 font-mono font-black text-xs rounded">
+                          {otFolio}
+                        </div>
+                        <div className="text-[10px] text-gray-700 font-mono text-right">
+                          <p><strong>Aprovechamiento:</strong> <span className="text-emerald-700 font-bold">{sheet.efficiencyPercent}%</span></p>
+                          <p><strong>Piezas:</strong> {sheet.placed.length} ud • <strong>Maestro:</strong> {assignedMaster}</p>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-gray-800 font-mono">
-                        <strong>OT:</strong> {otFolio} • <strong>Plancha:</strong> {sheet.sheetIndex} de {optimizationResults.sheets.length}
-                      </p>
-                      <p className="text-[10px] text-gray-700"><strong>Fecha:</strong> {new Date().toLocaleDateString('es-CL')}</p>
-                      <p className="text-[10px] text-red-600 font-bold"><strong>Maestro:</strong> {assignedMaster}</p>
                     </div>
-                  </div>
 
-                  {/* Ficha Resumen Técnico de la Plancha */}
-                  <div className="grid grid-cols-3 gap-2 p-2 bg-gray-50 rounded border border-gray-300 text-[10px] leading-tight">
-                    <div>
-                      <span className="text-[8px] uppercase font-bold text-gray-500 block">Sustrato Matriz:</span>
-                      <strong className="text-[11px] text-black block">{materialName}</strong>
-                      <p className="text-gray-700 font-mono">Formato: {sheet.sheetW} × {sheet.sheetH} mm • Refilado: {sheet.trim} mm</p>
-                    </div>
-                    <div>
-                      <span className="text-[8px] uppercase font-bold text-gray-500 block">Parámetros de Sierra:</span>
-                      <p className="text-gray-800 font-mono">
-                        Espesor Disco (Kerf): <strong>{cuttingKerf} mm</strong>
-                      </p>
-                      <p className="text-gray-700 font-mono">
-                        Piezas en plancha: <strong>{sheet.placed.length} ud</strong>
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[8px] uppercase font-bold text-gray-500 block">Rendimiento Técnico:</span>
-                      <p className="text-emerald-700 font-bold font-mono">
-                        Aprovechamiento: {sheet.efficiencyPercent}%
-                      </p>
-                      <p className="text-gray-600 font-mono">
-                        Merma / Aserrín: {sheet.wastePercent}%
-                      </p>
-                    </div>
-                  </div>
+                    {/* LIENZO VECTORIAL CAD GIGANTE: OCUPA TODO EL RESTO DE LA HOJA A4 */}
+                    <div className="flex-1 w-full flex items-center justify-center p-1 border-2 border-black rounded bg-white overflow-hidden">
+                      <svg
+                        viewBox={`-${padLeft} -${padTop} ${totalW} ${totalH}`}
+                        className="w-full h-full max-h-[155mm] bg-white select-none"
+                        style={{ width: '100%', height: '100%', display: 'block' }}
+                        preserveAspectRatio="xMidYMid meet"
+                        shapeRendering="geometricPrecision"
+                      >
+                        {/* Fondo 100% blanco puro */}
+                        <rect x={-padLeft} y={-padTop} width={totalW} height={totalH} fill="#ffffff" />
 
-                  {/* DIAGRAMA TÉCNICO CAD: SOLO TRAZOS Y COTAS (SIN COLORES DE FONDO) */}
-                  <div className="border border-black rounded p-2 bg-white flex justify-center">
-                    <svg
-                      viewBox={`-${padLeft} -${padTop} ${totalW} ${totalH}`}
-                      className="w-full h-auto max-h-[380px] bg-white select-none"
-                      shapeRendering="geometricPrecision"
-                    >
-                      {/* Fondo 100% blanco puro (sin gasto de tinta) */}
-                      <rect x={-padLeft} y={-padTop} width={totalW} height={totalH} fill="#ffffff" />
+                        {/* Contorno Plancha Matriz Bruta */}
+                        <rect
+                          x="0"
+                          y="0"
+                          width={sheet.sheetW}
+                          height={sheet.sheetH}
+                          fill="#ffffff"
+                          stroke="#000000"
+                          strokeWidth="6"
+                        />
 
-                      {/* Contorno Plancha Matriz */}
-                      <rect x="0" y="0" width={sheet.sheetW} height={sheet.sheetH} fill="#ffffff" stroke="#000000" strokeWidth="2.5" />
+                        {/* Cota Superior Exterior: Ancho Total de Plancha */}
+                        <line x1="0" y1="-38" x2={sheet.sheetW} y2="-38" stroke="#000000" strokeWidth="3" />
+                        <line x1="-12" y1="-26" x2="12" y2="-50" stroke="#000000" strokeWidth="4.5" />
+                        <line x1={sheet.sheetW - 12} y1="-26" x2={sheet.sheetW + 12} y2="-50" stroke="#000000" strokeWidth="4.5" />
+                        <line x1="0" y1="-55" x2="0" y2="0" stroke="#000000" strokeWidth="1.5" strokeDasharray="6 4" />
+                        <line x1={sheet.sheetW} y1="-55" x2={sheet.sheetW} y2="0" stroke="#000000" strokeWidth="1.5" strokeDasharray="6 4" />
+                        <text
+                          x={sheet.sheetW / 2}
+                          y="-46"
+                          textAnchor="middle"
+                          fill="#000000"
+                          fontSize="42"
+                          fontFamily="monospace"
+                          fontWeight="bold"
+                        >
+                          ↔ ANCHO PLANCHA: {sheet.sheetW} mm
+                        </text>
 
-                      {/* Cota Exterior Superior: Ancho Total */}
-                      <line x1="0" y1="-32" x2={sheet.sheetW} y2="-32" stroke="#000000" strokeWidth="2" />
-                      <line x1="-8" y1="-24" x2="8" y2="-40" stroke="#000000" strokeWidth="2.5" />
-                      <line x1={sheet.sheetW - 8} y1="-24" x2={sheet.sheetW + 8} y2="-40" stroke="#000000" strokeWidth="2.5" />
-                      <line x1="0" y1="-45" x2="0" y2="0" stroke="#000000" strokeWidth="1" strokeDasharray="4 3" />
-                      <line x1={sheet.sheetW} y1="-45" x2={sheet.sheetW} y2="0" stroke="#000000" strokeWidth="1" strokeDasharray="4 3" />
-                      <text x={sheet.sheetW / 2} y="-38" textAnchor="middle" fill="#000000" fontSize="22" fontFamily="monospace" fontWeight="bold">
-                        ↔ ANCHO PLANCHA: {sheet.sheetW} mm
-                      </text>
+                        {/* Cota Lateral Exterior: Largo / Alto Total de Plancha */}
+                        <line x1="-45" y1="0" x2="-45" y2={sheet.sheetH} stroke="#000000" strokeWidth="3" />
+                        <line x1="-57" y1="12" x2="-33" y2="-12" stroke="#000000" strokeWidth="4.5" />
+                        <line x1="-57" y1={sheet.sheetH + 12} x2="-33" y2={sheet.sheetH - 12} stroke="#000000" strokeWidth="4.5" />
+                        <line x1="-65" y1="0" x2="0" y2="0" stroke="#000000" strokeWidth="1.5" strokeDasharray="6 4" />
+                        <line x1="-65" y1={sheet.sheetH} x2="0" y2={sheet.sheetH} stroke="#000000" strokeWidth="1.5" strokeDasharray="6 4" />
+                        <text
+                          x="-55"
+                          y={sheet.sheetH / 2}
+                          textAnchor="middle"
+                          fill="#000000"
+                          fontSize="42"
+                          fontFamily="monospace"
+                          fontWeight="bold"
+                          transform={`rotate(-90, -55, ${sheet.sheetH / 2})`}
+                        >
+                          ↕ LARGO PLANCHA: {sheet.sheetH} mm
+                        </text>
 
-                      {/* Cota Exterior Izquierda: Largo / Alto Total */}
-                      <line x1="-36" y1="0" x2="-36" y2={sheet.sheetH} stroke="#000000" strokeWidth="2" />
-                      <line x1="-44" y1="8" x2="-28" y2="-8" stroke="#000000" strokeWidth="2.5" />
-                      <line x1="-44" y1={sheet.sheetH + 8} x2="-28" y2={sheet.sheetH - 8} stroke="#000000" strokeWidth="2.5" />
-                      <line x1="-48" y1="0" x2="0" y2="0" stroke="#000000" strokeWidth="1" strokeDasharray="4 3" />
-                      <line x1="-48" y1={sheet.sheetH} x2="0" y2={sheet.sheetH} stroke="#000000" strokeWidth="1" strokeDasharray="4 3" />
-                      <text x="-44" y={sheet.sheetH / 2} textAnchor="middle" fill="#000000" fontSize="22" fontFamily="monospace" fontWeight="bold" transform={`rotate(-90, -44, ${sheet.sheetH / 2})`}>
-                        ↕ LARGO PLANCHA: {sheet.sheetH} mm
-                      </text>
-
-                      {/* Línea de Refilado Perimetral */}
-                      {sheet.trim > 0 && (
-                        <g>
-                          <rect
-                            x={sheet.trim}
-                            y={sheet.trim}
-                            width={sheet.sheetW - (2 * sheet.trim)}
-                            height={sheet.sheetH - (2 * sheet.trim)}
-                            fill="none"
-                            stroke="#555555"
-                            strokeWidth="1.5"
-                            strokeDasharray="8 5"
-                          />
-                          <text x={sheet.trim + 8} y={sheet.trim - 8} fill="#555555" fontSize="15" fontFamily="monospace" fontWeight="bold">
-                            Refilado perimetral: {sheet.trim} mm
-                          </text>
-                        </g>
-                      )}
-
-                      {/* Retazos Sobrantes Útiles (Offcuts) */}
-                      {sheet.offcuts.map((off, oIdx) => (
-                        <g key={`print-off-${oIdx}`}>
-                          <rect
-                            x={off.x}
-                            y={off.y}
-                            width={off.w}
-                            height={off.h}
-                            fill="none"
-                            stroke="#666666"
-                            strokeWidth="1.5"
-                            strokeDasharray="6 4"
-                          />
-                          {off.w >= 100 && off.h >= 60 && (
+                        {/* Línea de Refilado Perimetral */}
+                        {sheet.trim > 0 && (
+                          <g>
+                            <rect
+                              x={sheet.trim}
+                              y={sheet.trim}
+                              width={sheet.sheetW - (2 * sheet.trim)}
+                              height={sheet.sheetH - (2 * sheet.trim)}
+                              fill="none"
+                              stroke="#555555"
+                              strokeWidth="3"
+                              strokeDasharray="16 10"
+                            />
                             <text
-                              x={off.x + (off.w / 2)}
-                              y={off.y + (off.h / 2)}
-                              textAnchor="middle"
+                              x={sheet.trim + 14}
+                              y={sheet.trim - 12}
                               fill="#555555"
-                              fontSize="16"
+                              fontSize="28"
                               fontFamily="monospace"
                               fontWeight="bold"
                             >
-                              RETAZO: {Math.round(off.w)}×{Math.round(off.h)} mm
-                            </text>
-                          )}
-                        </g>
-                      ))}
-
-                      {/* Piezas Cortadas (Solo trazos negros nítidos sobre fondo blanco, cotas y medidas) */}
-                      {sheet.placed.map((p, idx) => {
-                        const pw = p.w;
-                        const ph = p.h;
-                        const px = p.x;
-                        const py = p.y;
-
-                        return (
-                          <g key={`print-piece-${p.subId}`}>
-                            {/* Rectángulo de la pieza (Sin relleno de color, trazo negro) */}
-                            <rect
-                              x={px}
-                              y={py}
-                              width={pw}
-                              height={ph}
-                              fill="#ffffff"
-                              stroke="#000000"
-                              strokeWidth="2"
-                            />
-
-                            {/* Canal / Trazo de Corte con Sierra (Kerf) */}
-                            {cuttingKerf > 0 && (
-                              <>
-                                <line
-                                  x1={px + pw}
-                                  y1={py}
-                                  x2={px + pw}
-                                  y2={py + ph}
-                                  stroke="#000000"
-                                  strokeWidth="1.5"
-                                  strokeDasharray="4 3"
-                                />
-                                <line
-                                  x1={px}
-                                  y1={py + ph}
-                                  x2={px + pw}
-                                  y2={py + ph}
-                                  stroke="#000000"
-                                  strokeWidth="1.5"
-                                  strokeDasharray="4 3"
-                                />
-                              </>
-                            )}
-
-                            {/* Badge Número de Corte */}
-                            <rect
-                              x={px + 8}
-                              y={py + 8}
-                              width="34"
-                              height="26"
-                              rx="4"
-                              fill="#000000"
-                            />
-                            <text
-                              x={px + 25}
-                              y={py + 26}
-                              textAnchor="middle"
-                              fill="#ffffff"
-                              fontSize="15"
-                              fontFamily="monospace"
-                              fontWeight="bold"
-                            >
-                              #{idx + 1}
-                            </text>
-
-                            {/* Cota Superior Interna si hay espacio */}
-                            {pw >= 140 && (
-                              <g>
-                                <line
-                                  x1={px + 48}
-                                  y1={py + 20}
-                                  x2={px + pw - 12}
-                                  y2={py + 20}
-                                  stroke="#333333"
-                                  strokeWidth="1"
-                                />
-                                <line x1={px + 45} y1={py + 24} x2={px + 51} y2={py + 16} stroke="#000000" strokeWidth="1.5" />
-                                <line x1={px + pw - 15} y1={py + 24} x2={px + pw - 9} y2={py + 16} stroke="#000000" strokeWidth="1.5" />
-                                <text
-                                  x={px + 48 + ((pw - 60) / 2)}
-                                  y={py + 16}
-                                  textAnchor="middle"
-                                  fill="#000000"
-                                  fontSize="12"
-                                  fontFamily="monospace"
-                                  fontWeight="bold"
-                                >
-                                  {Math.round(pw)} mm
-                                </text>
-                              </g>
-                            )}
-
-                            {/* Cota Lateral Derecha Interna si hay espacio */}
-                            {ph >= 120 && (
-                              <g>
-                                <line
-                                  x1={px + pw - 16}
-                                  y1={py + 32}
-                                  x2={px + pw - 16}
-                                  y2={py + ph - 16}
-                                  stroke="#333333"
-                                  strokeWidth="1"
-                                />
-                                <line x1={px + pw - 20} y1={py + 36} x2={px + pw - 12} y2={py + 28} stroke="#000000" strokeWidth="1.5" />
-                                <line x1={px + pw - 20} y1={py + ph - 12} x2={px + pw - 12} y2={py + ph - 20} stroke="#000000" strokeWidth="1.5" />
-                                <text
-                                  x={px + pw - 22}
-                                  y={py + (ph / 2)}
-                                  textAnchor="middle"
-                                  fill="#000000"
-                                  fontSize="12"
-                                  fontFamily="monospace"
-                                  fontWeight="bold"
-                                  transform={`rotate(-90, ${px + pw - 22}, ${py + (ph / 2)})`}
-                                >
-                                  {Math.round(ph)} mm
-                                </text>
-                              </g>
-                            )}
-
-                            {/* Identificación y Medidas de la Pieza */}
-                            <text
-                              x={px + (pw / 2)}
-                              y={py + (ph / 2) - 12}
-                              textAnchor="middle"
-                              fill="#000000"
-                              fontSize={Math.min(22, Math.max(13, pw / 20))}
-                              fontFamily="sans-serif"
-                              fontWeight="bold"
-                            >
-                              {p.label}
-                            </text>
-
-                            <text
-                              x={px + (pw / 2)}
-                              y={py + (ph / 2) + 12}
-                              textAnchor="middle"
-                              fill="#000000"
-                              fontSize="18"
-                              fontFamily="monospace"
-                              fontWeight="bold"
-                            >
-                              {Math.round(pw)} × {Math.round(ph)} mm {p.isRotated ? ' ⟳ (Giro 90°)' : ''}
-                            </text>
-
-                            <text
-                              x={px + (pw / 2)}
-                              y={py + (ph / 2) + 32}
-                              textAnchor="middle"
-                              fill="#444444"
-                              fontSize="13"
-                              fontFamily="monospace"
-                            >
-                              Tope Sierra: X={Math.round(px)} mm • Y={Math.round(py)} mm
+                              Línea de Refilado: {sheet.trim} mm
                             </text>
                           </g>
-                        );
-                      })}
-                    </svg>
+                        )}
+
+                        {/* Retazos Sobrantes Útiles (Offcuts) */}
+                        {sheet.offcuts.map((off, oIdx) => (
+                          <g key={`print-off-${oIdx}`}>
+                            <rect
+                              x={off.x}
+                              y={off.y}
+                              width={off.w}
+                              height={off.h}
+                              fill="none"
+                              stroke="#666666"
+                              strokeWidth="2.5"
+                              strokeDasharray="12 8"
+                            />
+                            {off.w >= 140 && off.h >= 80 && (
+                              <text
+                                x={off.x + (off.w / 2)}
+                                y={off.y + (off.h / 2) + 10}
+                                textAnchor="middle"
+                                fill="#555555"
+                                fontSize="36"
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                              >
+                                RETAZO: {Math.round(off.w)}×{Math.round(off.h)} mm
+                              </text>
+                            )}
+                          </g>
+                        ))}
+
+                        {/* Piezas Cortadas (Solo Trazos Negros y Cotas Grandes, Sin Rellenos) */}
+                        {sheet.placed.map((p, idx) => {
+                          const pw = p.w;
+                          const ph = p.h;
+                          const px = p.x;
+                          const py = p.y;
+                          const isCompact = pw < 220 || ph < 150;
+
+                          return (
+                            <g key={`print-piece-${p.subId}`}>
+                              {/* Contorno limpio de la pieza */}
+                              <rect
+                                x={px}
+                                y={py}
+                                width={pw}
+                                height={ph}
+                                fill="#ffffff"
+                                stroke="#000000"
+                                strokeWidth="4"
+                              />
+
+                              {/* Canal de sierra (Kerf de 3mm) con trazo discontinuo */}
+                              {cuttingKerf > 0 && (
+                                <>
+                                  <line
+                                    x1={px + pw}
+                                    y1={py}
+                                    x2={px + pw}
+                                    y2={py + ph}
+                                    stroke="#000000"
+                                    strokeWidth="3.5"
+                                    strokeDasharray="10 7"
+                                  />
+                                  <line
+                                    x1={px}
+                                    y1={py + ph}
+                                    x2={px + pw}
+                                    y2={py + ph}
+                                    stroke="#000000"
+                                    strokeWidth="3.5"
+                                    strokeDasharray="10 7"
+                                  />
+                                </>
+                              )}
+
+                              {/* Badge Número de Corte Grande */}
+                              <rect
+                                x={px + 10}
+                                y={py + 10}
+                                width={isCompact ? 52 : 68}
+                                height={isCompact ? 38 : 48}
+                                rx="8"
+                                fill="#000000"
+                              />
+                              <text
+                                x={px + (isCompact ? 36 : 44)}
+                                y={py + (isCompact ? 37 : 44)}
+                                textAnchor="middle"
+                                fill="#ffffff"
+                                fontSize={isCompact ? "24" : "32"}
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                              >
+                                #{idx + 1}
+                              </text>
+
+                              {/* Cota Superior Interna con Ticks CAD si la pieza tiene suficiente ancho */}
+                              {pw >= 180 && (
+                                <g>
+                                  <line
+                                    x1={px + 80}
+                                    y1={py + 32}
+                                    x2={px + pw - 20}
+                                    y2={py + 32}
+                                    stroke="#222222"
+                                    strokeWidth="2"
+                                  />
+                                  <line x1={px + 75} y1={py + 38} x2={px + 85} y2={py + 26} stroke="#000000" strokeWidth="2.5" />
+                                  <line x1={px + pw - 25} y1={py + 38} x2={px + pw - 15} y2={py + 26} stroke="#000000" strokeWidth="2.5" />
+                                  <text
+                                    x={px + 80 + ((pw - 100) / 2)}
+                                    y={py + 26}
+                                    textAnchor="middle"
+                                    fill="#000000"
+                                    fontSize="22"
+                                    fontFamily="monospace"
+                                    fontWeight="bold"
+                                  >
+                                    ANCHO: {Math.round(pw)} mm
+                                  </text>
+                                </g>
+                              )}
+
+                              {/* Cota Lateral Derecha Interna si la pieza tiene suficiente alto */}
+                              {ph >= 180 && (
+                                <g>
+                                  <line
+                                    x1={px + pw - 26}
+                                    y1={py + 50}
+                                    x2={px + pw - 26}
+                                    y2={py + ph - 26}
+                                    stroke="#222222"
+                                    strokeWidth="2"
+                                  />
+                                  <line x1={px + pw - 32} y1={py + 56} x2={px + pw - 20} y2={py + 44} stroke="#000000" strokeWidth="2.5" />
+                                  <line x1={px + pw - 32} y1={py + ph - 20} x2={px + pw - 20} y2={py + ph - 32} stroke="#000000" strokeWidth="2.5" />
+                                  <text
+                                    x={px + pw - 34}
+                                    y={py + (ph / 2)}
+                                    textAnchor="middle"
+                                    fill="#000000"
+                                    fontSize="22"
+                                    fontFamily="monospace"
+                                    fontWeight="bold"
+                                    transform={`rotate(-90, ${px + pw - 34}, ${py + (ph / 2)})`}
+                                  >
+                                    ALTO: {Math.round(ph)} mm
+                                  </text>
+                                </g>
+                              )}
+
+                              {/* Identificación Central: Nombre de la Pieza */}
+                              <text
+                                x={px + (pw / 2)}
+                                y={isCompact ? (py + (ph / 2) - 8) : (py + (ph / 2) - 22)}
+                                textAnchor="middle"
+                                fill="#000000"
+                                fontSize={isCompact ? Math.max(16, Math.min(26, pw / 10)) : Math.max(24, Math.min(42, pw / 14))}
+                                fontFamily="sans-serif"
+                                fontWeight="bold"
+                              >
+                                {p.label}
+                              </text>
+
+                              {/* Cotas Milimétricas Principales Grandes */}
+                              <text
+                                x={px + (pw / 2)}
+                                y={isCompact ? (py + (ph / 2) + 16) : (py + (ph / 2) + 20)}
+                                textAnchor="middle"
+                                fill="#000000"
+                                fontSize={isCompact ? Math.max(18, Math.min(30, pw / 8)) : "40"}
+                                fontFamily="monospace"
+                                fontWeight="bold"
+                              >
+                                {Math.round(pw)} × {Math.round(ph)} mm {p.isRotated ? ' ⟳ (Giro 90°)' : ''}
+                              </text>
+
+                              {/* Coordenadas de Tope de Sierra para el Operario */}
+                              {!isCompact && (
+                                <text
+                                  x={px + (pw / 2)}
+                                  y={py + (ph / 2) + 54}
+                                  textAnchor="middle"
+                                  fill="#333333"
+                                  fontSize="26"
+                                  fontFamily="monospace"
+                                  fontWeight="600"
+                                >
+                                  Tope Sierra: X={Math.round(px)} mm • Y={Math.round(py)} mm
+                                </text>
+                              )}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+
+                    {/* Pie de Página Técnico de la Lámina 1 */}
+                    <div className="flex justify-between items-center text-[10px] text-gray-600 pt-1 border-t border-gray-300">
+                      <span>Letreros Olivar SpA • Taller Matriz de Fabricación • Disco: {cuttingKerf} mm • Refilado: {sheet.trim} mm</span>
+                      <span className="font-mono font-bold text-black uppercase">
+                        LÁMINA 1: PLANO DE CORTE • Ver Lámina 2 para lista de piezas y firmas
+                      </span>
+                    </div>
+
                   </div>
 
-                  {/* Tabla de Piezas para Marcar Conforme se Cortan */}
-                  <table className="w-full text-left text-[9px] border-collapse">
-                    <thead>
-                      <tr className="border-b-2 border-black font-bold bg-gray-100">
-                        <th className="p-1 text-center w-10">Corte OK</th>
-                        <th className="p-1">#</th>
-                        <th className="p-1">Descripción de Pieza</th>
-                        <th className="p-1 font-mono">Ancho (mm)</th>
-                        <th className="p-1 font-mono">Alto (mm)</th>
-                        <th className="p-1 font-mono">Tope Sierra (X, Y)</th>
-                        <th className="p-1">Giro 90°</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sheet.placed.map((p, idx) => (
-                        <tr key={p.subId} className="border-b border-gray-300">
-                          <td className="p-1 text-center">
-                            <div className="w-4 h-4 border border-black rounded-sm mx-auto"></div>
-                          </td>
-                          <td className="p-1 font-mono font-bold">#{idx + 1}</td>
-                          <td className="p-1 font-semibold">{p.label}</td>
-                          <td className="p-1 font-mono font-bold">{Math.round(p.w)} mm</td>
-                          <td className="p-1 font-mono font-bold">{Math.round(p.h)} mm</td>
-                          <td className="p-1 font-mono text-gray-700">X={Math.round(p.x)}, Y={Math.round(p.y)} mm</td>
-                          <td className="p-1 text-gray-700">{p.isRotated ? 'SÍ (Giro 90°)' : 'NO'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {/* ===================================================================== */}
+                  {/* PÁGINA 2: ANEXO DE TALLER: LISTA DE PIEZAS & CONTROL DE CORTE         */}
+                  {/* ===================================================================== */}
+                  <div className="print-sheet-details-page bg-white text-black p-4 space-y-3">
+                    
+                    {/* Membrete del Anexo */}
+                    <div className="flex justify-between items-start border-b-2 border-red-600 pb-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <BrandLogo theme="light" className="h-9 w-auto" />
+                          <span className="text-[10px] font-bold text-zinc-600 font-mono">SpA</span>
+                        </div>
+                        <p className="text-xs font-black uppercase tracking-wide text-black font-heading">
+                          ANEXO DE CORTE: LISTA DE PIEZAS & CONTROL DE CALIDAD
+                        </p>
+                        <p className="text-[9px] text-gray-500 font-mono">
+                          RUT: 77.892.486-5 • Fono: +56 9 5158 5884 • Olivar, Región de O'Higgins
+                        </p>
+                      </div>
 
-                  {/* Firmas de Control de Calidad y Maestro de Sierra */}
-                  <div className="pt-4 grid grid-cols-2 gap-8 text-center text-[10px] page-break-inside-avoid">
-                    <div>
-                      <div className="border-b border-black w-48 mx-auto mb-1"></div>
-                      <strong>Firma Maestro de Sierra / Dimensionado</strong>
-                      <p className="text-gray-600">Verificación de escuadra y medidas de corte</p>
+                      <div className="text-right">
+                        <div className="inline-block bg-black text-white px-3 py-1 font-mono font-black text-xs rounded mb-1">
+                          {otFolio} • PLANCHA #{sheet.sheetIndex} DE {optimizationResults.sheets.length}
+                        </div>
+                        <p className="text-[10px] text-gray-700"><strong>Fecha:</strong> {new Date().toLocaleDateString('es-CL')}</p>
+                        <p className="text-[10px] text-red-600 font-bold"><strong>Maestro:</strong> {assignedMaster}</p>
+                      </div>
                     </div>
-                    <div>
-                      <div className="border-b border-black w-48 mx-auto mb-1"></div>
-                      <strong>Control de Calidad / Taller Matriz</strong>
-                      <p className="text-gray-600">Inspección de bordes, refilado y recepción</p>
+
+                    {/* Ficha Resumen de Parámetros */}
+                    <div className="grid grid-cols-3 gap-3 p-2.5 bg-gray-50 rounded border border-gray-300 text-[10px]">
+                      <div>
+                        <span className="text-[8px] uppercase font-bold text-gray-500 block">Sustrato Matriz:</span>
+                        <strong className="text-xs text-black block">{materialName}</strong>
+                        <p className="text-gray-700 font-mono">Formato: {sheet.sheetW} × {sheet.sheetH} mm • Refilado: {sheet.trim} mm</p>
+                      </div>
+                      <div>
+                        <span className="text-[8px] uppercase font-bold text-gray-500 block">Especificaciones de Sierra:</span>
+                        <p className="text-gray-800 font-mono">
+                          Espesor Disco (Kerf): <strong>{cuttingKerf} mm</strong>
+                        </p>
+                        <p className="text-gray-700 font-mono">
+                          Piezas en esta plancha: <strong>{sheet.placed.length} ud</strong>
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[8px] uppercase font-bold text-gray-500 block">Rendimiento de Corte:</span>
+                        <p className="text-emerald-700 font-bold font-mono">
+                          Aprovechamiento: {sheet.efficiencyPercent}%
+                        </p>
+                        <p className="text-gray-600 font-mono">
+                          Merma / Descarte: {sheet.wastePercent}%
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Tabla Completa de Piezas para Marcar con Lápiz */}
+                    <div>
+                      <h4 className="text-[11px] font-bold text-black uppercase tracking-wider mb-1 font-heading">
+                        Lista de Cortes a Realizar (Marcar conforme se dimensiona en sierra)
+                      </h4>
+                      <table className="w-full text-left text-[10px] border-collapse">
+                        <thead>
+                          <tr className="border-b-2 border-black font-bold bg-gray-100">
+                            <th className="p-1.5 text-center w-12">Corte OK</th>
+                            <th className="p-1.5 w-10">#</th>
+                            <th className="p-1.5">Descripción de Pieza</th>
+                            <th className="p-1.5 font-mono">Ancho (mm)</th>
+                            <th className="p-1.5 font-mono">Alto (mm)</th>
+                            <th className="p-1.5 font-mono">Tope Sierra (X, Y)</th>
+                            <th className="p-1.5">Giro 90°</th>
+                            <th className="p-1.5 text-right font-mono">Área (m²)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sheet.placed.map((p, idx) => (
+                            <tr key={p.subId} className="border-b border-gray-300">
+                              <td className="p-1.5 text-center">
+                                <div className="w-5 h-5 border-2 border-black rounded-sm mx-auto"></div>
+                              </td>
+                              <td className="p-1.5 font-mono font-black text-xs">#{idx + 1}</td>
+                              <td className="p-1.5 font-bold text-black">{p.label}</td>
+                              <td className="p-1.5 font-mono font-bold text-black">{Math.round(p.w)} mm</td>
+                              <td className="p-1.5 font-mono font-bold text-black">{Math.round(p.h)} mm</td>
+                              <td className="p-1.5 font-mono font-semibold text-gray-800">
+                                X={Math.round(p.x)} mm, Y={Math.round(p.y)} mm
+                              </td>
+                              <td className="p-1.5 text-gray-700 font-medium">{p.isRotated ? 'SÍ (Giro 90°)' : 'NO'}</td>
+                              <td className="p-1.5 text-right font-mono text-gray-700">
+                                {((p.w * p.h) / 1000000).toFixed(3)} m²
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Firmas de Control de Calidad y Maestro de Sierra */}
+                    <div className="pt-6 grid grid-cols-2 gap-10 text-center text-[10px] page-break-inside-avoid">
+                      <div>
+                        <div className="border-b-2 border-black w-60 mx-auto mb-1.5"></div>
+                        <strong className="block text-black">Firma Maestro de Sierra / Dimensionado</strong>
+                        <p className="text-gray-600">Verificación de escuadra, medidas milimétricas y corte</p>
+                      </div>
+                      <div>
+                        <div className="border-b-2 border-black w-60 mx-auto mb-1.5"></div>
+                        <strong className="block text-black">Control de Calidad / Taller Matriz</strong>
+                        <p className="text-gray-600">Inspección de bordes, refilado, escuadra y recepción</p>
+                      </div>
+                    </div>
+
                   </div>
 
                 </div>
@@ -1770,7 +1930,7 @@
             })}
           </div>
 
-          {/* ============================================================== */}
+                    {/* ============================================================== */}
           {/* MODAL: CARGAR TRABAJO DESDE ORDEN DE TRABAJO (INTRANET)        */}
           {/* ============================================================== */}
           {showOtModal && (
