@@ -343,24 +343,39 @@
             color: #FFF;
         }
 
-        /* IMPRESIÓN Y EXPORTACIÓN PDF */
+        /* IMPRESIÓN Y EXPORTACIÓN PDF FORMAL (1 PÁGINA) */
+        @page {
+            size: A4 portrait;
+            margin: 6mm 7mm !important;
+        }
         @media print {
-            body {
-                background: white;
-                color: black;
-                padding: 0;
+            html, body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                min-height: 0 !important;
+                max-height: 100% !important;
+                overflow: visible !important;
             }
-            .nav-back-bar {
+            .nav-back-bar, .btn-print, .btn-add, .btn-remove, .folio-controls {
                 display: none !important;
             }
             .container {
-                box-shadow: none;
-                border: none;
-                max-width: 100%;
-                width: 100%;
-                background: white;
-                color: black;
-                padding: 10px;
+                box-shadow: none !important;
+                border: none !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 auto !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
             }
             .brand-title {
                 color: black;

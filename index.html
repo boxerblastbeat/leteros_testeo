@@ -155,19 +155,46 @@
     h1, h2, h3, .font-heading {
       font-family: 'Space Grotesk', sans-serif;
     }
-    @page {
+        @page {
       size: A4 portrait;
       margin: 6mm 7mm !important;
     }
     @media print {
+      /* Ocultar TODO el contenido normal de pantalla para que la altura del documento sea de 1 sola página */
+      header,
+      main,
+      footer,
+      nav,
+      .no-print,
+      .print-hide-sqm {
+        display: none !important;
+      }
+
+      /* Evitar que modales 'fixed' se repitan como encabezado en múltiples páginas */
+      .fixed,
+      .fixed.inset-0,
+      .overflow-hidden,
+      .overflow-y-auto {
+        position: static !important;
+        overflow: visible !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        max-height: none !important;
+        height: auto !important;
+        width: 100% !important;
+      }
+
       html, body {
         background: #ffffff !important;
         color: #000000 !important;
         margin: 0 !important;
         padding: 0 !important;
         height: auto !important;
-        min-height: auto !important;
-        max-height: none !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
         overflow: visible !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -179,9 +206,10 @@
         visibility: visible;
       }
       #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
+        display: block !important;
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
         width: 100% !important;
         max-width: 100% !important;
         background: #ffffff !important;
@@ -194,9 +222,8 @@
         box-sizing: border-box !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-      }
-      .no-print, .print-hide-sqm {
-        display: none !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
       }
       .print-avoid-break, .avoid-break, table, tr, td, th {
         page-break-inside: avoid !important;
