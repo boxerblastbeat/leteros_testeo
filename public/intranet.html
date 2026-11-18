@@ -141,9 +141,12 @@
       
       // Blindaje contra cotizaciones eliminadas y limpieza de almacenamiento redundante
       try {
+        var masterPurged = ['COT-2026-0101', 'COT-2026-0104', 'OT-2026-0101', 'OT-2026-0104', 'OT-DEMO-101'];
         var rawDel = localStorage.getItem('olivar_deleted_correlatives');
         var deletedList = rawDel ? JSON.parse(rawDel) : [];
-        var deletedSet = new Set(deletedList.map(function(c) { return String(c || '').trim().toUpperCase(); }));
+        var allDel = Array.from(new Set(masterPurged.concat(deletedList || [])));
+        localStorage.setItem('olivar_deleted_correlatives', JSON.stringify(allDel));
+        var deletedSet = new Set(allDel.map(function(c) { return String(c || '').trim().toUpperCase(); }));
         var rawQuotes = localStorage.getItem('olivar_quotes_history');
         if (rawQuotes) {
           var list = JSON.parse(rawQuotes);
@@ -152,6 +155,8 @@
               if (!q) return false;
               var c = String(q.correlative || '').trim().toUpperCase();
               var f = String(q._fireId || '').trim().toUpperCase();
+              var clientName = String((q.client && q.client.name) || '').toLowerCase();
+              if (clientName.indexOf('sergio corte') !== -1 || clientName.indexOf('sergio corté') !== -1) return false;
               return (!c || !deletedSet.has(c)) && (!f || !deletedSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
             });
             localStorage.setItem('olivar_quotes_history', JSON.stringify(filtered));
@@ -1447,12 +1452,22 @@
       // === GESTIÓN DE ELIMINACIONES PERMANENTES (BLINDAJE ANTI-RESURRECCIÓN) ===
       const normCorr = (c) => String(c || '').trim().toUpperCase();
 
+      // Registro maestro permanente de cotizaciones eliminadas (sincronizado a nivel de repositorio Git)
+      const MASTER_PURGED_REGISTRY = [
+        'COT-2026-0101',
+        'COT-2026-0104',
+        'OT-2026-0101',
+        'OT-2026-0104',
+        'OT-DEMO-101'
+      ];
+
       const getDeletedCorrelativesList = () => {
         try {
           const raw = localStorage.getItem('olivar_deleted_correlatives');
           const list = raw ? JSON.parse(raw) : [];
-          return Array.isArray(list) ? list.map(normCorr).filter(Boolean) : [];
-        } catch(e) { return []; }
+          const combined = Array.isArray(list) ? [...MASTER_PURGED_REGISTRY, ...list] : [...MASTER_PURGED_REGISTRY];
+          return Array.from(new Set(combined.map(normCorr))).filter(Boolean);
+        } catch(e) { return MASTER_PURGED_REGISTRY.map(normCorr); }
       };
 
       const recordDeletedCorrelatives = (correlativesArray) => {
@@ -1879,10 +1894,10 @@
         }
         return [
           {
-            id: 'ot-demo-101',
-            otFolio: 'OT-2026-0101',
-            correlative: 'COT-2026-0101',
-            numericFolio: 101,
+            id: 'ot-demo-100',
+            otFolio: 'OT-2026-0100',
+            correlative: 'COT-2026-0100',
+            numericFolio: 100,
             createdAt: '14/11/2026',
             createdTimestamp: Date.now() - 86400000,
             deadline: '2026-11-20',
@@ -7880,7 +7895,7 @@
                                 Se detectaron {duplicateQuotesInfo.size} cotizaciones duplicadas (inflan el total emitido).
                               </p>
                               <p className="text-[11px] text-amber-700">
-                                Copias idénticas emitidas en la misma fecha (Altafe, Fripack, Sergio Cortés). Al limpiarlas, se conservan las cotizaciones originales intactas.
+                                Copias emitidas con los mismos ítems y fecha. Al limpiarlas, se conservan las cotizaciones originales intactas.
                               </p>
                             </div>
                           </div>
