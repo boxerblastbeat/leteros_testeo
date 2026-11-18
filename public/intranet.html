@@ -1634,11 +1634,26 @@
                 const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
                 return numB - numA;
               });
-              setQuoteHistory(fireQuotes);
-              try { localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes)); } catch(e){}
+              setQuoteHistory(prev => {
+                const map = new Map();
+                (prev || []).forEach(localQ => {
+                  const k = normCorr(localQ.correlative || localQ._fireId);
+                  if (k && !deletedSet.has(k)) map.set(k, localQ);
+                });
+                fireQuotes.forEach(cloudQ => {
+                  const k = normCorr(cloudQ.correlative || cloudQ._fireId);
+                  if (k && !deletedSet.has(k)) map.set(k, cloudQ);
+                });
+                const merged = Array.from(map.values()).sort((a, b) => {
+                  const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+                  const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+                  return numB - numA;
+                });
+                try { localStorage.setItem('olivar_quotes_history', JSON.stringify(merged)); } catch(e){}
+                return merged;
+              });
             } else {
-              setQuoteHistory([]);
-              try { localStorage.setItem('olivar_quotes_history', JSON.stringify([])); } catch(e){}
+              console.warn('Firestore snapshot vacío: preservando cotizaciones locales.');
             }
           }, err => console.warn('Firestore quotes error:', err));
 
@@ -1763,13 +1778,27 @@
               const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
               return numB - numA;
             });
-            setQuoteHistory(fireQuotes);
-            try { localStorage.setItem('olivar_quotes_history', JSON.stringify(fireQuotes)); } catch(e){}
-            showToast('✅ ¡' + fireQuotes.length + ' cotizaciones cargadas desde la nube!');
+            setQuoteHistory(prev => {
+              const map = new Map();
+              (prev || []).forEach(localQ => {
+                const k = normCorr(localQ.correlative || localQ._fireId);
+                if (k && !deletedSet.has(k)) map.set(k, localQ);
+              });
+              fireQuotes.forEach(cloudQ => {
+                const k = normCorr(cloudQ.correlative || cloudQ._fireId);
+                if (k && !deletedSet.has(k)) map.set(k, cloudQ);
+              });
+              const merged = Array.from(map.values()).sort((a, b) => {
+                const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+                const numB = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+                return numB - numA;
+              });
+              try { localStorage.setItem('olivar_quotes_history', JSON.stringify(merged)); } catch(e){}
+              return merged;
+            });
+            showToast('✅ ¡' + fireQuotes.length + ' cotizaciones sincronizadas con la nube!');
           } else {
-            setQuoteHistory([]);
-            try { localStorage.setItem('olivar_quotes_history', JSON.stringify([])); } catch(e){}
-            showToast('ℹ️ No hay cotizaciones en la nube.');
+            showToast('ℹ️ No hay registros nuevos en la nube; manteniendo datos locales.');
           }
         }).catch(err => {
           console.warn(err);
