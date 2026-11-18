@@ -3945,7 +3945,8 @@
         showToast(`🎉 Cotización ${correlative} APROBADA con OC: ${ocClean || 'S/OC'} y enviada a Taller (${otFolio})`);
         setIntranetSection('taller');
         setIntranetTab('taller');
-        setOtSearch(correlative);
+        setOtFilterStatus('por_iniciar');
+        setOtSearch('');
       };
 
       // Compatibilidad con 1-click directo
@@ -4189,7 +4190,7 @@
             createdAt: quote.date || new Date().toLocaleDateString('es-CL'),
             createdTimestamp: quote.timestamp || (Date.now() - 86400000 * 2),
             deadline: quote.deadline || quote.client?.manufacturingDays || '5 a 7 días hábiles',
-            status: quote.status === 'Terminada' || quote.status === 'Facturada' ? 'completado' : 'fabricacion',
+            status: (quote.status === 'Terminada' || quote.status === 'Facturada') ? 'completado' : (quote.status === 'Aprobada' ? 'por_iniciar' : 'fabricacion'),
             client: { ...(quote.client || {}) },
             items: quote.items || [],
             materials: generatedMaterials,
@@ -4237,6 +4238,14 @@
           return s === 'terminada' || (ot && ot.status === 'completado');
         });
       }, [quoteHistory, allWorkshopOrders]);
+
+      // Trabajos nuevos enviados por Administración a Taller pendientes de iniciar fabricación (Semáforo de Alerta para Taller)
+      const workshopNewOrders = useMemo(() => {
+        return (allWorkshopOrders || []).filter(o => {
+          if (!o) return false;
+          return o.status === 'por_iniciar';
+        });
+      }, [allWorkshopOrders]);
 
       // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---
       const handleUpdateOtStage = (otId, newStage) => {
@@ -4484,7 +4493,7 @@
             saveWorkOrdersList([ot, ...workOrders]);
           }
           setOtFilterStatus('todos');
-          setOtSearch(ot.otFolio || ot.correlative);
+          setOtSearch('');
           setIntranetTab('taller');
         } else {
           handleOpenApproveModal(quote);
@@ -6046,6 +6055,24 @@
                       >
                         <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
                         <span>🚨 ¡FACTURAR {quotesReadyToInvoice.length} EN TALLER!</span>
+                      </button>
+                    )}
+
+                    {/* ALERTA AMBAR PERSISTENTE: TRABAJOS ENVIADOS A TALLER POR ADMINISTRACIÓN */}
+                    {workshopNewOrders.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIntranetSection('taller');
+                          setIntranetTab('taller');
+                          setOtFilterStatus('por_iniciar');
+                          setOtSearch('');
+                        }}
+                        className="px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-lg shadow-amber-500/40 animate-pulse border-2 border-amber-300 cursor-pointer"
+                        title="¡Administración envió nuevas órdenes a taller! Clic para ver trabajos por iniciar"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-slate-950 animate-ping"></span>
+                        <span>⚡ ¡{workshopNewOrders.length} NUEVOS EN TALLER!</span>
                       </button>
                     )}
 
@@ -8552,7 +8579,7 @@
                                                     type="button"
                                                     onClick={() => {
                                                       setOtFilterStatus('todos');
-                                                      setOtSearch(ot.otFolio || ot.correlative);
+                                                      setOtSearch('');
                                                       setIntranetTab('taller');
                                                     }}
                                                     className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
@@ -10161,6 +10188,47 @@
                       </div>
                     </div>
 
+                    {/* SEMÁFORO DE ALERTA PERSISTENTE EN TALLER: NUEVAS ÓRDENES ENVIADAS POR ADMINISTRACIÓN */}
+                    {workshopNewOrders.length > 0 && (
+                      <div className="p-4 sm:p-5 rounded-2xl bg-amber-500 text-slate-950 shadow-xl shadow-amber-500/30 border-2 border-amber-300 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-xl bg-slate-950 text-amber-400 flex items-center justify-center text-2xl shrink-0 font-bold shadow-inner">
+                            ⚡
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-black uppercase tracking-wider bg-slate-950 text-amber-300 px-2.5 py-0.5 rounded-md">
+                                AVISO DIRECTO DE ADMINISTRACIÓN
+                              </span>
+                              <span className="text-xs font-mono font-bold bg-slate-950 text-white px-2.5 py-0.5 rounded-full">
+                                {workshopNewOrders.length} {workshopNewOrders.length === 1 ? 'Trabajo Nuevo' : 'Trabajos Nuevos'}
+                              </span>
+                            </div>
+                            <h3 className="text-base sm:text-lg font-black font-heading mt-1 text-slate-950">
+                              ¡Atención Maestros de Taller: Hay trabajos ENVIADOS POR ADMINISTRACIÓN listos para Fabricar!
+                            </h3>
+                            <p className="text-xs text-slate-900 mt-0.5 font-medium">
+                              Administración envió: {workshopNewOrders.map(o => `${o.otFolio || o.correlative} (${o.client?.name || 'Cliente'})`).join(' • ')}.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOtFilterStatus('por_iniciar');
+                              setOtSearch('');
+                            }}
+                            className="px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-amber-300 font-black text-xs transition shadow-lg flex items-center gap-2 cursor-pointer border border-slate-950"
+                          >
+                            <span>⚡ Ver Trabajos por Iniciar ({workshopNewOrders.length})</span>
+                            <Icon name="arrow-right" className="w-4 h-4 text-amber-300" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Resumen de Métricas de Producción */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                       <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
@@ -10214,7 +10282,10 @@
                           <button
                             key={tab.id}
                             type="button"
-                            onClick={() => setOtFilterStatus(tab.id)}
+                            onClick={() => {
+                              setOtFilterStatus(tab.id);
+                              setOtSearch('');
+                            }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                               otFilterStatus === tab.id ? 'bg-red-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
                             }`}
