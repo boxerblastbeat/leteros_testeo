@@ -4151,18 +4151,90 @@
         showToast(`✅ Cotización duplicada ${correlative} eliminada permanentemente.`);
       };
 
+      // Rescatador / Generador inteligente de OT para supervisión administrativa y taller
+      const getOrBuildOtForQuote = (quote) => {
+        if (!quote) return null;
+        const corrStr = String(quote.correlative || '').trim().toUpperCase();
+        if (!corrStr) return null;
+        const cleanCorr = corrStr.replace('COT-', '');
+        let ot = workOrders.find(o => {
+          const oCorr = String(o.correlative || '').trim().toUpperCase();
+          const oFolio = String(o.otFolio || '').trim().toUpperCase();
+          return (oCorr && oCorr === corrStr) || (oFolio && cleanCorr && oFolio.includes(cleanCorr));
+        });
+        const isApprovedOrInShop = quote.status === 'Aprobada' || quote.status === 'Terminada' || quote.status === 'Facturada' || Boolean(quote.purchaseOrderNumber) || Boolean(quote.hasOt) || /fabricaci|taller|proceso/i.test(quote.status || '');
+        if (!ot && isApprovedOrInShop) {
+          const otFolio = 'OT-' + cleanCorr;
+          const generatedMaterials = generateMaterialsList(quote.items || [], quote.client?.deliveryMethod);
+          ot = {
+            id: `ot-${corrStr}`,
+            otFolio,
+            correlative: corrStr,
+            numericFolio: quote.numericCorrelative || parseInt(corrStr.replace(/\D/g, ''), 10) || 1,
+            createdAt: quote.date || new Date().toLocaleDateString('es-CL'),
+            createdTimestamp: quote.timestamp || (Date.now() - 86400000 * 2),
+            deadline: quote.deadline || quote.client?.manufacturingDays || '5 a 7 días hábiles',
+            status: quote.status === 'Terminada' || quote.status === 'Facturada' ? 'completado' : 'fabricacion',
+            client: { ...(quote.client || {}) },
+            items: quote.items || [],
+            materials: generatedMaterials,
+            assignedTech: 'Taller Matriz (Olivar)',
+            priority: 'Normal',
+            purchaseOrderNumber: quote.purchaseOrderNumber || '',
+            notes: quote.workshopNotes || quote.adminNotes || quote.invoiceNotes || '',
+            images: quote.referenceImages || quote.images || []
+          };
+        }
+        return ot;
+      };
+
+      // Catálogo consolidado de Órdenes de Trabajo (registradas en taller + cotizaciones en fabricación)
+      const allWorkshopOrders = useMemo(() => {
+        const orderMap = new Map();
+        (workOrders || []).forEach(o => {
+          if (!o) return;
+          const key = String(o.correlative || o.otFolio || o.id || '').trim().toUpperCase();
+          if (key) orderMap.set(key, o);
+        });
+        (quoteHistory || []).forEach(q => {
+          if (!q) return;
+          const corr = String(q.correlative || '').trim().toUpperCase();
+          const cleanCorr = corr.replace('COT-', '');
+          const existingKey = Array.from(orderMap.keys()).find(k => k === corr || (cleanCorr && k.includes(cleanCorr)));
+          if (!existingKey) {
+            const rescuedOt = getOrBuildOtForQuote(q);
+            if (rescuedOt) {
+              orderMap.set(corr || rescuedOt.otFolio, rescuedOt);
+            }
+          }
+        });
+        return Array.from(orderMap.values());
+      }, [workOrders, quoteHistory]);
+
       // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---
       const handleUpdateOtStage = (otId, newStage) => {
         let matchedCorrelative = null;
         let matchedFolio = '';
-        const updated = workOrders.map(o => {
-          if (o.id === otId) {
+        let found = false;
+        let updated = workOrders.map(o => {
+          if (o.id === otId || o.otFolio === otId) {
             matchedCorrelative = o.correlative;
             matchedFolio = o.otFolio;
+            found = true;
             return { ...o, status: newStage };
           }
           return o;
         });
+
+        if (!found) {
+          const targetInAll = allWorkshopOrders.find(o => o.id === otId || o.otFolio === otId);
+          if (targetInAll) {
+            matchedCorrelative = targetInAll.correlative;
+            matchedFolio = targetInAll.otFolio;
+            updated = [{ ...targetInAll, status: newStage }, ...updated];
+          }
+        }
+
         saveWorkOrdersList(updated);
 
         // Si el operario en Taller marca "completado" (Terminada), sincronizar automáticamente en Administración
@@ -4202,8 +4274,10 @@
       };
 
       const handleToggleMaterialCheck = (otId, matId) => {
-        const updated = workOrders.map(o => {
-          if (o.id === otId) {
+        let found = false;
+        let updated = workOrders.map(o => {
+          if (o.id === otId || o.otFolio === otId) {
+            found = true;
             const nextMats = (o.materials || []).map(m => {
               if (m.id === matId) {
                 return { ...m, checked: !m.checked };
@@ -4214,12 +4288,26 @@
           }
           return o;
         });
+
+        if (!found) {
+          const targetInAll = allWorkshopOrders.find(o => o.id === otId || o.otFolio === otId);
+          if (targetInAll) {
+            const nextMats = (targetInAll.materials || []).map(m => {
+              if (m.id === matId) {
+                return { ...m, checked: !m.checked };
+              }
+              return m;
+            });
+            updated = [{ ...targetInAll, materials: nextMats }, ...updated];
+          }
+        }
+
         saveWorkOrdersList(updated);
       };
 
       const handleDeleteWorkOrder = (otId) => {
         if (!window.confirm('¿Seguro que deseas eliminar esta Orden de Trabajo del Taller?')) return;
-        const updated = workOrders.filter(o => o.id !== otId);
+        const updated = workOrders.filter(o => o.id !== otId && o.otFolio !== otId);
         saveWorkOrdersList(updated);
         showToast('🗑️ Orden de Trabajo eliminada.');
       };
@@ -4232,37 +4320,6 @@
       const handleCloseOtPrintModal = () => {
         setShowOtPrintModal(false);
         setSelectedOtForPrint(null);
-      };
-
-      // Rescatador / Generador inteligente de OT para supervisión administrativa
-      const getOrBuildOtForQuote = (quote) => {
-        if (!quote) return null;
-        const corrStr = String(quote.correlative || '');
-        if (!corrStr) return null;
-        let ot = workOrders.find(o => (o.correlative && o.correlative === quote.correlative) || (o.otFolio && o.otFolio.includes(corrStr.replace('COT-', ''))));
-        if (!ot && (quote.status === 'Aprobada' || quote.status === 'Terminada' || quote.status === 'Facturada' || quote.purchaseOrderNumber || quote.hasOt)) {
-          const otFolio = 'OT-' + corrStr.replace('COT-', '');
-          const generatedMaterials = generateMaterialsList(quote.items || [], quote.client?.deliveryMethod);
-          ot = {
-            id: `ot-${corrStr}`,
-            otFolio,
-            correlative: corrStr,
-            numericFolio: parseInt(corrStr.replace(/\D/g, ''), 10) || 1,
-            createdAt: quote.date || new Date().toLocaleDateString('es-CL'),
-            createdTimestamp: quote.timestamp || (Date.now() - 86400000 * 2),
-            deadline: quote.deadline || quote.client?.manufacturingDays || '5 a 7 días hábiles',
-            status: quote.status === 'Terminada' || quote.status === 'Facturada' ? 'completado' : 'fabricacion',
-            client: { ...(quote.client || {}) },
-            items: quote.items || [],
-            materials: generatedMaterials,
-            assignedTech: 'Taller Matriz (Olivar)',
-            priority: 'Normal',
-            purchaseOrderNumber: quote.purchaseOrderNumber || '',
-            notes: quote.workshopNotes || quote.adminNotes || quote.invoiceNotes || '',
-            images: quote.referenceImages || quote.images || []
-          };
-        }
-        return ot;
       };
 
       // Cálculo de días en taller desde pase a producción
@@ -6098,11 +6155,11 @@
                           <div className="grid grid-cols-3 gap-2.5 pt-2">
                             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
                               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">OTs Activas</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-amber-700">{workOrders.filter(o => o.status !== 'completado').length}</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-amber-700">{allWorkshopOrders.filter(o => o.status !== 'completado').length}</span>
                             </div>
                             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
                               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Listas / OK</span>
-                              <span className="text-xs sm:text-sm font-mono font-black text-emerald-700">{workOrders.filter(o => o.status === 'completado').length}</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-emerald-700">{allWorkshopOrders.filter(o => o.status === 'completado').length}</span>
                             </div>
                             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
                               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Calendario</span>
@@ -7665,13 +7722,32 @@
                   };
 
                   const getQuoteOt = (q) => {
-                    return workOrders.find(o => o.correlative === q.correlative);
+                    return getOrBuildOtForQuote(q);
                   };
 
-                                    // Helpers de Vigencia, Expiración y Cancelación
+                  // 2. En Fabricación / Taller: tiene OT en taller que no ha finalizado (no completada)
+                  const isQuoteInWorkshop = (q) => {
+                    if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
+                    const ot = getQuoteOt(q);
+                    if (ot) {
+                      return ot.status !== 'completado';
+                    }
+                    const s = String(q.status || '').toLowerCase();
+                    return s === 'aprobada' || s.includes('fabricaci') || s.includes('taller') || Boolean(q.purchaseOrderNumber) || Boolean(q.hasOt);
+                  };
+
+                  // 3. Por Facturar: terminada en taller (OT completada o q.status === 'Terminada') pero aún no facturada
+                  const isQuoteReadyToInvoice = (q) => {
+                    if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
+                    const ot = getQuoteOt(q);
+                    const s = String(q.status || '').toLowerCase();
+                    return s === 'terminada' || (ot && ot.status === 'completado');
+                  };
+
+                  // Helpers de Vigencia, Expiración y Cancelación
                   const isQuoteConfirmed = (q) => {
                     const s = String(q.status || '').toLowerCase();
-                    return s === 'aprobada' || s === 'facturada' || s === 'terminada' || isQuoteInWorkshop(q) || isQuoteInvoiced(q);
+                    return s === 'aprobada' || s === 'facturada' || s === 'terminada' || isQuoteInWorkshop(q) || isQuoteReadyToInvoice(q) || isQuoteInvoiced(q) || Boolean(q.purchaseOrderNumber) || Boolean(q.hasOt);
                   };
 
                   const isQuoteCancelled = (q) => {
@@ -7699,30 +7775,13 @@
 
                   const isQuoteExpired = (q) => getQuoteExpiration(q).isExpired;
 
-                  // 1. Nuevas Emitidas: vigentes en espera de decisión del cliente (excluye vencidas y canceladas)
+                  // 1. Nuevas Emitidas: vigentes en espera de decisión del cliente (excluye taller, por facturar, facturadas, pagadas, vencidas y canceladas)
                   const isQuoteOnlyIssued = (q) => {
                     if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
-                    const ot = getQuoteOt(q);
-                    if (ot) return false;
+                    if (isQuoteInWorkshop(q) || isQuoteReadyToInvoice(q)) return false;
                     if (isQuoteCancelled(q) || isQuoteExpired(q)) return false;
-                    return q.status !== 'Aprobada' && q.status !== 'Terminada';
-                  };
-
-                  // 2. En Fabricación / Taller: tiene OT en taller que no ha finalizado (no completada)
-                  const isQuoteInWorkshop = (q) => {
-                    if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
-                    const ot = getQuoteOt(q);
-                    if (ot) {
-                      return ot.status !== 'completado';
-                    }
-                    return q.status === 'Aprobada';
-                  };
-
-                  // 3. Por Facturar: terminada en taller (OT completada o q.status === 'Terminada') pero aún no facturada
-                  const isQuoteReadyToInvoice = (q) => {
-                    if (isQuoteInvoiced(q) || isQuotePaid(q)) return false;
-                    const ot = getQuoteOt(q);
-                    return q.status === 'Terminada' || (ot && ot.status === 'completado');
+                    const s = String(q.status || '').toLowerCase();
+                    return s !== 'aprobada' && s !== 'terminada' && !s.includes('fabricaci') && !s.includes('taller') && !q.purchaseOrderNumber && !q.hasOt;
                   };
 
                   // 4. Facturadas pendientes de cobro (Cobranza activa)
@@ -9817,7 +9876,7 @@
                           }`}
                         >
                           <Icon name="tool" className="w-4 h-4" />
-                          <span>🏭 Órdenes de Trabajo OT ({workOrders.filter(o => o.status !== 'completado').length} activas)</span>
+                          <span>🏭 Órdenes de Trabajo OT ({allWorkshopOrders.filter(o => o.status !== 'completado').length} activas)</span>
                         </button>
 
                         <button
@@ -9908,39 +9967,39 @@
 
                     {/* Resumen de Métricas de Producción */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                      <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
                         <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">Total OTs Activas</span>
-                          <span className="text-xl font-black text-white font-mono mt-0.5 block">{workOrders.length}</span>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">Total OTs Activas</span>
+                          <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">{allWorkshopOrders.filter(o => o.status !== 'completado').length}</span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center text-zinc-400 font-bold">🏭</div>
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold">🏭</div>
                       </div>
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                      <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
                         <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">📥 Por Iniciar</span>
-                          <span className="text-xl font-black text-amber-400 font-mono mt-0.5 block">
-                            {workOrders.filter(o => o.status === 'por_iniciar').length}
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">📥 Por Iniciar</span>
+                          <span className="text-xl font-black text-amber-600 font-mono mt-0.5 block">
+                            {allWorkshopOrders.filter(o => o.status === 'por_iniciar').length}
                           </span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">⏳</div>
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">⏳</div>
                       </div>
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                      <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
                         <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">⚡ En Fabricación</span>
-                          <span className="text-xl font-black text-blue-400 font-mono mt-0.5 block">
-                            {workOrders.filter(o => o.status === 'fabricacion' || o.status === 'diseno').length}
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">⚡ En Fabricación</span>
+                          <span className="text-xl font-black text-blue-600 font-mono mt-0.5 block">
+                            {allWorkshopOrders.filter(o => o.status === 'fabricacion' || o.status === 'diseno').length}
                           </span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold">⚙️</div>
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">⚙️</div>
                       </div>
-                      <div className="p-4 rounded-xl bg-black border border-zinc-800 flex items-center justify-between">
+                      <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-between">
                         <div>
-                          <span className="text-[10px] text-zinc-500 uppercase font-bold block">✅ Listas / Calidad</span>
-                          <span className="text-xl font-black text-emerald-400 font-mono mt-0.5 block">
-                            {workOrders.filter(o => o.status === 'completado' || o.status === 'calidad').length}
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">✅ Listas / Calidad</span>
+                          <span className="text-xl font-black text-emerald-600 font-mono mt-0.5 block">
+                            {allWorkshopOrders.filter(o => o.status === 'completado' || o.status === 'calidad').length}
                           </span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">🏆</div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">🏆</div>
                       </div>
                     </div>
 
@@ -9995,7 +10054,7 @@
                     {/* LISTA / TARJETAS DE ÓRDENES DE TRABAJO */}
                     {(() => {
                       const searchLower = (otSearch || '').toLowerCase().trim();
-                      const filteredWorkOrders = workOrders.filter(ot => {
+                      const filteredWorkOrders = allWorkshopOrders.filter(ot => {
                         let matchStatus = true;
                         if (otFilterStatus === 'activas') {
                           matchStatus = ot.status !== 'completado';
