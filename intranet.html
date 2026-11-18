@@ -4297,7 +4297,55 @@
           calidad: '🔍 Control de Calidad',
           completado: '✅ Terminado / Listo para Facturar'
         };
-        showToast(`Estado de ${matchedFolio || 'OT'} actualizado a ${stageLabels[newStage] || newStage}`);
+        if (newStage === 'completado') {
+          showToast(`✅ ${matchedFolio || 'OT'} marcado Listo en Taller.`);
+        } else {
+          showToast(`Estado de ${matchedFolio || 'OT'} actualizado a ${stageLabels[newStage] || newStage}`);
+        }
+      };
+
+      const handleNotifyClientWhatsApp = (orderOrQuote) => {
+        if (!orderOrQuote) return;
+        const clientName = orderOrQuote.client?.name || orderOrQuote.clientName || 'Estimado(a) Cliente';
+        const folio = orderOrQuote.otFolio || orderOrQuote.correlative || 'su orden';
+        const deliveryMethod = orderOrQuote.client?.deliveryMethod;
+        const delivery = deliveryMethod === 'instalacion' ? 'instalación en terreno' :
+                         deliveryMethod === 'entrega' ? 'despacho a su dirección' : 'retiro en nuestro taller';
+
+        let rawPhone = String(orderOrQuote.client?.phone || orderOrQuote.clientPhone || '').replace(/\D/g, '');
+        if (!rawPhone || rawPhone.length < 8) {
+          const entered = window.prompt(`Ingresa el número WhatsApp de ${clientName} (ej: +56912345678):`, '');
+          if (!entered) return;
+          rawPhone = entered.replace(/\D/g, '');
+        }
+
+        let phoneTarget = rawPhone;
+        if (phoneTarget.startsWith('569') && phoneTarget.length === 11) {
+          // OK
+        } else if (phoneTarget.startsWith('9') && phoneTarget.length === 9) {
+          phoneTarget = '56' + phoneTarget;
+        } else if (phoneTarget.length === 8) {
+          phoneTarget = '569' + phoneTarget;
+        }
+
+        let itemsSummary = '';
+        if (orderOrQuote.items && orderOrQuote.items.length > 0) {
+          itemsSummary = orderOrQuote.items.map(it => `• ${it.name || it.itemTitle || 'Ítem'} (${it.quantity || 1} ud)`).join('\n');
+        }
+
+        let msg = `*🎉 ¡HOLA! SU TRABAJO ESTÁ LISTO EN LETREROS OLIVAR* 🛠️\n\n`;
+        msg += `Estimado/a *${clientName}*,\n`;
+        msg += `Le informamos con agrado que su trabajo correspondiente a *${folio}* ya se encuentra completamente terminado y listo para ${delivery}.\n\n`;
+        if (itemsSummary) {
+          msg += `*📦 Detalle de Trabajos:*\n${itemsSummary}\n\n`;
+        }
+        msg += `*📍 Taller:* ${companyInfo.address}\n`;
+        msg += `*🕒 Horario de Atención:* Lunes a Viernes de 08:30 a 18:00 hrs.\n\n`;
+        msg += `Por favor indíquenos si viene a retirar o si coordinamos la entrega/instalación.\n`;
+        msg += `¡Muchas gracias por su preferencia! 🤝✨`;
+
+        window.open(`https://wa.me/${phoneTarget}?text=${encodeURIComponent(msg)}`, '_blank');
+        showToast(`📲 Abriendo WhatsApp para notificar a ${clientName}`);
       };
 
       const handleToggleMaterialCheck = (otId, matId) => {
@@ -8721,16 +8769,27 @@
 
                                     if (isReadyToInvoice) {
                                       return (
-                                        <button
-                                          type="button"
-                                          onClick={() => handleOpenInvoiceModal(q)}
-                                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/40 animate-pulse border-2 border-red-300 cursor-pointer"
-                                          title="¡Trabajo terminado en taller! Clic para ingresar N° de Factura Electrónica SII"
-                                        >
-                                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
-                                          <Icon name="file-text" className="w-4 h-4 text-white" />
-                                          <span>🚨 ¡FACTURAR AHORA (Listo en Taller)!</span>
-                                        </button>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenInvoiceModal(q)}
+                                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/40 animate-pulse border-2 border-red-300 cursor-pointer"
+                                            title="¡Trabajo terminado en taller! Clic para ingresar N° de Factura Electrónica SII"
+                                          >
+                                            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                                            <Icon name="file-text" className="w-4 h-4 text-white" />
+                                            <span>🚨 ¡FACTURAR AHORA!</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleNotifyClientWhatsApp(q)}
+                                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer border border-emerald-400"
+                                            title="Avisar al cliente por WhatsApp que su trabajo está listo"
+                                          >
+                                            <Icon name="whatsapp" className="w-3.5 h-3.5" />
+                                            <span>📲 Avisar Listo</span>
+                                          </button>
+                                        </div>
                                       );
                                     }
                                     return null;
@@ -10302,17 +10361,19 @@
                                       <Icon name="calendar" className="w-3.5 h-3.5" />
                                       <span>📅 Agendar Entrega</span>
                                     </button>
-                                    {ot.client?.phone && (
-                                      <a
-                                        href={`https://wa.me/${String(ot.client.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${ot.client.name || 'Cliente'}, le saludamos de Letreros Olivar SpA para informarle el avance de su trabajo (${ot.otFolio}).`)}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white px-3 py-2 rounded-xl text-xs font-bold border border-emerald-300 shadow-sm flex items-center gap-1.5 transition"
-                                      >
-                                        <Icon name="whatsapp" className="w-3.5 h-3.5" />
-                                        <span>WhatsApp</span>
-                                      </a>
-                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleNotifyClientWhatsApp(ot)}
+                                      className={`px-3.5 py-2 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition shadow-sm cursor-pointer ${
+                                        ot.status === 'completado'
+                                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 ring-2 ring-emerald-400/40 animate-pulse'
+                                          : 'bg-emerald-950/40 hover:bg-emerald-600 text-emerald-300 hover:text-white border-emerald-700/50'
+                                      }`}
+                                      title={ot.status === 'completado' ? '¡Trabajo Listo! Clic para avisar por WhatsApp al cliente' : 'Enviar mensaje WhatsApp al cliente'}
+                                    >
+                                      <Icon name="whatsapp" className="w-4 h-4 text-emerald-300" />
+                                      <span>{ot.status === 'completado' ? '📲 ¡Avisar Listo por WhatsApp!' : '💬 WhatsApp'}</span>
+                                    </button>
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteWorkOrder(ot.id)}
