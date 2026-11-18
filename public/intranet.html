@@ -4226,6 +4226,18 @@
         return Array.from(orderMap.values());
       }, [workOrders, quoteHistory]);
 
+      // Trabajos terminados en Taller pendientes de Facturar (Alerta persistente para Administración y Secretaría)
+      const quotesReadyToInvoice = useMemo(() => {
+        return (quoteHistory || []).filter(q => {
+          if (!q) return false;
+          if (q.isPaid || q.paymentStatus === 'Pagada' || q.invoicePaymentStatus === 'Pagada al Día') return false;
+          if (q.status === 'Facturada' || Boolean(q.invoiceNumber)) return false;
+          const ot = getOrBuildOtForQuote(q);
+          const s = String(q.status || '').toLowerCase();
+          return s === 'terminada' || (ot && ot.status === 'completado');
+        });
+      }, [quoteHistory, allWorkshopOrders]);
+
       // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---
       const handleUpdateOtStage = (otId, newStage) => {
         let matchedCorrelative = null;
@@ -5972,6 +5984,23 @@
                       </a>
                     </div>
 
+                    {/* ALERTA ROJA PERSISTENTE: TRABAJOS LISTOS EN TALLER PARA FACTURAR */}
+                    {quotesReadyToInvoice.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIntranetSection('admin');
+                          setIntranetTab('historial');
+                          setHistoryStatusFilter('por_facturar');
+                        }}
+                        className="px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/40 animate-pulse border-2 border-red-400 cursor-pointer"
+                        title="¡Taller terminó trabajos! Clic aquí para abrir el listado de facturación pendiente"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                        <span>🚨 ¡FACTURAR {quotesReadyToInvoice.length} EN TALLER!</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={handleSyncAllCloud}
@@ -6346,6 +6375,48 @@
                         </button>
                       </div>
                     </div>
+
+                    {/* AVISO PERSISTENTE / SEMÁFORO EN ROJO: TRABAJOS LISTOS EN TALLER PARA FACTURAR */}
+                    {quotesReadyToInvoice.length > 0 && (
+                      <div className="p-4 sm:p-5 rounded-2xl bg-red-600 text-white shadow-xl shadow-red-600/30 border-2 border-red-400 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-xl bg-white text-red-600 flex items-center justify-center text-2xl font-black shrink-0 shadow-md">
+                            🚨
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] uppercase font-black tracking-widest bg-black/30 text-white px-2 py-0.5 rounded">
+                                AVISO DIRECTO DE TALLER & PRODUCCIÓN
+                              </span>
+                              <span className="text-xs font-mono font-bold bg-white text-red-700 px-2.5 py-0.5 rounded-full">
+                                {quotesReadyToInvoice.length} {quotesReadyToInvoice.length === 1 ? 'Trabajo Listo' : 'Trabajos Listos'}
+                              </span>
+                            </div>
+                            <h3 className="text-base sm:text-lg font-black font-heading mt-1 text-white">
+                              ¡Atención Administración / Secretaría: Hay trabajos TERMINADOS en taller listos para FACTURAR!
+                            </h3>
+                            <p className="text-xs text-red-100 mt-0.5 font-medium">
+                              Taller marcó terminado: {quotesReadyToInvoice.map(q => `${q.correlative} (${q.client?.name || 'Cliente'})`).join(' • ')}.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIntranetTab('historial');
+                              setHistoryStatusFilter('por_facturar');
+                            }}
+                            className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-red-700 font-black text-xs transition shadow-lg flex items-center gap-2 cursor-pointer border border-white"
+                          >
+                            <Icon name="file-text" className="w-4 h-4 text-red-600" />
+                            <span>🧾 Ir a Facturar ({quotesReadyToInvoice.length})</span>
+                            <Icon name="arrow-right" className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
 {/* SUB-PESTAÑA 1: COTIZADOR CORRELATIVO FORMAL */}
                 {intranetTab === 'cotizador' && (
                   <div className="space-y-8">
@@ -8062,23 +8133,31 @@
                               <span className="text-[10px] text-slate-500 mt-1">Fabricándose</span>
                             </button>
 
-                            {/* Pestaña: Por Facturar */}
+                            {/* Pestaña: Por Facturar (Semáforo Rojo Alerta cuando taller termina) */}
                             <button
                               type="button"
                               onClick={() => setHistoryStatusFilter('por_facturar')}
                               className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
-                                historyStatusFilter === 'por_facturar'
-                                  ? 'bg-purple-50 border-purple-500 text-purple-900 shadow-sm ring-1 ring-purple-400'
-                                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                                countPorFacturar > 0
+                                  ? (historyStatusFilter === 'por_facturar'
+                                      ? 'bg-red-600 border-red-700 text-white shadow-lg ring-2 ring-red-400 font-bold'
+                                      : 'bg-red-50 border-red-500 text-red-900 shadow-md ring-1 ring-red-400 animate-pulse')
+                                  : (historyStatusFilter === 'por_facturar'
+                                      ? 'bg-purple-50 border-purple-500 text-purple-900 shadow-sm ring-1 ring-purple-400'
+                                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50')
                               }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold">
-                                <span>📦 3. P/ Facturar</span>
-                                <span className="font-mono text-[11px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold">
+                                <span>{countPorFacturar > 0 ? '🚨 3. ¡FACTURAR!' : '📦 3. P/ Facturar'}</span>
+                                <span className={`font-mono text-[11px] px-2 py-0.5 rounded-full font-bold ${
+                                  countPorFacturar > 0 ? 'bg-red-600 text-white font-black animate-ping' : 'bg-purple-100 text-purple-800'
+                                }`}>
                                   {countPorFacturar}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-slate-500 mt-1">Listas de taller</span>
+                              <span className={`text-[10px] mt-1 font-semibold ${countPorFacturar > 0 ? 'text-red-700' : 'text-slate-500'}`}>
+                                {countPorFacturar > 0 ? '¡Listo en Taller!' : 'Listas de taller'}
+                              </span>
                             </button>
 
                             {/* Pestaña: Facturadas */}
@@ -8645,11 +8724,12 @@
                                         <button
                                           type="button"
                                           onClick={() => handleOpenInvoiceModal(q)}
-                                          className="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-purple-600/30 cursor-pointer"
-                                          title="Facturar esta orden de trabajo terminada"
+                                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition shadow-lg shadow-red-600/40 animate-pulse border-2 border-red-300 cursor-pointer"
+                                          title="¡Trabajo terminado en taller! Clic para ingresar N° de Factura Electrónica SII"
                                         >
-                                          <Icon name="file-text" className="w-3.5 h-3.5" />
-                                          <span>🧾 Facturar</span>
+                                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping"></span>
+                                          <Icon name="file-text" className="w-4 h-4 text-white" />
+                                          <span>🚨 ¡FACTURAR AHORA (Listo en Taller)!</span>
                                         </button>
                                       );
                                     }
@@ -9930,7 +10010,49 @@
                           <span>Volver al Menú</span>
                         </button>
                       </div>
-                    </div>{/* SUB-PESTAÑA: GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) */}
+                    </div>
+
+                    {/* AVISO PERSISTENTE / SEMÁFORO EN ROJO: TRABAJOS LISTOS EN TALLER PARA FACTURAR */}
+                    {quotesReadyToInvoice.length > 0 && (
+                      <div className="p-4 sm:p-5 rounded-2xl bg-red-600 text-white shadow-xl shadow-red-600/30 border-2 border-red-400 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse">
+                        <div className="flex items-center gap-3.5">
+                          <div className="w-12 h-12 rounded-xl bg-white text-red-600 flex items-center justify-center text-2xl font-black shrink-0 shadow-md">
+                            🚨
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] uppercase font-black tracking-widest bg-black/30 text-white px-2 py-0.5 rounded">
+                                AVISO DIRECTO DE TALLER & PRODUCCIÓN
+                              </span>
+                              <span className="text-xs font-mono font-bold bg-white text-red-700 px-2.5 py-0.5 rounded-full">
+                                {quotesReadyToInvoice.length} {quotesReadyToInvoice.length === 1 ? 'Trabajo Listo' : 'Trabajos Listos'}
+                              </span>
+                            </div>
+                            <h3 className="text-base sm:text-lg font-black font-heading mt-1 text-white">
+                              ¡Atención Administración / Secretaría: Hay trabajos TERMINADOS en taller listos para FACTURAR!
+                            </h3>
+                            <p className="text-xs text-red-100 mt-0.5 font-medium">
+                              Taller marcó terminado: {quotesReadyToInvoice.map(q => `${q.correlative} (${q.client?.name || 'Cliente'})`).join(' • ')}.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIntranetTab('historial');
+                              setHistoryStatusFilter('por_facturar');
+                            }}
+                            className="px-5 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-red-700 font-black text-xs transition shadow-lg flex items-center gap-2 cursor-pointer border border-white"
+                          >
+                            <Icon name="file-text" className="w-4 h-4 text-red-600" />
+                            <span>🧾 Ir a Facturar ({quotesReadyToInvoice.length})</span>
+                            <Icon name="arrow-right" className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      </div>
+                    )}{/* SUB-PESTAÑA: GESTIÓN DE TALLER & ÓRDENES DE TRABAJO (OT) */}
                 {intranetTab === 'taller' && (
                   <div className="space-y-6">
                     {/* Header de Taller */}
