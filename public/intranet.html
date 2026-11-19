@@ -2320,6 +2320,8 @@
                   cq.numericCorrelative = cleanNumericCorrelative(cq.numericCorrelative || cq.correlative);
                   const k = normCorr(cq.correlative || cq._fireId);
                   if (k && !deletedSet.has(k)) {
+                    const localQ = map.get(k);
+                    if (localQ) {
                       const isLocalFinished = localQ.status === 'Terminada' || localQ.status === 'Facturada' || localQ.isDelivered || localQ.deliveryStatus === 'entregado';
                       if (isLocalFinished && cq.status !== 'Terminada' && cq.status !== 'Facturada') {
                         map.set(k, { ...cq, ...localQ, status: localQ.status, isDelivered: localQ.isDelivered, deliveryStatus: localQ.deliveryStatus });
@@ -3251,6 +3253,7 @@
         const cleanNum = cleanNumericCorrelative(correlativeNumber);
         const padded = String(cleanNum).padStart(4, '0');
         return `COT-${year}-${padded}`;
+      }, [correlativeNumber]);
 
       // --- LOGIN DE INTRANET ---
       const handleLoginSubmit = (e) => {
