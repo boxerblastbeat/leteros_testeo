@@ -4690,27 +4690,29 @@
           localStorage.setItem('olivar_deliveries', JSON.stringify(updatedDeliveries));
         } catch(err) {}
 
-        // Actualizar en quoteHistory y allWorkshopOrders
+        // Actualizar en quoteHistory y persistir
         setQuoteHistory(prev => {
           const updated = prev.map(q => {
-            return { ...q, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}`, deliveryReceiver: newRecord.receivedBy };
-          }
-          return q;
+            if (normCorr(q.correlative) === normCorr(itemToDeliver.correlative)) {
+              return { ...q, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}`, deliveryReceiver: newRecord.receivedBy };
+            }
+            return q;
           });
           try { localStorage.setItem('olivar_quotes_history', JSON.stringify(updated)); } catch(e){}
           return updated;
         });
 
+        // Actualizar en workOrders y persistir
         setWorkOrders(prev => {
           const updated = prev.map(o => {
-            return { ...o, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}` };
-          }
-          return o;
+            if (normCorr(o.correlative) === normCorr(itemToDeliver.correlative) || (itemToDeliver.otFolio && normCorr(o.otFolio) === normCorr(itemToDeliver.otFolio))) {
+              return { ...o, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}` };
+            }
+            return o;
           });
           try { localStorage.setItem('olivar_work_orders', JSON.stringify(updated)); } catch(e){}
           return updated;
         });
-
         // Actualizar calendario de taller
         setWorkshopCalendar(prev => prev.map(ev => {
           if (ev.correlative === itemToDeliver.correlative || (itemToDeliver.otFolio && ev.title?.includes(itemToDeliver.otFolio))) {
