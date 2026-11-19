@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8" />
@@ -2211,7 +2211,7 @@
       const [supervisorFilter, setSupervisorFilter] = useState('retrasadas'); // 'retrasadas', 'todas_activas', 'urgentes'
 
       // Estados para Sincronización con Google Sheets & Google Apps Script (Gratuito)
-      const DEFAULT_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxrb5PwAyhUERYt3Uruxo6BXz7igOCZOAKcBYNCbLh6SeQg6dxLwxQFJkKglzU57J0O/exec';
+      const DEFAULT_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwDJ2Xf0cevDovvPKXCsQMCRu_ByHfDvXkmRMx5eW-xmaPSxYJ8UvcI6UQyA1eg4L5T/exec';
       const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL);
       const [tempSheetsUrl, setTempSheetsUrl] = useState(() => localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL);
       const [showSheetsConfigModal, setShowSheetsConfigModal] = useState(false);
