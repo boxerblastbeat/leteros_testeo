@@ -2211,8 +2211,9 @@
       const [supervisorFilter, setSupervisorFilter] = useState('retrasadas'); // 'retrasadas', 'todas_activas', 'urgentes'
 
       // Estados para Sincronización con Google Sheets & Google Apps Script (Gratuito)
-      const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => localStorage.getItem('olivar_sheets_url') || '');
-      const [tempSheetsUrl, setTempSheetsUrl] = useState(() => localStorage.getItem('olivar_sheets_url') || '');
+      const DEFAULT_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxrb5PwAyhUERYt3Uruxo6BXz7igOCZOAKcBYNCbLh6SeQg6dxLwxQFJkKglzU57J0O/exec';
+      const [googleSheetsUrl, setGoogleSheetsUrl] = useState(() => localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL);
+      const [tempSheetsUrl, setTempSheetsUrl] = useState(() => localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL);
       const [showSheetsConfigModal, setShowSheetsConfigModal] = useState(false);
       const [isSyncingSheets, setIsSyncingSheets] = useState(false);
       const [sheetsTestResult, setSheetsTestResult] = useState(null);
@@ -2357,7 +2358,7 @@
       };
 
       useEffect(() => {
-        const savedUrl = localStorage.getItem('olivar_sheets_url');
+        const savedUrl = localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL;
         if (savedUrl) {
           handleSyncFromGoogleSheets(false);
         }
@@ -3611,7 +3612,7 @@
         }
 
         // Google Sheets: Guardar en la nube gratuita
-        const currentSheetsUrl = localStorage.getItem('olivar_sheets_url');
+        const currentSheetsUrl = localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL;
         if (currentSheetsUrl) {
           try {
             fetch(currentSheetsUrl, {
@@ -4140,7 +4141,7 @@
         setShowApproveOtModal(false);
         setQuoteToApprove(null);
 
-        const sheetsUrlForOt = localStorage.getItem('olivar_sheets_url');
+        const sheetsUrlForOt = localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL;
         if (sheetsUrlForOt) {
           try {
             fetch(sheetsUrlForOt, {
@@ -4245,7 +4246,7 @@
           }
         } catch(err) {}
 
-        const sheetsUrlForInvoice = localStorage.getItem('olivar_sheets_url');
+        const sheetsUrlForInvoice = localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL;
         if (sheetsUrlForInvoice) {
           try {
             fetch(sheetsUrlForInvoice, {
