@@ -2218,6 +2218,20 @@
       const [isSyncingSheets, setIsSyncingSheets] = useState(false);
       const [sheetsTestResult, setSheetsTestResult] = useState(null);
 
+      // Estados para Módulo de Despachos & Entregas a Clientes
+      const [deliveriesList, setDeliveriesList] = useState(() => {
+        try {
+          const saved = localStorage.getItem('olivar_deliveries');
+          return saved ? JSON.parse(saved) : [];
+        } catch(e) { return []; }
+      });
+      const [deliveryTab, setDeliveryTab] = useState('pendientes'); // 'pendientes' | 'entregados'
+      const [deliverySearchQuery, setDeliverySearchQuery] = useState('');
+      const [deliveryMethodFilter, setDeliveryMethodFilter] = useState('todos'); // 'todos' | 'retiro' | 'despacho' | 'instalacion'
+      const [itemToDeliver, setItemToDeliver] = useState(null);
+      const [deliveryReceiver, setDeliveryReceiver] = useState('');
+      const [deliveryNotes, setDeliveryNotes] = useState('');
+
       const showToast = (msg) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(''), 3500);
@@ -4548,6 +4562,156 @@
         });
       }, [allWorkshopOrders]);
 
+      // === GESTIÓN DE DESPACHOS & ENTREGAS A CLIENTES ===
+      const pendingDeliveries = useMemo(() => {
+        const deliveredKeys = new Set(
+          (deliveriesList || []).map(d => String(d.correlative || d.otFolio || '').trim().toUpperCase())
+        );
+        const list = [];
+        const seen = new Set();
+
+        // 1. Órdenes de taller completadas
+        (allWorkshopOrders || []).forEach(ot => {
+          const corrKey = String(ot.correlative || '').trim().toUpperCase();
+          const folioKey = String(ot.otFolio || '').trim().toUpperCase();
+          const isDelivered = (corrKey && deliveredKeys.has(corrKey)) || (folioKey && deliveredKeys.has(folioKey)) || ot.isDelivered || ot.deliveryStatus === 'entregado';
+          if (ot.status === 'completado' && !isDelivered) {
+            const uid = corrKey || folioKey || ot.id;
+            if (!seen.has(uid)) {
+              seen.add(uid);
+              list.push({
+                id: ot.id || uid,
+                correlative: ot.correlative || ot.otFolio || 'OT-MANUAL',
+                otFolio: ot.otFolio || '',
+                client: ot.client || { name: ot.clientName || 'Cliente Mostrador' },
+                clientPhone: ot.clientPhone || ot.client?.phone || '',
+                deliveryMethod: ot.deliveryMethod || ot.client?.deliveryMethod || 'retiro',
+                deliveryAddress: ot.deliveryAddress || ot.client?.deliveryAddress || 'Taller Matriz Olivar',
+                deadline: ot.deadline || ot.finishedAt || 'Coordinada con Taller',
+                finishedAt: ot.finishedAt || '',
+                itemsSummary: ot.workName || (ot.items || []).map(it => `${it.quantity || 1} ud ${it.name}`).join(' | ') || 'Trabajo terminado en taller',
+                source: 'OT Taller',
+                raw: ot
+              });
+            }
+          }
+        });
+
+        // 2. Cotizaciones terminadas o facturadas listas para entrega
+        (quoteHistory || []).forEach(q => {
+          const corrKey = String(q.correlative || q._fireId || '').trim().toUpperCase();
+          const isDelivered = (corrKey && deliveredKeys.has(corrKey)) || q.isDelivered || q.deliveryStatus === 'entregado';
+          const s = String(q.status || '').toLowerCase();
+          const ot = getOrBuildOtForQuote(q);
+          const isReady = s === 'terminada' || (ot && ot.status === 'completado');
+          if (isReady && !isDelivered) {
+            if (!seen.has(corrKey)) {
+              seen.add(corrKey);
+              list.push({
+                id: q._fireId || corrKey,
+                correlative: q.correlative,
+                otFolio: q.purchaseOrderNumber ? `OC-${q.purchaseOrderNumber}` : (ot ? ot.otFolio : ''),
+                client: q.client || { name: 'Cliente' },
+                clientPhone: q.client?.phone || '',
+                deliveryMethod: q.client?.deliveryMethod || 'retiro',
+                deliveryAddress: q.client?.deliveryAddress || 'Taller Matriz Olivar',
+                deadline: q.deadline || (ot ? ot.deadline : '') || 'Coordinada',
+                finishedAt: q.finishedAt || '',
+                itemsSummary: (q.items || []).map(it => `${it.quantity || 1} ud ${it.name}`).join(' | ') || 'Trabajo gráfico',
+                source: 'Cotización Formal',
+                raw: q
+              });
+            }
+          }
+        });
+
+        return list;
+      }, [allWorkshopOrders, quoteHistory, deliveriesList]);
+
+      const handleConfirmDelivery = (e) => {
+        if (e) e.preventDefault();
+        if (!itemToDeliver) return;
+
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('es-CL');
+        const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
+        const newRecord = {
+          id: 'del-' + Date.now(),
+          correlative: itemToDeliver.correlative,
+          otFolio: itemToDeliver.otFolio,
+          clientName: itemToDeliver.client?.name || 'Cliente',
+          clientPhone: itemToDeliver.clientPhone || '',
+          deliveryMethod: itemToDeliver.deliveryMethod || 'retiro',
+          deliveryAddress: itemToDeliver.deliveryAddress || '',
+          itemsSummary: itemToDeliver.itemsSummary || '',
+          deliveredDate: dateStr,
+          deliveredTime: timeStr,
+          timestamp: Date.now(),
+          receivedBy: deliveryReceiver.trim() || 'Cliente / Receptor',
+          notes: deliveryNotes.trim()
+        };
+
+        const updatedDeliveries = [newRecord, ...deliveriesList];
+        setDeliveriesList(updatedDeliveries);
+        try {
+          localStorage.setItem('olivar_deliveries', JSON.stringify(updatedDeliveries));
+        } catch(err) {}
+
+        // Actualizar en quoteHistory y allWorkshopOrders
+        setQuoteHistory(prev => prev.map(q => {
+          if (q.correlative === itemToDeliver.correlative) {
+            return { ...q, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}`, deliveryReceiver: newRecord.receivedBy };
+          }
+          return q;
+        }));
+
+        setWorkOrders(prev => prev.map(o => {
+          if (o.correlative === itemToDeliver.correlative || (itemToDeliver.otFolio && o.otFolio === itemToDeliver.otFolio)) {
+            return { ...o, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}` };
+          }
+          return o;
+        }));
+
+        // Actualizar calendario de taller
+        setWorkshopCalendar(prev => prev.map(ev => {
+          if (ev.correlative === itemToDeliver.correlative || (itemToDeliver.otFolio && ev.title?.includes(itemToDeliver.otFolio))) {
+            return { ...ev, status: 'completado', notes: (ev.notes ? ev.notes + ' | ' : '') + `Entregado ${dateStr}` };
+          }
+          return ev;
+        }));
+
+        // Sincronizar en Google Sheets
+        const activeSheetsUrl = localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL;
+        if (activeSheetsUrl) {
+          try {
+            fetch(activeSheetsUrl, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: 'saveDelivery',
+                delivery: newRecord,
+                correlative: itemToDeliver.correlative
+              })
+            }).catch(() => {});
+          } catch(err) {}
+        }
+
+        setItemToDeliver(null);
+        setDeliveryReceiver('');
+        setDeliveryNotes('');
+        showToast(`🚚 ¡Entrega de ${itemToDeliver.correlative} registrada con éxito!`);
+      };
+
+      const handleUndoDelivery = (delId) => {
+        if (!window.confirm('¿Deseas desmarcar esta entrega y devolverla a la lista de pendientes?')) return;
+        const updated = deliveriesList.filter(d => d.id !== delId);
+        setDeliveriesList(updated);
+        try {
+          localStorage.setItem('olivar_deliveries', JSON.stringify(updated));
+        } catch(err) {}
+        showToast('ℹ️ Entrega devuelta a la lista de pendientes.');
+      };
+
       // --- CAMBIO DE ETAPA EN TALLER CON SINCRONIZACIÓN AUTOMÁTICA A ADMINISTRACIÓN ---
       const handleUpdateOtStage = (otId, newStage) => {
         let matchedCorrelative = null;
@@ -6272,7 +6436,7 @@
                         <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-black border border-rose-200 shadow-sm">❤️ En Línea con Google Sheets</span>
                       </div>
                       <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
-                        {intranetSection === 'portal' ? 'Menú Principal de Espacios' : intranetSection === 'admin' ? 'Área Comercial & Administración' : 'Área Técnica & Taller de Producción'}
+                        {intranetSection === 'portal' ? 'Menú Principal de Espacios' : intranetSection === 'admin' ? 'Área Comercial & Administración' : intranetSection === 'taller' ? 'Área Técnica & Taller de Producción' : 'Módulo de Despachos & Entregas'}
                       </h1>
                     </div>
                   </div>
@@ -6330,6 +6494,25 @@
                       >
                         <Icon name="tool" className="w-3.5 h-3.5" />
                         <span>🏭 Taller & OT</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIntranetSection('despachos')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          intranetSection === 'despachos'
+                            ? 'bg-blue-600 text-white shadow-sm font-extrabold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                        title="Ir al Control de Despachos, Retiros y Entregas a Clientes"
+                      >
+                        <span className="text-sm">🚚</span>
+                        <span>Despachos & Entregas</span>
+                        {pendingDeliveries.length > 0 && (
+                          <span className="px-1.5 py-0.2 bg-blue-500 text-white font-extrabold rounded-full text-[10px] ml-0.5 shadow-xs">
+                            {pendingDeliveries.length}
+                          </span>
+                        )}
                       </button>
                                           <a
                         href="taller.html"
@@ -6459,7 +6642,7 @@
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 pt-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
                       {/* CUADRO 1: ADMINISTRACIÓN & COTIZACIONES (COMERCIAL) */}
                       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 hover:border-red-500 transition shadow-lg hover:shadow-xl flex flex-col justify-between group">
                         <div className="space-y-5">
@@ -6662,6 +6845,108 @@
                             className="w-full py-3.5 px-5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-md shadow-amber-500/25 cursor-pointer"
                           >
                             <span>Ingresar a Taller & Producción</span>
+                            <Icon name="arrow-right" className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* CUADRO 3: DESPACHOS & ENTREGAS (LOGÍSTICA Y TERRENO) */}
+                      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 hover:border-blue-500 transition shadow-lg hover:shadow-xl flex flex-col justify-between group">
+                        <div className="space-y-5">
+                          <div className="flex items-center justify-between">
+                            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center font-bold text-2xl shadow-sm group-hover:scale-105 transition">
+                              <span className="text-2xl">🚚</span>
+                            </div>
+                            <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold uppercase">
+                              Área Logística & Terreno
+                            </span>
+                          </div>
+
+                          <div>
+                            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                              3. Despachos & Entregas
+                            </h3>
+                            <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                              Control ágil de trabajos listos para entrega. Marca retiros en oficina o despachos en terreno desde tu celular en 1 clic con respaldo en tiempo real y sincronización al calendario.
+                            </p>
+                          </div>
+
+                          {/* Métricas rápidas */}
+                          <div className="grid grid-cols-3 gap-2.5 pt-2">
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Pendientes</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-blue-600">{pendingDeliveries.length}</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Entregados</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-emerald-600">{deliveriesList.length}</span>
+                            </div>
+                            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
+                              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Retiro Taller</span>
+                              <span className="text-xs sm:text-sm font-mono font-black text-slate-900">{pendingDeliveries.filter(d => d.deliveryMethod === 'retiro').length}</span>
+                            </div>
+                          </div>
+
+                          {/* Accesos rápidos */}
+                          <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('despachos');
+                                setDeliveryTab('pendientes');
+                              }}
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
+                            >
+                              <span className="text-blue-600">📦</span>
+                              <span className="font-semibold">Por Entregar ({pendingDeliveries.length})</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('despachos');
+                                setDeliveryTab('entregados');
+                              }}
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
+                            >
+                              <span className="text-emerald-600">✅</span>
+                              <span className="font-semibold">Historial Entregas</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('taller');
+                                setIntranetTab('calendario');
+                              }}
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
+                            >
+                              <Icon name="calendar" className="w-4 h-4 text-blue-600" />
+                              <span className="font-semibold">Ver Calendario</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIntranetSection('despachos');
+                                setDeliveryTab('pendientes');
+                                setDeliveryMethodFilter('despacho');
+                              }}
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 flex items-center gap-2.5 transition text-left shadow-xs cursor-pointer"
+                            >
+                              <span className="text-blue-600">🚚</span>
+                              <span className="font-semibold">Solo Despachos</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-6 mt-4 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIntranetSection('despachos');
+                              setDeliveryTab('pendientes');
+                            }}
+                            className="w-full py-3.5 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 transition shadow-md shadow-blue-600/25 cursor-pointer"
+                          >
+                            <span>Ingresar a Despachos & Entregas</span>
                             <Icon name="arrow-right" className="w-4 h-4" />
                           </button>
                         </div>
@@ -11362,9 +11647,440 @@
                                 </div>
               )}
 
-                
+              {/* ============================================================== */}
+              {/* VISTA 4: ESPACIO 3 - DESPACHOS, RETIROS & ENTREGAS A CLIENTES */}
+              {/* ============================================================== */}
+              {intranetSection === 'despachos' && (
+                <div className="space-y-6">
+                  {/* Cabecera Secundaria de Despachos & Entregas */}
+                  <div className="p-4 rounded-2xl bg-white border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryTab('pendientes')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                          deliveryTab === 'pendientes'
+                            ? 'bg-blue-600 text-white font-extrabold shadow-md shadow-blue-600/30 ring-2 ring-blue-500/30'
+                            : 'bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200'
+                        }`}
+                      >
+                        <span className="text-sm">📦</span>
+                        <span>Pendientes de Entrega</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                          deliveryTab === 'pendientes' ? 'bg-white text-blue-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {pendingDeliveries.length}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryTab('entregados')}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                          deliveryTab === 'entregados'
+                            ? 'bg-emerald-600 text-white font-extrabold shadow-md shadow-emerald-600/30 ring-2 ring-emerald-500/30'
+                            : 'bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200'
+                        }`}
+                      >
+                        <span className="text-sm">✅</span>
+                        <span>Historial Entregados</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                          deliveryTab === 'entregados' ? 'bg-white text-emerald-700' : 'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {deliveriesList.length}
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIntranetSection('taller');
+                          setIntranetTab('calendario');
+                        }}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 cursor-pointer"
+                        title="Ver calendario con todas las entregas e instalaciones programadas"
+                      >
+                        <Icon name="calendar" className="w-3.5 h-3.5 text-blue-600" />
+                        <span>📅 Calendario de Entregas</span>
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIntranetSection('portal')}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Icon name="home" className="w-3.5 h-3.5" />
+                      <span>Menú de Espacios</span>
+                    </button>
+                  </div>
+
+                  {/* Barra de Filtros y Búsqueda Rápida para Celular y PC */}
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    {/* Buscador en tiempo real */}
+                    <div className="relative flex-1">
+                      <Icon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar por cliente, folio (COT o OT), dirección..."
+                        value={deliverySearchQuery}
+                        onChange={(e) => setDeliverySearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-none transition"
+                      />
+                      {deliverySearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setDeliverySearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filtro por Modalidad de Entrega */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                      {[
+                        { id: 'todos', label: 'Todos' },
+                        { id: 'retiro', label: '🏢 Retiros en Taller' },
+                        { id: 'despacho', label: '🚚 Despachos a Domicilio' },
+                        { id: 'instalacion', label: '🏗️ Instalaciones' }
+                      ].map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setDeliveryMethodFilter(m.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition cursor-pointer ${
+                            deliveryMethodFilter === m.id
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* VISTA: PENDIENTES DE ENTREGA */}
+                  {deliveryTab === 'pendientes' && (() => {
+                    const filtered = pendingDeliveries.filter(item => {
+                      if (deliveryMethodFilter !== 'todos') {
+                        const m = (item.deliveryMethod || '').toLowerCase();
+                        if (deliveryMethodFilter === 'retiro' && m !== 'retiro') return false;
+                        if (deliveryMethodFilter === 'despacho' && m !== 'despacho' && m !== 'entrega') return false;
+                        if (deliveryMethodFilter === 'instalacion' && m !== 'instalacion') return false;
+                      }
+                      if (deliverySearchQuery.trim()) {
+                        const q = deliverySearchQuery.toLowerCase();
+                        const matchCorr = (item.correlative || '').toLowerCase().includes(q);
+                        const matchOt = (item.otFolio || '').toLowerCase().includes(q);
+                        const matchClient = (item.client?.name || '').toLowerCase().includes(q);
+                        const matchContact = (item.client?.contactPerson || '').toLowerCase().includes(q);
+                        const matchAddress = (item.deliveryAddress || '').toLowerCase().includes(q);
+                        const matchSummary = (item.itemsSummary || '').toLowerCase().includes(q);
+                        return matchCorr || matchOt || matchClient || matchContact || matchAddress || matchSummary;
+                      }
+                      return true;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center space-y-3 shadow-sm">
+                          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+                            🚚
+                          </div>
+                          <h3 className="text-lg font-black text-slate-900 font-heading">
+                            {deliverySearchQuery ? 'No se encontraron entregas con ese criterio' : '¡No hay entregas pendientes!'}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+                            {deliverySearchQuery
+                              ? 'Prueba borrando el texto de búsqueda o cambiando el filtro de modalidad.'
+                              : 'Todos los trabajos terminados en taller han sido entregados a clientes o aún están en fabricación.'}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {filtered.map(item => (
+                          <div
+                            key={item.id}
+                            className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 transition shadow-sm hover:shadow-md flex flex-col justify-between gap-4"
+                          >
+                            <div className="space-y-3">
+                              {/* Header tarjeta */}
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono font-black text-xs px-2.5 py-1 rounded-lg bg-slate-900 text-white shadow-xs">
+                                    {item.correlative}
+                                  </span>
+                                  {item.otFolio && item.otFolio !== item.correlative && (
+                                    <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold">
+                                      {item.otFolio}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase ${
+                                  item.deliveryMethod === 'instalacion'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                    : (item.deliveryMethod === 'despacho' || item.deliveryMethod === 'entrega')
+                                    ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                    : 'bg-slate-100 text-slate-800 border-slate-200'
+                                }`}>
+                                  {item.deliveryMethod === 'instalacion' ? '🏗️ Terreno' : (item.deliveryMethod === 'despacho' || item.deliveryMethod === 'entrega') ? '🚚 Despacho' : '🏢 Retiro'}
+                                </span>
+                              </div>
+
+                              {/* Cliente */}
+                              <div>
+                                <h4 className="text-sm sm:text-base font-black text-slate-900 font-heading leading-snug">
+                                  {item.client?.name || 'Cliente Mostrador'}
+                                </h4>
+                                {item.client?.contactPerson && (
+                                  <p className="text-xs text-slate-500 font-medium">
+                                    Atención: {item.client.contactPerson}
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Dirección si existe */}
+                              {item.deliveryAddress && item.deliveryAddress !== 'Taller Matriz Olivar' && (
+                                <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-start justify-between gap-2">
+                                  <div className="flex items-start gap-1.5 text-slate-600 truncate">
+                                    <span>📍</span>
+                                    <span className="truncate text-[11px]">{item.deliveryAddress}</span>
+                                  </div>
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.deliveryAddress)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline shrink-0"
+                                  >
+                                    Mapa ➔
+                                  </a>
+                                </div>
+                              )}
+
+                              {/* Resumen de trabajos */}
+                              <div className="p-2.5 rounded-xl bg-blue-50/50 border border-blue-100 text-xs text-slate-700">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 block mb-0.5">Trabajo:</span>
+                                <p className="text-xs font-semibold leading-relaxed text-slate-800 line-clamp-2">{item.itemsSummary}</p>
+                              </div>
+
+                              {/* Fecha */}
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                                <span>📅 Plazo: <strong className="text-slate-700">{item.deadline || 'Coordinada'}</strong></span>
+                                {item.finishedAt && (
+                                  <span className="text-emerald-700 font-bold">Listo: {item.finishedAt}</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Botones de acción */}
+                            <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                              {item.clientPhone && (
+                                <a
+                                  href={`https://wa.me/${item.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola ${item.client?.contactPerson || item.client?.name || ''}, le saludamos de Letreros Olivar SpA para informarle que su trabajo (${item.correlative}) está listo para ${item.deliveryMethod === 'retiro' ? 'retiro en taller' : 'su despacho'}. ¡Saludos!`)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs flex items-center justify-center transition cursor-pointer"
+                                  title="Avisar por WhatsApp"
+                                >
+                                  <span className="text-base leading-none">💬</span>
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setItemToDeliver(item);
+                                  setDeliveryReceiver(item.client?.contactPerson || item.client?.name || '');
+                                  setDeliveryNotes('');
+                                }}
+                                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/25 transition cursor-pointer"
+                              >
+                                <Icon name="check" className="w-3.5 h-3.5" />
+                                <span>Marcar Entregado</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+
+                  {/* VISTA: HISTORIAL DE ENTREGAS REALIZADAS */}
+                  {deliveryTab === 'entregados' && (() => {
+                    const filtered = deliveriesList.filter(d => {
+                      if (deliverySearchQuery.trim()) {
+                        const q = deliverySearchQuery.toLowerCase();
+                        const matchCorr = (d.correlative || '').toLowerCase().includes(q);
+                        const matchOt = (d.otFolio || '').toLowerCase().includes(q);
+                        const matchClient = (d.clientName || '').toLowerCase().includes(q);
+                        const matchRec = (d.receivedBy || '').toLowerCase().includes(q);
+                        const matchNotes = (d.notes || '').toLowerCase().includes(q);
+                        return matchCorr || matchOt || matchClient || matchRec || matchNotes;
+                      }
+                      return true;
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="p-12 rounded-3xl bg-white border border-slate-200 text-center space-y-3 shadow-sm">
+                          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+                            ✅
+                          </div>
+                          <h3 className="text-lg font-black text-slate-900 font-heading">
+                            Aún no hay entregas registradas en el historial
+                          </h3>
+                          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+                            Cuando entregues un trabajo desde la pestaña "Pendientes de Entrega", quedará archivado aquí con fecha, hora y persona que recibió.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                          <h4 className="text-sm font-black text-slate-900 font-heading">
+                            Historial Oficial de Entregas & Despachos ({filtered.length})
+                          </h4>
+                          <span className="text-[11px] text-slate-500 font-mono">Ordenado de más reciente a más antiguo</span>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {filtered.map(del => (
+                            <div key={del.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition">
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-lg bg-emerald-700 text-white shadow-xs">
+                                    {del.correlative}
+                                  </span>
+                                  {del.otFolio && del.otFolio !== del.correlative && (
+                                    <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                                      {del.otFolio}
+                                    </span>
+                                  )}
+                                  <span className="text-xs font-black text-slate-900">{del.clientName}</span>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                    {del.deliveryMethod === 'instalacion' ? '🏗️ Terreno' : del.deliveryMethod === 'despacho' ? '🚚 Despacho' : '🏢 Retiro'}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                                  <span>👤 Recibió: <strong className="text-slate-800">{del.receivedBy}</strong></span>
+                                  <span>⏰ Entregado el: <strong className="text-emerald-700 font-mono">{del.deliveredDate} {del.deliveredTime}</strong></span>
+                                  {del.notes && <span className="italic text-slate-500">"{del.notes}"</span>}
+                                </div>
+                                {del.itemsSummary && (
+                                  <p className="text-[11px] text-slate-500 truncate max-w-xl">{del.itemsSummary}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUndoDelivery(del.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 border border-slate-200 text-xs font-bold transition cursor-pointer"
+                                  title="Deshacer entrega y devolverla a la lista de pendientes"
+                                >
+                                  ↩️ Deshacer
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
               </div>
             </main>
+          )}
+
+          {/* ============================================================== */}
+          {/* MODAL: CONFIRMAR ENTREGA / DESPACHO A CLIENTE                 */}
+          {/* ============================================================== */}
+          {itemToDeliver && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl border border-slate-200 text-slate-900">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xl">
+                      🚚
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 block">Confirmación de Entrega</span>
+                      <h3 className="font-black text-base text-slate-900 font-heading">
+                        {itemToDeliver.correlative}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setItemToDeliver(null)}
+                    className="text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    <Icon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
+                  <div className="font-bold text-slate-900">{itemToDeliver.client?.name}</div>
+                  <div className="text-slate-600 text-[11px]">{itemToDeliver.itemsSummary}</div>
+                  {itemToDeliver.deliveryAddress && itemToDeliver.deliveryAddress !== 'Taller Matriz Olivar' && (
+                    <div className="text-slate-500 text-[10px] truncate">📍 {itemToDeliver.deliveryAddress}</div>
+                  )}
+                </div>
+
+                <form onSubmit={handleConfirmDelivery} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      👤 ¿Quién recibió el trabajo?
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Javier Polanco, Recepción, Cliente particular"
+                      value={deliveryReceiver}
+                      onChange={(e) => setDeliveryReceiver(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      📝 Observaciones / N° Guía (Opcional):
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Ej: Entregado con guía #105, todo conforme..."
+                      value={deliveryNotes}
+                      onChange={(e) => setDeliveryNotes(e.target.value)}
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none resize-none"
+                    ></textarea>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setItemToDeliver(null)}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black shadow-md shadow-emerald-600/30 transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Icon name="check" className="w-4 h-4" />
+                      <span>Confirmar Entrega</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           )}
 
           {/* ============================================================== */}
