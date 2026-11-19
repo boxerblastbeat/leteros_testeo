@@ -2364,6 +2364,79 @@
         }
       }, []);
 
+      // Auto-inyección garantizada de cotizaciones rescatadas (COT-0113, 0140, 0141, 0142, 0143, 0145)
+      useEffect(() => {
+        const RECOVERED_QUOTES = [
+          {
+            _fireId: "COT-2026-0113", correlative: "COT-2026-0113", numericCorrelative: 113, date: "18-11-2026", status: "Emitida", taxRate: 19, discountAmount: 0, timestamp: 1795056091000, images: [], workshopNotes: "",
+            client: { name: "TEKNORIEGO SOLUCIONES AMBIENTALES SPA", documentId: "78044920-9", contactPerson: "Yvonne Donoso", phone: "+56993085848", email: "ydonoso@teknoriego.cl", deliveryMethod: "retiro", deliveryAddress: "Camino Público S/N, Olivar (Taller Matriz)", paymentTerms: "Contado / Transferencia", manufacturingDays: "3 a 5 días hábiles", validDays: 15 },
+            items: [{ id: "item-rec-0113-1", productId: "custom", name: "PVC Espumado 5mm (Trovicel)", detail: "Plan de tránsito | [Base: PVC Espumado 5mm (Trovicel)] + Adhesivo Vinilo Impreso + Termolaminado de Protección UV", width: 0.6, height: 0.4, quantity: 10, unitPrice: 14400, unitPiecePrice: 14400, subtotal: 144000, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: ["Termolaminado de Protección UV"], compositionLayers: ["Adhesivo Vinilo Impreso"], optionsTotal: 0 }],
+            totals: { subtotal: 144000, taxableSubtotal: 144000, taxAmount: 27360, total: 171360, discountAmount: 0, installationFee: 0, freightFee: 0 }
+          },
+          {
+            _fireId: "COT-2026-0140", correlative: "COT-2026-0140", numericCorrelative: 140, date: "18-11-2026", status: "Emitida", taxRate: 19, discountAmount: 0, timestamp: 1795056092000, images: [], workshopNotes: "",
+            client: { name: "TEKNORIEGO SOLUCIONES AMBIENTALES SPA", documentId: "78044920-9", contactPerson: "Yvonne Donoso", phone: "+56993085848", email: "ydonoso@teknoriego.cl", deliveryMethod: "instalacion", deliveryAddress: "", paymentTerms: "Crédito 30 días", manufacturingDays: "5 a 7 días hábiles", validDays: 15 },
+            items: [
+              { id: "item-rec-0140-1", productId: "custom", name: "Lata Galvanizada 0.8mm", detail: "0.2×0.3m | [Base: Lata Galvanizada 0.8mm] + Adhesivo Vinilo Impreso", width: 0.2, height: 0.3, quantity: 8, unitPrice: 3210, unitPiecePrice: 3210, subtotal: 25680, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: [], compositionLayers: ["Adhesivo Vinilo Impreso"], optionsTotal: 0 },
+              { id: "item-rec-0140-2", productId: "custom", name: "Lata Galvanizada 0.8mm", detail: "0.4×0.25m | [Base: Lata Galvanizada 0.8mm] + Adhesivo Vinilo Impreso", width: 0.4, height: 0.25, quantity: 2, unitPrice: 5300, unitPiecePrice: 5300, subtotal: 10600, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: [], compositionLayers: ["Adhesivo Vinilo Impreso"], optionsTotal: 0 },
+              { id: "item-rec-0140-3", productId: "custom", name: "Lata Galvanizada 0.8mm", detail: "0.35×0.2m | [Base: Lata Galvanizada 0.8mm] + Adhesivo Vinilo Impreso", width: 0.35, height: 0.2, quantity: 3, unitPrice: 3710, unitPiecePrice: 3710, subtotal: 11130, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: [], compositionLayers: ["Adhesivo Vinilo Impreso"], optionsTotal: 0 }
+            ],
+            totals: { subtotal: 47410, taxableSubtotal: 47410, taxAmount: 9008, total: 56418, discountAmount: 0, installationFee: 0, freightFee: 0 }
+          },
+          {
+            _fireId: "COT-2026-0141", correlative: "COT-2026-0141", numericCorrelative: 141, date: "18-11-2026", status: "Emitida", taxRate: 19, discountAmount: 0, timestamp: 1795056093000, images: [], workshopNotes: "",
+            client: { name: "TEKNORIEGO SOLUCIONES AMBIENTALES SPA", documentId: "78044920-9", contactPerson: "Yvonne Donoso", phone: "+56993085848", email: "ydonoso@teknoriego.cl", deliveryMethod: "retiro", deliveryAddress: "Camino Público S/N, Olivar (Taller Matriz)", paymentTerms: "Contado / Transferencia", manufacturingDays: "3 a 5 días hábiles", validDays: 15 },
+            items: [{ id: "item-rec-0141-1", productId: "custom", name: "Roller Clip 80×200cm (Estructura + Gráfica)", detail: "Roller Clip 80x200cm (Estructura + Gráfica)", width: 0.8, height: 2.0, quantity: 1, unitPrice: 55000, unitPiecePrice: 55000, subtotal: 55000, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: [], compositionLayers: [], optionsTotal: 0 }],
+            totals: { subtotal: 55000, taxableSubtotal: 55000, taxAmount: 10450, total: 65450, discountAmount: 0, installationFee: 0, freightFee: 0 }
+          },
+          {
+            _fireId: "COT-2026-0142", correlative: "COT-2026-0142", numericCorrelative: 142, date: "18-11-2026", status: "Emitida", taxRate: 19, discountAmount: 0, timestamp: 1795056094000, images: [], workshopNotes: "",
+            client: { name: "Exportadora el Huerto SPA", documentId: "", contactPerson: "Doris Guzman", phone: "+569 61684732", email: "elesfuerzo.olivar@gmail.com", deliveryMethod: "retiro", deliveryAddress: "Camino Público S/N, Olivar (Taller Matriz)", paymentTerms: "Contado / Transferencia", manufacturingDays: "3 a 5 días hábiles", validDays: 15 },
+            items: [{ id: "item-rec-0142-1", productId: "custom", name: "Tela PVC 340gr (1.10m)", detail: "Tela PVC 340gr 1.2×2m | Termosellado perimetral con ojetillos", width: 1.2, height: 2.0, quantity: 1, unitPrice: 39600, unitPiecePrice: 39600, subtotal: 39600, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: ["Termosellado perimetral con ojetillos (+$2.500/m²)"], compositionLayers: [], optionsTotal: 0 }],
+            totals: { subtotal: 39600, taxableSubtotal: 39600, taxAmount: 7524, total: 47124, discountAmount: 0, installationFee: 0, freightFee: 0 }
+          },
+          {
+            _fireId: "COT-2026-0143", correlative: "COT-2026-0143", numericCorrelative: 143, date: "18-11-2026", status: "Emitida", taxRate: 19, discountAmount: 0, timestamp: 1795056095000, images: [], workshopNotes: "",
+            client: { name: "TRANSAP S A", documentId: "96913600-7", contactPerson: "Javier Polanco", phone: "+56995100897", email: "jpolanco@transap.cl", deliveryMethod: "retiro", deliveryAddress: "Camino Público S/N, Olivar (Taller Matriz)", paymentTerms: "Crédito 30 días", manufacturingDays: "3 a 5 días hábiles", validDays: 15 },
+            items: [{ id: "item-rec-0143-1", productId: "custom", name: "Servicio / Trabajo a Medida", detail: "Cuadro de vidrio 0.6×0.9m | [Base: Servicio / Trabajo a Medida] + Adhesivo Vinilo Impreso", width: 0.6, height: 0.9, quantity: 4, unitPrice: 32000, unitPiecePrice: 32000, subtotal: 128000, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: [], compositionLayers: ["Adhesivo Vinilo Impreso"], optionsTotal: 0 }],
+            totals: { subtotal: 128000, taxableSubtotal: 128000, taxAmount: 24320, total: 152320, discountAmount: 0, installationFee: 0, freightFee: 0 }
+          },
+          {
+            _fireId: "COT-2026-0145", correlative: "COT-2026-0145", numericCorrelative: 145, date: "18-11-2026", status: "Emitida", taxRate: 19, discountAmount: 0, timestamp: 1795056096000, images: [], workshopNotes: "",
+            client: { name: "SOCIEDAD DE SERVICIOS RD INGENIERIA SPA", documentId: "77898559-4", contactPerson: "Alexander Seron", phone: "+56 9 5179 8161", email: "aseron@rdrental.cl", deliveryMethod: "despacho", deliveryAddress: "KM. 93 Longitudinal Sur, Parcela 10, Rancagua", paymentTerms: "Crédito 30 días", manufacturingDays: "3 a 5 días hábiles", validDays: 15 },
+            items: [{ id: "item-rec-0145-1", productId: "custom", name: "Lata Galvanizada 0.8mm", detail: "PELIGRO CARGA DE COMBUSTIBLE | 0.4×0.6m | [Base: Lata Galvanizada 0.8mm] + Adhesivo Vinilo Impreso", width: 0.4, height: 0.6, quantity: 1, unitPrice: 13080, unitPiecePrice: 13080, subtotal: 13080, calcType: "unit_piece", priceMode: "unit_piece", unitLabel: "unidad", selectedOptions: [], compositionLayers: ["Adhesivo Vinilo Impreso"], optionsTotal: 0 }],
+            totals: { subtotal: 13080, taxableSubtotal: 18080, taxAmount: 3435, total: 21515, discountAmount: 0, installationFee: 0, freightFee: 5000 }
+          }
+        ];
+
+        setQuoteHistory(prev => {
+          const map = new Map();
+          (prev || []).forEach(q => {
+            const k = (q.correlative || q._fireId || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+            if (k) map.set(k, q);
+          });
+          let changed = false;
+          RECOVERED_QUOTES.forEach(rq => {
+            const k = (rq.correlative || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+            if (!map.has(k)) {
+              map.set(k, rq);
+              changed = true;
+            }
+          });
+          if (!changed) return prev;
+          const merged = Array.from(map.values()).sort((a, b) => {
+            const na = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
+            const nb = b.numericCorrelative || parseInt((b.correlative || '').replace(/\D/g, ''), 10) || 0;
+            return nb - na;
+          });
+          try { localStorage.setItem('olivar_quotes_history', JSON.stringify(merged)); } catch(e) {}
+          return merged;
+        });
+
+        // Asegurar que el correlativo numérico no baje de 146
+        setCorrelativeNumber(prev => Math.max(prev, 146));
+      }, []);
+
       useEffect(() => {
         localStorage.setItem('olivar_correlative', correlativeNumber.toString());
       }, [correlativeNumber]);
@@ -6192,10 +6265,11 @@
                       <Icon name="lock" className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] uppercase font-bold tracking-widest text-red-600">INTRANET CORPORATIVA</span>
                         <span className="text-slate-400">•</span>
                         <span className="text-[11px] text-slate-500 font-medium">Letreros Olivar SpA</span>
+                        <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 font-black border border-rose-200 shadow-sm">❤️ En Línea con Google Sheets</span>
                       </div>
                       <h1 className="text-lg sm:text-xl font-black text-slate-900 font-heading">
                         {intranetSection === 'portal' ? 'Menú Principal de Espacios' : intranetSection === 'admin' ? 'Área Comercial & Administración' : 'Área Técnica & Taller de Producción'}
