@@ -1406,9 +1406,30 @@
       // -------------------------------------------------------------
       // 2. ESTADO DE LA INTRANET (COTIZADOR CORRELATIVO PRIVADO)
       // -------------------------------------------------------------
+      const cleanNumericCorrelative = (val) => {
+        if (!val) return 152;
+        const str = String(val).trim();
+        const match = str.match(/(\d{3,4})$/);
+        if (match) {
+          const n = parseInt(match[1], 10);
+          return isNaN(n) || n < 100 ? 152 : n;
+        }
+        const n = parseInt(str, 10);
+        return isNaN(n) || n < 100 ? 152 : n;
+      };
+
+      const cleanCorrelativeString = (corr) => {
+        if (!corr) return corr;
+        const match = String(corr).match(/COT-(?:2026)+-(\d{3,4})$/i) || String(corr).match(/COT-\d+-.*?(\d{3,4})$/i);
+        if (match) {
+          return `COT-${new Date().getFullYear()}-${match[1].padStart(4, '0')}`;
+        }
+        return corr;
+      };
+
       const [correlativeNumber, setCorrelativeNumber] = useState(() => {
         const saved = localStorage.getItem('olivar_correlative');
-        return saved ? parseInt(saved, 10) : 101;
+        return saved ? cleanNumericCorrelative(saved) : 152;
       });
 
       const [quoteHistory, setQuoteHistory] = useState(() => {
@@ -2295,10 +2316,10 @@
                   if (k && !deletedSet.has(k)) map.set(k, localQ);
                 });
                 cloudQuotes.forEach(cq => {
+                  cq.correlative = cleanCorrelativeString(cq.correlative);
+                  cq.numericCorrelative = cleanNumericCorrelative(cq.numericCorrelative || cq.correlative);
                   const k = normCorr(cq.correlative || cq._fireId);
                   if (k && !deletedSet.has(k)) {
-                    const localQ = map.get(k);
-                    if (localQ) {
                       const isLocalFinished = localQ.status === 'Terminada' || localQ.status === 'Facturada' || localQ.isDelivered || localQ.deliveryStatus === 'entregado';
                       if (isLocalFinished && cq.status !== 'Terminada' && cq.status !== 'Facturada') {
                         map.set(k, { ...cq, ...localQ, status: localQ.status, isDelivered: localQ.isDelivered, deliveryStatus: localQ.deliveryStatus });
@@ -2321,7 +2342,7 @@
             }
 
             if (data.currentCorrelative && !isNaN(data.currentCorrelative)) {
-              setCorrelativeNumber(prev => Math.max(prev, parseInt(data.currentCorrelative, 10)));
+              setCorrelativeNumber(prev => Math.max(cleanNumericCorrelative(prev), cleanNumericCorrelative(data.currentCorrelative)));
             }
 
             if (Array.isArray(data.workOrders) && data.workOrders.length > 0) {
@@ -3227,9 +3248,9 @@
 
       const currentCorrelativeCode = useMemo(() => {
         const year = new Date().getFullYear();
-        const padded = String(correlativeNumber).padStart(4, '0');
+        const cleanNum = cleanNumericCorrelative(correlativeNumber);
+        const padded = String(cleanNum).padStart(4, '0');
         return `COT-${year}-${padded}`;
-      }, [correlativeNumber]);
 
       // --- LOGIN DE INTRANET ---
       const handleLoginSubmit = (e) => {
