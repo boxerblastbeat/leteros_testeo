@@ -186,11 +186,11 @@
       font-family: 'Space Grotesk', sans-serif;
     }
     @page {
-      size: A4 portrait;
+      size: letter portrait;
       margin: 8mm !important;
     }
     @media print {
-      /* 1. Reset limpio del documento a 1 sola página A4 */
+      /* 1. Reset limpio del documento a 1 sola página Carta (Letter) */
       html, body {
         margin: 0 !important;
         padding: 0 !important;
@@ -12787,7 +12787,7 @@
                       </span>
                     )}
                     <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono">
-                      🔒 1 Sola Página A4
+                      🔒 1 Sola Página Carta
                     </span>
                   </div>
 
@@ -12823,7 +12823,7 @@
 
                 {/* Contenedor con scroll vertical para pantalla */}
                 <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
-                  {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) - Ajustada para 1 página A4 */}
+                  {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) - Ajustada para 1 página Carta */}
                   <div id="ot-print-area" className="w-full max-w-[210mm] p-5 bg-white text-slate-900 font-sans text-[10px] leading-tight shadow-md rounded-xl border border-slate-200 print:p-0 print:border-none print:shadow-none print:rounded-none space-y-2.5">
                                         {/* Cabecera con Logo Oficial Vectorial en Alta Calidad */}
                     <div className="flex justify-between items-start border-b-2 border-red-600 pb-2">
@@ -13546,7 +13546,7 @@
           )}
 
           {/* ============================================================== */}
-          {/* MODAL / VISTA DE IMPRESIÓN Y PDF FORMAL A4 (OPTIMIZADO 1 PÁGINA) */}
+          {/* MODAL / VISTA DE IMPRESIÓN Y PDF FORMAL CARTA (OPTIMIZADO 1 PÁGINA) */}
           {/* ============================================================== */}
           {showPrintModal && currentQuoteToPrint && (
             <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden">
@@ -13562,7 +13562,7 @@
                       📁 Guardar PDF: {getQuotePdfFileName(currentQuoteToPrint)}.pdf
                     </span>
                     <span className="hidden lg:inline-flex text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-mono items-center gap-1">
-                      <span>🔒 1 Sola Página A4</span>
+                      <span>🔒 1 Sola Página Carta</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -13586,7 +13586,7 @@
 
                 {/* Contenedor con scroll vertical para pantalla */}
                 <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
-                  {/* Hoja de Impresión A4 compacta (1 página asegurada) */}
+                  {/* Hoja de Impresión Carta compacta (1 página asegurada) */}
                   <div id="print-area" className="w-full max-w-[210mm] p-5 sm:p-6 space-y-3 bg-white text-slate-900 text-[11px] leading-tight shadow-md rounded-xl border border-slate-200 print:p-0 print:border-none print:shadow-none print:rounded-none">
                   
                   {/* Encabezado: Logo, Datos Empresa y Correlativo */}
