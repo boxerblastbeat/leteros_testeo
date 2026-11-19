@@ -2296,7 +2296,19 @@
                 });
                 cloudQuotes.forEach(cq => {
                   const k = normCorr(cq.correlative || cq._fireId);
-                  if (k && !deletedSet.has(k)) map.set(k, cq);
+                  if (k && !deletedSet.has(k)) {
+                    const localQ = map.get(k);
+                    if (localQ) {
+                      const isLocalFinished = localQ.status === 'Terminada' || localQ.status === 'Facturada' || localQ.isDelivered || localQ.deliveryStatus === 'entregado';
+                      if (isLocalFinished && cq.status !== 'Terminada' && cq.status !== 'Facturada') {
+                        map.set(k, { ...cq, ...localQ, status: localQ.status, isDelivered: localQ.isDelivered, deliveryStatus: localQ.deliveryStatus });
+                      } else {
+                        map.set(k, { ...localQ, ...cq });
+                      }
+                    } else {
+                      map.set(k, cq);
+                    }
+                  }
                 });
                 const merged = Array.from(map.values()).sort((a, b) => {
                   const numA = a.numericCorrelative || parseInt((a.correlative || '').replace(/\D/g, ''), 10) || 0;
@@ -2321,7 +2333,19 @@
                 });
                 data.workOrders.forEach(co => {
                   const k = normCorr(co.otFolio || co.correlative || co.id);
-                  if (k) otMap.set(k, co);
+                  if (k) {
+                    const localOt = otMap.get(k);
+                    if (localOt) {
+                      const isLocalFinished = localOt.status === 'completado' || localOt.isDelivered || localOt.deliveryStatus === 'entregado';
+                      if (isLocalFinished && co.status !== 'completado') {
+                        otMap.set(k, { ...co, ...localOt, status: localOt.status, isDelivered: localOt.isDelivered, deliveryStatus: localOt.deliveryStatus });
+                      } else {
+                        otMap.set(k, { ...localOt, ...co });
+                      }
+                    } else {
+                      otMap.set(k, co);
+                    }
+                  }
                 });
                 const mergedOts = Array.from(otMap.values());
                 try { localStorage.setItem('olivar_work_orders', JSON.stringify(mergedOts)); } catch(e){}
@@ -4569,9 +4593,12 @@
 
       // === GESTIÓN DE DESPACHOS & ENTREGAS A CLIENTES ===
       const pendingDeliveries = useMemo(() => {
-        const deliveredKeys = new Set(
-          (deliveriesList || []).map(d => String(d.correlative || d.otFolio || '').trim().toUpperCase())
-        );
+        const deliveredKeys = new Set();
+        (deliveriesList || []).forEach(d => {
+          if (d.correlative) deliveredKeys.add(normCorr(d.correlative));
+          if (d.otFolio) deliveredKeys.add(normCorr(d.otFolio));
+        });
+
         const list = [];
         const seen = new Set();
 
@@ -4664,19 +4691,25 @@
         } catch(err) {}
 
         // Actualizar en quoteHistory y allWorkshopOrders
-        setQuoteHistory(prev => prev.map(q => {
-          if (q.correlative === itemToDeliver.correlative) {
+        setQuoteHistory(prev => {
+          const updated = prev.map(q => {
             return { ...q, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}`, deliveryReceiver: newRecord.receivedBy };
           }
           return q;
-        }));
+          });
+          try { localStorage.setItem('olivar_quotes_history', JSON.stringify(updated)); } catch(e){}
+          return updated;
+        });
 
-        setWorkOrders(prev => prev.map(o => {
-          if (o.correlative === itemToDeliver.correlative || (itemToDeliver.otFolio && o.otFolio === itemToDeliver.otFolio)) {
+        setWorkOrders(prev => {
+          const updated = prev.map(o => {
             return { ...o, isDelivered: true, deliveryStatus: 'entregado', deliveredAt: `${dateStr} ${timeStr}` };
           }
           return o;
-        }));
+          });
+          try { localStorage.setItem('olivar_work_orders', JSON.stringify(updated)); } catch(e){}
+          return updated;
+        });
 
         // Actualizar calendario de taller
         setWorkshopCalendar(prev => prev.map(ev => {
@@ -4777,7 +4810,34 @@
           completado: '✅ Terminado / Listo para Facturar'
         };
         if (newStage === 'completado') {
-          showToast(`✅ ${matchedFolio || 'OT'} marcado Listo en Taller.`);
+        // Sincronizar estado en Google Sheets
+        const activeSheetsForStage = localStorage.getItem('olivar_sheets_url') || DEFAULT_SHEETS_URL;
+        if (activeSheetsForStage) {
+          try {
+            fetch(activeSheetsForStage, {
+              method: 'POST',
+              body: JSON.stringify({
+                action: 'saveWorkOrder',
+                workOrder: {
+                  otFolio: matchedFolio || otId,
+                  correlative: matchedCorrelative,
+                  status: newStage
+                }
+              })
+            }).catch(() => {});
+            if (newStage === 'completado' && matchedCorrelative) {
+              fetch(activeSheetsForStage, {
+                method: 'POST',
+                body: JSON.stringify({
+                  action: 'updateStatus',
+                  correlative: matchedCorrelative,
+                  status: 'Terminada'
+                })
+              }).catch(() => {});
+            }
+          } catch(err) {}
+        }
+        showToast(`✅ ${matchedFolio || 'OT'} marcado Listo en Taller.`);
         } else {
           showToast(`Estado de ${matchedFolio || 'OT'} actualizado a ${stageLabels[newStage] || newStage}`);
         }
