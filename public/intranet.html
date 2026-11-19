@@ -185,32 +185,33 @@
     h1, h2, h3, .font-heading {
       font-family: 'Space Grotesk', sans-serif;
     }
-        @page {
+    @page {
       size: A4 portrait;
-      margin: 6mm 7mm !important;
+      margin: 8mm !important;
     }
     @media print {
-      /* 1. Bloqueo estricto del documento a exactamente 1 sola página A4 (sin páginas extras ni desbordes) */
+      /* 1. Reset limpio del documento a 1 sola página A4 */
       html, body {
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
-        height: 100% !important;
-        max-height: 100% !important;
-        overflow: hidden !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
         background: #ffffff !important;
-        color: #000000 !important;
+        color: #0f172a !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
 
-      /* 2. Contenedor raíz y vistas base de React bloqueados a 1 página sin scrollbars */
+      /* 2. Contenedor raíz y layout limpios sin scrollbars ni desbordes */
       #root, .min-h-screen {
         width: 100% !important;
-        height: 100% !important;
-        max-height: 100% !important;
+        height: auto !important;
         min-height: 0 !important;
-        overflow: hidden !important;
+        max-height: none !important;
+        overflow: visible !important;
         background: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
@@ -241,16 +242,17 @@
         overflow: hidden !important;
       }
 
-      /* 5. Aplanar modales para que no se comporten como encabezados fixed repetitivos */
+      /* 5. Aplanar modales: suprimir fondos oscuros, blur, sombras y filtros de pantalla */
       .fixed,
       .fixed.inset-0,
+      [class*="backdrop-blur"],
       .overflow-hidden,
       .overflow-y-auto {
         position: static !important;
         inset: auto !important;
         width: 100% !important;
         height: auto !important;
-        max-height: 100% !important;
+        max-height: none !important;
         min-height: 0 !important;
         overflow: visible !important;
         background: transparent !important;
@@ -258,6 +260,9 @@
         margin: 0 !important;
         border: none !important;
         box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        filter: none !important;
       }
 
       body * {
@@ -271,22 +276,23 @@
         visibility: visible !important;
       }
 
-      /* 6. Anclar el área de cotización/OT arriba a la izquierda exactamente en Página 1 */
+      /* 6. Centrado perfecto de la cotización/OT dentro de márgenes sin desfases */
       #print-area,
       #ot-print-area {
         display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
         padding: 0 !important;
         background: #ffffff !important;
-        color: #000000 !important;
+        color: #0f172a !important;
         border: none !important;
         box-shadow: none !important;
-        overflow: hidden !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
         page-break-before: avoid !important;
         page-break-inside: avoid !important;
         page-break-after: avoid !important;
@@ -300,7 +306,6 @@
         break-inside: avoid !important;
       }
     }
-
     /* ============================================================== */
     /* PALETA ARMÓNICA DE ALTO CONTRASTE - MODO CLARO CORPORATIVO     */
     /* ============================================================== */
@@ -3595,7 +3600,7 @@
         const isEditing = Boolean(editingCorrelative);
         const targetCorrelative = isEditing ? editingCorrelative : currentCorrelativeCode;
         const targetNumeric = isEditing
-          ? parseInt(editingCorrelative.replace(/\D/g, ''), 10) || correlativeNumber
+          ? (parseInt(String(editingCorrelative).split("-").pop(), 10) || correlativeNumber)
           : correlativeNumber;
 
         const quoteRecord = {
@@ -12819,7 +12824,7 @@
                 {/* Contenedor con scroll vertical para pantalla */}
                 <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
                   {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) - Ajustada para 1 página A4 */}
-                  <div id="ot-print-area" className="w-full max-w-[210mm] p-5 bg-white text-black font-sans text-[10px] leading-tight shadow-sm border border-gray-200 space-y-2.5">
+                  <div id="ot-print-area" className="w-full max-w-[210mm] p-5 bg-white text-slate-900 font-sans text-[10px] leading-tight shadow-md rounded-xl border border-slate-200 print:p-0 print:border-none print:shadow-none print:rounded-none space-y-2.5">
                                         {/* Cabecera con Logo Oficial Vectorial en Alta Calidad */}
                     <div className="flex justify-between items-start border-b-2 border-red-600 pb-2">
                       <div>
@@ -13582,10 +13587,10 @@
                 {/* Contenedor con scroll vertical para pantalla */}
                 <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
                   {/* Hoja de Impresión A4 compacta (1 página asegurada) */}
-                  <div id="print-area" className="w-full max-w-[210mm] p-5 sm:p-6 space-y-3 bg-white text-black text-[11px] leading-tight shadow-sm border border-gray-200">
+                  <div id="print-area" className="w-full max-w-[210mm] p-5 sm:p-6 space-y-3 bg-white text-slate-900 text-[11px] leading-tight shadow-md rounded-xl border border-slate-200 print:p-0 print:border-none print:shadow-none print:rounded-none">
                   
                   {/* Encabezado: Logo, Datos Empresa y Correlativo */}
-                  <div className="flex justify-between items-start border-b-2 border-black pb-3">
+                  <div className="flex justify-between items-start border-b-2 border-red-600 pb-3">
                     <div>
                       <div className="flex items-center gap-2.5 mb-1">
                         <BrandLogo theme="light" className="h-10 sm:h-12 w-auto" />
@@ -13641,7 +13646,7 @@
                   {/* Tabla de Trabajos con Detalle y Valor Unitario por Pieza */}
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-black text-white uppercase text-[9px] tracking-wider">
+                      <tr className="bg-slate-100 text-slate-900 uppercase text-[9px] font-bold tracking-wider border-y border-slate-300">
                         <th className="py-2 px-2.5 rounded-l">Cant. / Medidas</th>
                         <th className="py-2 px-2.5">Descripción y Composición del Trabajo</th>
                         <th className="py-2 px-2.5 text-right">Valor Unitario</th>
@@ -13752,7 +13757,7 @@
                       <p>• Trabajos garantizados y respaldo técnico directo en taller matriz Olivar.</p>
                     </div>
                     <div className="flex flex-col justify-end items-center text-center">
-                      <div className="w-40 border-b border-black mb-1"></div>
+                      <div className="w-48 border-b border-slate-400 mb-1.5"></div>
                       <span className="font-bold text-black uppercase text-[10px]">Firma y Timbre Autorizado</span>
                       <span className="text-[9px] text-zinc-500 font-bold">{companyInfo.name}</span>
                     </div>
