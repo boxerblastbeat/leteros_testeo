@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="es" class="dark scroll-smooth">
+<html lang="es" class="light scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -172,12 +172,12 @@
 
   <style>
     :root {
-      color-scheme: dark;
+      color-scheme: light;
     }
     html, body {
-      color-scheme: dark;
-      background-color: #050505 !important;
-      color: #f4f4f5;
+      color-scheme: light;
+      background-color: #f8fafc !important;
+      color: #0f172a;
     }
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
@@ -191,7 +191,8 @@
     }
     @media print {
       /* 1. Reset limpio del documento a 1 sola página Carta (Letter) */
-      html, body {
+      :root, html, body {
+        color-scheme: light !important;
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
@@ -200,6 +201,7 @@
         max-height: none !important;
         overflow: visible !important;
         background: #ffffff !important;
+        background-color: #ffffff !important;
         color: #0f172a !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -213,8 +215,11 @@
         max-height: none !important;
         overflow: visible !important;
         background: transparent !important;
+        background-color: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
       }
 
       /* 3. Colapso total de todo elemento de pantalla fuera de la impresión */
@@ -243,9 +248,17 @@
       }
 
       /* 5. Aplanar modales: suprimir fondos oscuros, blur, sombras y filtros de pantalla */
+      * {
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+
       .fixed,
       .fixed.inset-0,
+      [class*="fixed"],
       [class*="backdrop-blur"],
+      [class*="bg-black"],
+      [class*="bg-zinc"],
       .overflow-hidden,
       .overflow-y-auto {
         position: static !important;
@@ -256,6 +269,7 @@
         min-height: 0 !important;
         overflow: visible !important;
         background: transparent !important;
+        background-color: transparent !important;
         padding: 0 !important;
         margin: 0 !important;
         border: none !important;
@@ -276,21 +290,24 @@
         visibility: visible !important;
       }
 
-      /* 6. Centrado perfecto de la cotización/OT dentro de márgenes sin desfases */
+      /* 6. Centrado perfecto de la cotización/OT dentro de márgenes sin desfases ni marcos negros */
       #print-area,
       #ot-print-area {
         display: block !important;
-        position: relative !important;
-        left: auto !important;
-        top: auto !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
         padding: 0 !important;
         background: #ffffff !important;
+        background-color: #ffffff !important;
         color: #0f172a !important;
         border: none !important;
+        outline: none !important;
         box-shadow: none !important;
+        border-radius: 0 !important;
         overflow: visible !important;
         box-sizing: border-box !important;
         page-break-before: avoid !important;
@@ -7179,7 +7196,7 @@
                               </span>
                             </div>
                             <h3 className="text-base sm:text-lg font-black font-heading mt-1 text-white">
-                              ¡Atención Administración - Administrativa: Hay trabajos TERMINADOS en taller listos para FACTURAR!
+                              ¡Atención Administración: Hay trabajos TERMINADOS en taller listos para FACTURAR!
                             </h3>
                             <p className="text-xs text-red-100 mt-0.5 font-medium">
                               Taller marcó terminado: {quotesReadyToInvoice.map(q => `${q.correlative} (${q.client?.name || 'Cliente'})`).join(' • ')}.
@@ -10834,7 +10851,7 @@
                               </span>
                             </div>
                             <h3 className="text-base sm:text-lg font-black font-heading mt-1 text-white">
-                              ¡Atención Administración - Administrativa: Hay trabajos TERMINADOS en taller listos para FACTURAR!
+                              ¡Atención Administración: Hay trabajos TERMINADOS en taller listos para FACTURAR!
                             </h3>
                             <p className="text-xs text-red-100 mt-0.5 font-medium">
                               Taller marcó terminado: {quotesReadyToInvoice.map(q => `${q.correlative} (${q.client?.name || 'Cliente'})`).join(' • ')}.
@@ -12881,8 +12898,8 @@
           {/* MODAL / FICHA TÉCNICA DE TALLER & PRODUCCIÓN (IMPRESIÓN OFICIAL) */}
           {/* ============================================================== */}
           {showOtPrintModal && selectedOtForPrint && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-              <div className="bg-white text-black rounded-2xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col">
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden print:static print:inset-auto print:bg-transparent print:p-0 print:m-0 print:border-none print:shadow-none print:overflow-visible">
+              <div className="bg-white text-black rounded-2xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col print:static print:max-w-none print:max-h-none print:bg-transparent print:shadow-none print:rounded-none print:border-none print:overflow-visible">
                 {/* Barra de control en pantalla fija arriba (no se oculta al scrollear) */}
                 <div className="bg-zinc-950 text-white p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 no-print border-b border-zinc-800 shrink-0 shadow-md z-30">
                   <div className="flex items-center gap-2.5">
@@ -12935,7 +12952,7 @@
                 </div>
 
                 {/* Contenedor con scroll vertical para pantalla */}
-                <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
+                <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center print:static print:p-0 print:m-0 print:bg-transparent print:border-none print:shadow-none print:overflow-visible">
                   {/* ÁREA DE IMPRESIÓN OFICIAL (ID: ot-print-area) - Ajustada para 1 página Carta */}
                   <div id="ot-print-area" className="w-full max-w-[210mm] p-5 bg-white text-slate-900 font-sans text-[10px] leading-tight shadow-md rounded-xl border border-slate-200 print:p-0 print:border-none print:shadow-none print:rounded-none space-y-2.5">
                                         {/* Cabecera con Logo Oficial Vectorial en Alta Calidad */}
@@ -13662,8 +13679,8 @@
           {/* MODAL / VISTA DE IMPRESIÓN Y PDF FORMAL CARTA (OPTIMIZADO 1 PÁGINA) */}
           {/* ============================================================== */}
           {showPrintModal && currentQuoteToPrint && (
-            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden">
-              <div className="bg-white text-black rounded-2xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col">
+            <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-hidden print:static print:inset-auto print:bg-transparent print:p-0 print:m-0 print:border-none print:shadow-none print:overflow-visible">
+              <div className="bg-white text-black rounded-2xl w-full max-w-4xl max-h-[94vh] overflow-hidden shadow-2xl flex flex-col print:static print:max-w-none print:max-h-none print:bg-transparent print:shadow-none print:rounded-none print:border-none print:overflow-visible">
                 {/* Barra de control en pantalla fija arriba (el botón cerrar NUNCA se oculta) */}
                 <div className="bg-zinc-950 text-white p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 no-print border-b border-zinc-800 shrink-0 shadow-md z-30">
                   <div className="flex items-center gap-2.5">
@@ -13698,7 +13715,7 @@
                 </div>
 
                 {/* Contenedor con scroll vertical para pantalla */}
-                <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center">
+                <div className="overflow-y-auto p-2 sm:p-4 bg-zinc-200/60 flex-1 flex justify-center print:static print:p-0 print:m-0 print:bg-transparent print:border-none print:shadow-none print:overflow-visible">
                   {/* Hoja de Impresión Carta compacta (1 página asegurada) */}
                   <div id="print-area" className="w-full max-w-[200mm] p-4 sm:p-5 space-y-2.5 bg-white text-slate-900 text-[10.5px] leading-tight shadow-md rounded-xl border border-slate-200 print:p-0 print:border-none print:shadow-none print:rounded-none">
                   
