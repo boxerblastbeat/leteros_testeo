@@ -99,9 +99,9 @@
         overflow: visible !important;
       }
 
-              @page {
-      size: A4 portrait;
-      margin: 6mm 8mm !important;
+    @page {
+      size: letter portrait;
+      margin: 6mm 6mm !important;
     }
 
     @media print {
@@ -164,8 +164,8 @@
         break-before: auto !important;
         break-after: page !important;
         break-inside: avoid !important;
-        height: 268mm !important;
-        max-height: 268mm !important;
+        height: auto !important;
+        max-height: 258mm !important;
         display: flex !important;
         flex-direction: column !important;
         justify-content: space-between !important;
@@ -186,7 +186,7 @@
         box-sizing: border-box !important;
         padding-top: 4mm !important;
         height: auto !important;
-        max-height: 268mm !important;
+        max-height: 258mm !important;
         overflow: hidden !important;
       }
 
@@ -200,6 +200,12 @@
       table, tr, td, th {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+      }
+
+      /* Suprimir marcos negros toscos en impresión */
+      .border-black,
+      [class*="border-black"] {
+        border-color: #cbd5e1 !important;
       }
     }
 
@@ -1532,7 +1538,7 @@
                       </div>
 
                       <div className="text-right flex items-center gap-3">
-                        <div className="border border-black px-2.5 py-1 rounded bg-gray-50 text-right">
+                        <div className="border border-slate-300 px-2.5 py-1 rounded bg-slate-50 text-right">
                           <span className="text-[8px] font-bold text-gray-500 block uppercase font-mono">Folio OT:</span>
                           <span className="font-mono font-black text-xs text-black">{otFolio}</span>
                         </div>
@@ -1543,8 +1549,8 @@
                       </div>
                     </div>
 
-                    {/* DIBUJO TÉCNICO CAD LIMPIO Y GIGANTE (LLENA LA HOJA VERTICAL A4) */}
-                    <div className="flex-1 w-full flex items-center justify-center p-1 border-2 border-black rounded bg-white overflow-hidden">
+                    {/* DIBUJO TÉCNICO CAD LIMPIO (AJUSTADO A HOJA CARTA) */}
+                    <div className="flex-1 w-full flex items-center justify-center p-1 border border-slate-300 rounded bg-white overflow-hidden shadow-sm">
                       <svg
                         viewBox={`-${padLeft} -${padTop} ${totalW} ${totalH}`}
                         className="w-full h-[218mm] max-h-[218mm] bg-white select-none"
@@ -1832,7 +1838,7 @@
                       </h4>
                       <table className="w-full text-left text-[10px] border-collapse">
                         <thead>
-                          <tr className="border-b-2 border-black font-bold bg-gray-100">
+                          <tr className="border-b-2 border-red-600 font-bold bg-slate-100 text-slate-800">
                             <th className="p-1.5 text-center w-12">Corte OK</th>
                             <th className="p-1.5 w-10">#</th>
                             <th className="p-1.5">Descripción de Pieza</th>
@@ -1845,9 +1851,9 @@
                         </thead>
                         <tbody>
                           {sheet.placed.map((p, idx) => (
-                            <tr key={p.subId} className="border-b border-gray-300">
+                            <tr key={p.subId} className="border-b border-slate-200">
                               <td className="p-1.5 text-center">
-                                <div className="w-5 h-5 border-2 border-black rounded-sm mx-auto"></div>
+                                <div className="w-5 h-5 border border-slate-400 rounded-sm mx-auto"></div>
                               </td>
                               <td className="p-1.5 font-mono font-black text-xs">#{idx + 1}</td>
                               <td className="p-1.5 font-bold text-black">{p.label}</td>
@@ -1869,12 +1875,12 @@
                     {/* Firmas de Control de Calidad y Maestro de Sierra */}
                     <div className="pt-6 grid grid-cols-2 gap-10 text-center text-[10px] page-break-inside-avoid">
                       <div>
-                        <div className="border-b-2 border-black w-60 mx-auto mb-1.5"></div>
+                        <div className="border-b border-slate-400 w-60 mx-auto mb-1.5"></div>
                         <strong className="block text-black">Firma Maestro de Sierra / Dimensionado</strong>
                         <p className="text-gray-600">Verificación de escuadra, medidas milimétricas y corte</p>
                       </div>
                       <div>
-                        <div className="border-b-2 border-black w-60 mx-auto mb-1.5"></div>
+                        <div className="border-b border-slate-400 w-60 mx-auto mb-1.5"></div>
                         <strong className="block text-black">Control de Calidad / Taller Matriz</strong>
                         <p className="text-gray-600">Inspección de bordes, refilado, escuadra y recepción</p>
                       </div>

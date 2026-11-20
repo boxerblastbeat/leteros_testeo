@@ -305,6 +305,16 @@
         page-break-inside: avoid !important;
         break-inside: avoid !important;
       }
+
+      /* Suprimir bordes y marcos negros toscos en impresión y preview */
+      #ot-print-area .border-black,
+      #ot-print-area [class*="border-black"],
+      #print-area .border-black,
+      #print-area [class*="border-black"],
+      .border-black,
+      [class*="border-black"] {
+        border-color: #cbd5e1 !important;
+      }
     }
     /* ============================================================== */
     /* PALETA ARMÓNICA DE ALTO CONTRASTE - MODO CLARO CORPORATIVO     */
@@ -852,7 +862,7 @@
       const wasteH = Math.max(0, drawH - cutsTotalH);
 
       return (
-        <div className="border border-black rounded-lg p-2 bg-white text-black my-2">
+        <div className="border border-slate-300 rounded-lg p-2 bg-white text-black my-2 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-gray-300 pb-1 mb-1.5">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-black uppercase font-heading">
@@ -1420,9 +1430,13 @@
 
       const cleanCorrelativeString = (corr) => {
         if (!corr) return corr;
-        const match = String(corr).match(/COT-(?:2026)+-(\d{3,4})$/i) || String(corr).match(/COT-\d+-.*?(\d{3,4})$/i);
+        const str = String(corr).trim();
+        const match = str.match(/(\d{3,4})$/);
         if (match) {
-          return `COT-${new Date().getFullYear()}-${match[1].padStart(4, '0')}`;
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num >= 100) {
+            return `COT-${new Date().getFullYear()}-${String(num).padStart(4, '0')}`;
+          }
         }
         return corr;
       };
@@ -1441,7 +1455,12 @@
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed)) {
-              return parsed.filter(q => {
+              return parsed.map(q => {
+                if (!q) return q;
+                const cleanC = cleanCorrelativeString(q.correlative);
+                const cleanN = cleanNumericCorrelative(q.numericCorrelative || q.correlative);
+                return { ...q, correlative: cleanC, numericCorrelative: cleanN };
+              }).filter(q => {
                 if (!q) return false;
                 const c = String(q.correlative || '').trim().toUpperCase();
                 const f = String(q._fireId || '').trim().toUpperCase();
@@ -8571,6 +8590,7 @@
                   };
 
                   const isQuoteInvoiced = (q) => {
+                    if (isQuotePaid(q)) return false;
                     return q.status === 'Facturada' || Boolean(q.invoiceNumber);
                   };
 
@@ -8626,7 +8646,10 @@
                     return { validDays, isExpired, remainingDays, daysExpired };
                   };
 
-                  const isQuoteExpired = (q) => getQuoteExpiration(q).isExpired;
+                  const isQuoteExpired = (q) => {
+                    if (isQuotePaid(q) || isQuoteInvoiced(q)) return false;
+                    return getQuoteExpiration(q).isExpired;
+                  };
 
                   // 1. Nuevas Emitidas: vigentes en espera de decisión del cliente (excluye taller, por facturar, facturadas, pagadas, vencidas y canceladas)
                   const isQuoteOnlyIssued = (q) => {
@@ -8642,9 +8665,13 @@
                     return isQuoteInvoiced(q) && !isQuotePaid(q);
                   };
 
-                  // 5. Activas en Proceso: todo el pipeline vivo (excluye pagadas y canceladas)
+                  // 5. Activas en Proceso: solo las que están en curso técnico o listas por facturar (excluye pagadas, facturadas, vencidas y canceladas)
                   const isQuoteActive = (q) => {
-                    return !isQuotePaid(q) && !isQuoteCancelled(q);
+                    if (isQuotePaid(q)) return false;
+                    if (isQuoteCancelled(q)) return false;
+                    if (isQuoteExpired(q)) return false;
+                    if (isQuoteInvoiced(q)) return false;
+                    return true;
                   };
 
                   const countTodas = quoteHistory.length;
@@ -13136,7 +13163,7 @@
                         {(selectedOtForPrint.materials || []).map((mat, idx) => (
                           <tr key={idx}>
                             <td className="py-1.5 px-2 text-center">
-                              <div className="w-4 h-4 border border-black mx-auto"></div>
+                              <div className="w-4 h-4 border border-slate-400 rounded-sm mx-auto"></div>
                             </td>
                             <td className="py-1.5 px-2 font-bold uppercase text-[9px] text-gray-600">{mat.category}</td>
                             <td className="py-1.5 px-2 font-semibold text-black">{mat.name}</td>
@@ -13177,19 +13204,19 @@
                   )}
 
                   {/* Firmas y Recepción */}
-                  <div className="grid grid-cols-3 gap-4 pt-2 mt-2 border-t border-gray-300 text-center text-[9px] print-avoid-break">
+                  <div className="grid grid-cols-3 gap-4 pt-2 mt-2 border-t border-slate-300 text-center text-[9px] print-avoid-break">
                     <div>
-                      <div className="border-b border-black h-8 mb-1"></div>
+                      <div className="border-b border-slate-400 h-8 mb-1"></div>
                       <strong>Firma Maestro Fabricador</strong>
                       <p className="text-gray-500">Taller y Estructuras</p>
                     </div>
                     <div>
-                      <div className="border-b border-black h-8 mb-1"></div>
+                      <div className="border-b border-slate-400 h-8 mb-1"></div>
                       <strong>Control de Calidad</strong>
                       <p className="text-gray-500">Inspección Final</p>
                     </div>
                     <div>
-                      <div className="border-b border-black h-8 mb-1"></div>
+                      <div className="border-b border-slate-400 h-8 mb-1"></div>
                       <strong>Recepción Conforme Cliente</strong>
                       <p className="text-gray-500">Despacho / Instalación</p>
                     </div>
