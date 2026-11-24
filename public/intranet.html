@@ -4037,7 +4037,7 @@
         } catch(e) {}
       };
 
-      // Extracción y cálculo automático de materiales técnicos de taller
+      // Extracción y cálculo automático de materiales técnicos de taller (ESTRICTO Y SIN MATERIALES FANTASMAS)
       const generateMaterialsList = (items = [], deliveryMethod = '') => {
         const materials = [];
         let matIdCounter = 1;
@@ -4047,7 +4047,7 @@
           const detailLower = (item.detail || '').toLowerCase();
           const layers = Array.isArray(item.compositionLayers) ? item.compositionLayers.join(' ').toLowerCase() : '';
           const options = Array.isArray(item.selectedOptions) ? item.selectedOptions.join(' ').toLowerCase() : '';
-          const allText = `${nameLower} ${detailLower} ${layers} ${options}`;
+          const fullText = `${nameLower} ${detailLower} ${layers} ${options}`;
 
           const w = parseFloat(item.width) || 0;
           const h = parseFloat(item.height) || 0;
@@ -4056,8 +4056,11 @@
           const totalArea = isSqm ? (w * h * qty) : qty;
           const perimeter = isSqm ? (2 * (w + h) * qty) : 0;
 
-          // 1. Sustratos y Planchas
-          if (allText.includes('backlight') || allText.includes('caja de luz') || allText.includes('traslúcid')) {
+          // 1. Identificar el Sustrato o Plancha Base PRINCIPAL (exclusivo para no duplicar planchas erróneas)
+          let substrateAdded = false;
+
+          // A) Backlight / Caja de Luz
+          if (nameLower.includes('backlight') || detailLower.includes('[base: lona backlight') || detailLower.includes('caja de luz') || nameLower.includes('caja de luz')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Sustrato',
@@ -4065,7 +4068,10 @@
               spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} ud de ${w}m × ${h}m + 5cm demasía para tensado)` : `${qty} unidad(es)`,
               checked: false
             });
-          } else if (allText.includes('frontlight') || allText.includes('lienzo') || allText.includes('pendón') || allText.includes('banner')) {
+            substrateAdded = true;
+          }
+          // B) Frontlight / Banner / Pendón
+          else if (nameLower.includes('banner') || nameLower.includes('frontlight') || nameLower.includes('pendón') || nameLower.includes('lienzo') || nameLower.includes('tela pvc') || detailLower.includes('[base: tela pvc') || detailLower.includes('[base: banner')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Sustrato',
@@ -4073,39 +4079,10 @@
               spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} ud de ${w}m × ${h}m con dobladillo y ojetillos)` : `${qty} unidad(es)`,
               checked: false
             });
+            substrateAdded = true;
           }
-
-          if (allText.includes('acrílico') || allText.includes('acrilico')) {
-            materials.push({
-              id: `mat-${idx}-${matIdCounter++}`,
-              category: 'Planchas',
-              name: `Plancha de Acrílico (Corte Láser)`,
-              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} paños de ${w}m × ${h}m - espesor 3mm a 5mm)` : `${qty} pieza(s)`,
-              checked: false
-            });
-          }
-
-          if (allText.includes('trovicel') || allText.includes('pvc') || allText.includes('sintra')) {
-            materials.push({
-              id: `mat-${idx}-${matIdCounter++}`,
-              category: 'Planchas',
-              name: `Plancha Trovicel / PVC Espumado`,
-              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} paños de ${w}m × ${h}m)` : `${qty} unidad(es)`,
-              checked: false
-            });
-          }
-
-          if (allText.includes('aluminio compuesto') || allText.includes('acm') || allText.includes('alucobond')) {
-            materials.push({
-              id: `mat-${idx}-${matIdCounter++}`,
-              category: 'Planchas',
-              name: `Planchas ACM Aluminio Compuesto (Corte CNC Router)`,
-              spec: isSqm ? `${totalArea.toFixed(2)} m²` : `${qty} pieza(s)`,
-              checked: false
-            });
-          }
-
-          if (allText.includes('lata') || allText.includes('galvanizad')) {
+          // C) Lata Galvanizada (Prioridad alta para no confundir con otras planchas)
+          else if (nameLower.includes('lata') || nameLower.includes('galvanizad') || detailLower.includes('lata galvanizada') || detailLower.includes('[base: lata')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Planchas',
@@ -4113,19 +4090,70 @@
               spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} cortes de ${w}m × ${h}m)` : `${qty} corte(s)`,
               checked: false
             });
+            substrateAdded = true;
+          }
+          // D) Trovicel / PVC Espumado (Estricto: no confundir con tela PVC ni tubo PVC)
+          else if (nameLower.includes('trovicel') || nameLower.includes('sintra') || nameLower.includes('pvc espumado') || detailLower.includes('trovicel') || detailLower.includes('pvc espumado') || detailLower.includes('[base: pvc espumado')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Plancha Trovicel / PVC Espumado`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} paños de ${w}m × ${h}m)` : `${qty} unidad(es)`,
+              checked: false
+            });
+            substrateAdded = true;
+          }
+          // E) Acrílico
+          else if (nameLower.includes('acrílico') || nameLower.includes('acrilico') || detailLower.includes('acrílico') || detailLower.includes('[base: acrílico')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Plancha de Acrílico (Corte Láser)`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} paños de ${w}m × ${h}m - espesor 3mm a 5mm)` : `${qty} pieza(s)`,
+              checked: false
+            });
+            substrateAdded = true;
+          }
+          // F) Aluminio Compuesto (ACM)
+          else if (nameLower.includes('aluminio compuesto') || nameLower.includes('acm') || nameLower.includes('alucobond') || detailLower.includes('aluminio compuesto') || detailLower.includes('acm') || detailLower.includes('[base: aluminio compuesto')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Planchas ACM Aluminio Compuesto (Corte CNC Router)`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m²` : `${qty} pieza(s)`,
+              checked: false
+            });
+            substrateAdded = true;
+          }
+          // G) Foam Board
+          else if (nameLower.includes('foam') || detailLower.includes('foam board') || detailLower.includes('[base: foam')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Planchas',
+              name: `Plancha Foam Board 5mm`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² (${qty} paños de ${w}m × ${h}m)` : `${qty} unidad(es)`,
+              checked: false
+            });
+            substrateAdded = true;
           }
 
-          if (allText.includes('vinilo') || allText.includes('adhesivo') || allText.includes('laminado') || allText.includes('rotulad')) {
+          // 2. Gráfica / Impresión / Adhesivo montado
+          const hasAdhesive = nameLower.includes('adhesivo') || nameLower.includes('vinilo') || nameLower.includes('impres') ||
+                             layers.includes('adhesivo') || layers.includes('vinilo') || detailLower.includes('adhesivo') || detailLower.includes('vinilo');
+          const hasLaminate = layers.includes('laminado') || detailLower.includes('laminado') || nameLower.includes('laminado');
+          
+          if (hasAdhesive) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Impresión',
-              name: `Vinilo Adhesivo Ecosolvente + Laminado Protección UV`,
-              spec: isSqm ? `${totalArea.toFixed(2)} m² con demasía de montaje` : `${qty} unidad(es)`,
+              name: hasLaminate ? `Vinilo Adhesivo Impreso Ecosolvente 1440 DPI + Laminado Protección UV` : `Vinilo Adhesivo Impreso Ecosolvente 1440 DPI`,
+              spec: isSqm ? `${totalArea.toFixed(2)} m² con demasía para aplicación` : `${qty} unidad(es)`,
               checked: false
             });
           }
 
-          if (allText.includes('volumétrica') || allText.includes('corpóre') || allText.includes('3d')) {
+          // Letras corpóreas / volumétricas
+          if (nameLower.includes('volumétrica') || nameLower.includes('corpóre') || nameLower.includes('3d') || detailLower.includes('corpóreo') || detailLower.includes('volumétrica')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Corpóreos',
@@ -4135,28 +4163,19 @@
             });
           }
 
-          // 2. Estructura y Perfilería
-          if (allText.includes('perfil') || allText.includes('caja de luz') || allText.includes('aluminio')) {
-            materials.push({
-              id: `mat-${idx}-${matIdCounter++}`,
-              category: 'Estructura',
-              name: `Perfil de Aluminio para Caja de Luz (10 a 14 cm)`,
-              spec: perimeter > 0 ? `~${perimeter.toFixed(1)} metros lineales + 4 esquineros de unión` : 'Barras de perfil según diseño',
-              checked: false
-            });
-          }
-
-          if (allText.includes('bastidor de fierro') || allText.includes('fierro') || allText.includes('metal')) {
+          // 3. Estructura y Bastidores (ESTRICTO: Sólo si el usuario activó la opción correspondiente)
+          if (options.includes('bastidor de fierro') || detailLower.includes('bastidor de fierro') || nameLower.includes('bastidor de fierro')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Estructura',
               name: `Fierro Cuadrado Estructural 20×20 / 30×30 (Antióxido + Soldadura)`,
-              spec: perimeter > 0 ? `~${(perimeter * 1.2).toFixed(1)} metros lineales (incluye travesaños y refuerzos)` : 'Barras estructurales',
+              spec: perimeter > 0 ? `~${(perimeter * 1.2).toFixed(1)} metros lineales (con travesaños)` : 'Barras estructurales',
               checked: false
             });
           }
 
-          if (allText.includes('bastidor de madera') || allText.includes('madera')) {
+          // Bastidor de madera (SOLO si explícitamente se pidió bastidor de madera o pino)
+          if (options.includes('bastidor de madera') || options.includes('pino cepillado') || detailLower.includes('bastidor de madera') || detailLower.includes('bastidor de pino')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Estructura',
@@ -4166,45 +4185,50 @@
             });
           }
 
-          if (allText.includes('espaciadores') || allText.includes('fijaciones') || allText.includes('distanciadores')) {
+          // Perfilería para caja de luz (SOLO si es caja de luz o letrero luminoso)
+          if (nameLower.includes('caja de luz') || nameLower.includes('cajón luminoso') || detailLower.includes('caja de luz') || detailLower.includes('cajón luminoso')) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
-              category: 'Herrajes',
-              name: `Espaciadores Metálicos Inox para Muro`,
-              spec: `${qty * 4} unidades con tarugos y tornillos`,
+              category: 'Estructura',
+              name: `Perfil de Aluminio para Caja de Luz (10 a 14 cm)`,
+              spec: perimeter > 0 ? `~${perimeter.toFixed(1)} metros lineales + 4 esquineros` : 'Perfilería perimetral',
               checked: false
             });
           }
 
-          // 3. Iluminación & Eléctrico
-          if (allText.includes('led') || allText.includes('iluminaci') || allText.includes('luz') || allText.includes('backlight')) {
+          // Espaciadores metálicos inox
+          if (options.includes('espaciadores') || detailLower.includes('espaciadores metálicos') || nameLower.includes('espaciadores')) {
+            materials.push({
+              id: `mat-${idx}-${matIdCounter++}`,
+              category: 'Herrajes',
+              name: `Espaciadores Metálicos Inox para Muro`,
+              spec: `${qty * 4} unidades con tarugos y fijaciones`,
+              checked: false
+            });
+          }
+
+          // 4. Iluminación & Eléctrico (SOLO si tiene iluminación LED activada o es caja de luz)
+          if (options.includes('iluminación led') || nameLower.includes('caja de luz') || nameLower.includes('cajón luminoso') || detailLower.includes('iluminación led') || detailLower.includes('módulos led')) {
             const estimatedLeds = Math.max(12, Math.round((totalArea || 1) * 24));
             const estimatedWatts = Math.ceil((estimatedLeds * 1.5) / 50) * 50 || 60;
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Eléctrico',
               name: `Módulos LED Inyección 12V Blanco Frío / Cálido (IP67)`,
-              spec: `Aprox. ${estimatedLeds} módulos LED de alta luminosidad`,
+              spec: `Aprox. ${estimatedLeds} módulos LED`,
               checked: false
             });
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'Eléctrico',
               name: `Fuente de Poder conmutada 12V (IP67 exterior)`,
-              spec: `1 unidad de ${estimatedWatts}W o superior`,
-              checked: false
-            });
-            materials.push({
-              id: `mat-${idx}-${matIdCounter++}`,
-              category: 'Eléctrico',
-              name: `Cable Paralelo Bipolar 2×18 AWG + Terminales`,
-              spec: `Cableado interior de distribución estanco`,
+              spec: `1 unidad de ${estimatedWatts}W`,
               checked: false
             });
           }
 
-          // Si no coincidió con ninguna regla específica, agregar ítem general
-          if (materials.filter(m => m.id.startsWith(`mat-${idx}-`)).length === 0) {
+          // Si el ítem no tuvo ninguna coincidencia de sustrato ni estructura (ej. personalizado libre)
+          if (!substrateAdded && materials.filter(m => m.id.startsWith(`mat-${idx}-`)).length === 0) {
             materials.push({
               id: `mat-${idx}-${matIdCounter++}`,
               category: 'General',
@@ -4215,13 +4239,13 @@
           }
         });
 
-        // Material de Montaje o Instalación en terreno
+        // Instalación en terreno
         if (deliveryMethod === 'instalacion') {
           materials.push({
             id: `mat-inst-${matIdCounter++}`,
             category: 'Instalación',
             name: `Kit de Anclaje a Muro / Estructura en Terreno`,
-            spec: `Pernos de anclaje expansivos 3/8, tarugos y pernos broca según superficie de fachada`,
+            spec: `Pernos de anclaje, tarugos y pernos broca según fachada`,
             checked: false
           });
         }
@@ -4799,6 +4823,11 @@
           const oFolio = String(o.otFolio || '').trim().toUpperCase();
           return (oCorr && oCorr === corrStr) || (oFolio && cleanCorr && oFolio.includes(cleanCorr));
         });
+        if (ot) {
+          // Sincronizar siempre los insumos extraídos estrictos según los ítems reales de la cotización
+          const itemsSource = (ot.items && ot.items.length > 0) ? ot.items : (quote.items || []);
+          ot.materials = generateMaterialsList(itemsSource, ot.client?.deliveryMethod || quote.client?.deliveryMethod);
+        }
         const isApprovedOrInShop = quote.status === 'Aprobada' || quote.status === 'Terminada' || quote.status === 'Facturada' || Boolean(quote.purchaseOrderNumber) || Boolean(quote.hasOt) || /fabricaci|taller|proceso/i.test(quote.status || '');
         if (!ot && isApprovedOrInShop) {
           const otFolio = 'OT-' + cleanCorr;
@@ -8130,7 +8159,7 @@
                               <div className="p-2.5 rounded-lg bg-emerald-950/30 border border-emerald-500/40 text-emerald-300 text-[11px] flex items-center gap-2">
                                 <span>💡</span>
                                 <span>
-                                  <strong>Cobro exacto por pieza:</strong> Al cliente se le cobra directo por unidad (ej: <strong>$3.000 c/u</strong>), y la orden de taller recibe las medidas ({itemWidth}m × {itemHeight}m) para corte sin descuadrar los totales.
+                                  <strong>Cobro exacto por pieza:</strong> Al cliente se le cobra directo por unidad (ej: <strong>$150 c/u para etiquetas</strong>, o cualquier valor acordado), y la orden de taller recibe las medidas ({itemWidth}m × {itemHeight}m) para corte sin descuadrar los totales.
                                 </span>
                               </div>
                             )}
@@ -8147,8 +8176,9 @@
                                 <span className="absolute left-3 top-2.5 text-zinc-500 font-mono text-sm">$</span>
                                 <input
                                   type="number"
-                                  step={priceMode === 'unit_piece' ? "100" : "500"}
+                                  step="any"
                                   min="0"
+                                  placeholder="Ej: 150"
                                   value={itemPrice}
                                   onChange={(e) => setItemPrice(e.target.value)}
                                   className="w-full bg-zinc-900 text-white pl-8 pr-4 py-2 rounded-lg border border-zinc-700 text-sm font-mono focus:border-red-600 focus:outline-none"
@@ -8157,8 +8187,8 @@
                               </div>
                               <span className="text-[11px] text-zinc-400 mt-1 block">
                                 {priceMode === 'unit_piece'
-                                  ? 'Ingresa el valor neto acordado por cada unidad (ej. $3.000).'
-                                  : 'Cargado automáticamente del catálogo. Puedes modificarlo libremente.'}
+                                  ? 'Ingresa libremente cualquier valor neto unitario (ej. $150 para etiquetas de agua, $500, etc. Sin monto mínimo).'
+                                  : 'Cargado automáticamente del catálogo o editable a mano libremente (ej. $150, $14.000, etc.).'}
                               </span>
                             </div>
                           </div>
@@ -8196,7 +8226,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="500"
+                                      step="any"
+                                      min="0"
                                       value={compositionLayers.adhesivo.price}
                                       onChange={(e) => setCompositionLayers({
                                         ...compositionLayers,
@@ -8229,7 +8260,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="500"
+                                      step="any"
+                                      min="0"
                                       value={compositionLayers.laminado.price}
                                       onChange={(e) => setCompositionLayers({
                                         ...compositionLayers,
@@ -8262,7 +8294,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="500"
+                                      step="any"
+                                      min="0"
                                       value={compositionLayers.dobleContacto.price}
                                       onChange={(e) => setCompositionLayers({
                                         ...compositionLayers,
@@ -8295,7 +8328,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="500"
+                                      step="any"
+                                      min="0"
                                       value={compositionLayers.placaExtra.price}
                                       onChange={(e) => setCompositionLayers({
                                         ...compositionLayers,
@@ -8341,7 +8375,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="500"
+                                      step="any"
+                                      min="0"
                                       value={finishesState.termosellado.price}
                                       onChange={(e) => setFinishesState({
                                         ...finishesState,
@@ -8374,7 +8409,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="500"
+                                      step="any"
+                                      min="0"
                                       value={finishesState.bolsillo.price}
                                       onChange={(e) => setFinishesState({
                                         ...finishesState,
@@ -8406,7 +8442,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="1000"
+                                      step="any"
+                                      min="0"
                                       value={finishesState.bastidorMadera.price}
                                       onChange={(e) => setFinishesState({
                                         ...finishesState,
@@ -8437,7 +8474,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="1000"
+                                      step="any"
+                                      min="0"
                                       value={finishesState.bastidorFierro.price}
                                       onChange={(e) => setFinishesState({
                                         ...finishesState,
@@ -8468,7 +8506,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="1000"
+                                      step="any"
+                                      min="0"
                                       value={finishesState.instalacion.price}
                                       onChange={(e) => setFinishesState({
                                         ...finishesState,
@@ -8499,7 +8538,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="500"
+                                      step="any"
+                                      min="0"
                                       value={finishesState.espaciadores.price}
                                       onChange={(e) => setFinishesState({
                                         ...finishesState,
@@ -8530,7 +8570,8 @@
                                     <span className="text-zinc-500 text-xs">$</span>
                                     <input
                                       type="number"
-                                      step="1000"
+                                      step="any"
+                                      min="0"
                                       value={finishesState.iluminacion.price}
                                       onChange={(e) => setFinishesState({
                                         ...finishesState,
@@ -10585,6 +10626,8 @@
                                 <label className="block text-zinc-300 font-semibold mb-1">Costo Taller ($ Bobina/Plancha)</label>
                                 <input
                                   type="number"
+                                  step="any"
+                                  min="0"
                                   placeholder="Ej: 75000"
                                   value={newMaterialForm.cost}
                                   onChange={(e) => setNewMaterialForm({ ...newMaterialForm, cost: e.target.value })}
@@ -10595,7 +10638,9 @@
                                 <label className="block text-zinc-300 font-semibold mb-1">Valor Venta m² o Unidad ($) *</label>
                                 <input
                                   type="number"
-                                  placeholder="Ej: 18000"
+                                  step="any"
+                                  min="0"
+                                  placeholder="Ej: 150 o 18000"
                                   value={newMaterialForm.pricePerSqm}
                                   onChange={(e) => setNewMaterialForm({ ...newMaterialForm, pricePerSqm: e.target.value })}
                                   className="w-full bg-zinc-900 text-white px-3 py-2 rounded-xl border border-zinc-700 font-mono font-bold text-red-500"
@@ -13509,9 +13554,14 @@
 
                   {/* Tabla de Materiales Requeridos para Bodega / Taller */}
                   <div className="mb-6">
-                    <h2 className="font-bold text-xs uppercase tracking-wider text-black mb-1 border-b border-gray-300 pb-1">
-                      4. Lista y Checklist de Insumos Extraídos para Fabricación
-                    </h2>
+                    <div className="flex items-center justify-between border-b border-gray-300 pb-1 mb-1">
+                      <h2 className="font-bold text-xs uppercase tracking-wider text-black">
+                        4. Lista y Checklist de Insumos Extraídos para Fabricación
+                      </h2>
+                      <span className="text-[10px] text-gray-500 font-medium print:hidden">
+                        {(selectedOtForPrint.materials || []).length} insumos requeridos estrictos
+                      </span>
+                    </div>
                     <table className="w-full text-left border-collapse text-[11px] mt-1">
                       <thead>
                         <tr className="bg-gray-100 border-b border-gray-300 text-gray-700 uppercase text-[9px]">
@@ -13519,19 +13569,42 @@
                           <th className="py-1.5 px-2">Categoría</th>
                           <th className="py-1.5 px-2">Material / Insumo</th>
                           <th className="py-1.5 px-2">Especificación Técnica & Medidas</th>
+                          <th className="py-1.5 px-2 text-center w-8 print:hidden">Quitar</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {(selectedOtForPrint.materials || []).map((mat, idx) => (
-                          <tr key={idx}>
-                            <td className="py-1.5 px-2 text-center">
-                              <div className="w-4 h-4 border border-slate-400 rounded-sm mx-auto"></div>
+                        {(!selectedOtForPrint.materials || selectedOtForPrint.materials.length === 0) ? (
+                          <tr>
+                            <td colSpan="5" className="py-3 text-center text-gray-400 italic text-[10px]">
+                              Sin materiales adicionales requeridos para este trabajo
                             </td>
-                            <td className="py-1.5 px-2 font-bold uppercase text-[9px] text-gray-600">{mat.category}</td>
-                            <td className="py-1.5 px-2 font-semibold text-black">{mat.name}</td>
-                            <td className="py-1.5 px-2 font-mono text-[10px] text-gray-700">{mat.spec}</td>
                           </tr>
-                        ))}
+                        ) : (
+                          selectedOtForPrint.materials.map((mat, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="py-1.5 px-2 text-center">
+                                <div className="w-4 h-4 border border-slate-400 rounded-sm mx-auto"></div>
+                              </td>
+                              <td className="py-1.5 px-2 font-bold uppercase text-[9px] text-gray-600">{mat.category}</td>
+                              <td className="py-1.5 px-2 font-semibold text-black">{mat.name}</td>
+                              <td className="py-1.5 px-2 font-mono text-[10px] text-gray-700">{mat.spec}</td>
+                              <td className="py-1.5 px-2 text-center print:hidden">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const filtered = (selectedOtForPrint.materials || []).filter((_, i) => i !== idx);
+                                    setSelectedOtForPrint({ ...selectedOtForPrint, materials: filtered });
+                                    setWorkOrders(prev => prev.map(o => o.correlative === selectedOtForPrint.correlative ? { ...o, materials: filtered } : o));
+                                  }}
+                                  className="text-red-500 hover:text-red-700 font-bold px-1 transition text-xs"
+                                  title="Quitar este insumo del checklist"
+                                >
+                                  ✕
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
