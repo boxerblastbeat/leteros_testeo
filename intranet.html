@@ -3592,8 +3592,10 @@
           }
         });
 
-        const subtotal = Math.round(baseCost + compositionTotal + finishesTotal);
-        const unitPiecePrice = qty > 0 ? Math.round(subtotal / qty) : subtotal;
+        const rawSubtotal = Math.round(baseCost + compositionTotal + finishesTotal);
+        // Coherencia matemática estricta: Cantidad × Precio Unitario = Subtotal Neto exacto (evita descuadre de centavos o m²)
+        const unitPiecePrice = qty > 0 ? Math.round(rawSubtotal / qty) : rawSubtotal;
+        const subtotal = qty > 0 ? (unitPiecePrice * qty) : rawSubtotal;
 
         // Componer detalle técnico unificado de la composición del letrero
         let combinedDetail = (itemDetail || '').trim();
@@ -7846,7 +7848,7 @@
                                   <span className="absolute left-2 top-0.5 text-zinc-500 font-mono text-xs">$</span>
                                   <input
                                     type="number"
-                                    step="1000"
+                                    step="any"
                                     min="0"
                                     placeholder="0"
                                     value={discountAmount || ''}
@@ -7865,7 +7867,7 @@
                                   <span className="absolute left-2 top-0.5 text-zinc-500 font-mono text-xs">$</span>
                                   <input
                                     type="number"
-                                    step="1000"
+                                    step="any"
                                     min="0"
                                     placeholder="0"
                                     value={installationFee || ''}
@@ -7884,7 +7886,7 @@
                                   <span className="absolute left-2 top-0.5 text-zinc-500 font-mono text-xs">$</span>
                                   <input
                                     type="number"
-                                    step="1000"
+                                    step="any"
                                     min="0"
                                     placeholder="0"
                                     value={freightFee || ''}
@@ -8614,8 +8616,9 @@
                               }
                             });
 
-                            const totalPreview = Math.round(base + compositionSum + finishesSum);
-                            const unitPiecePreview = qty > 0 ? Math.round(totalPreview / qty) : totalPreview;
+                            const rawPreview = Math.round(base + compositionSum + finishesSum);
+                            const unitPiecePreview = qty > 0 ? Math.round(rawPreview / qty) : rawPreview;
+                            const totalPreview = qty > 0 ? (unitPiecePreview * qty) : rawPreview;
 
                             return (
                               <div className="bg-zinc-900/90 p-4 rounded-xl border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
