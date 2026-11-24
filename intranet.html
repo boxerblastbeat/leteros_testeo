@@ -1472,17 +1472,29 @@
           if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed)) {
-              return parsed.map(q => {
-                if (!q) return q;
-                const cleanC = cleanCorrelativeString(q.correlative);
-                const cleanN = cleanNumericCorrelative(q.numericCorrelative || q.correlative);
-                return { ...q, correlative: cleanC, numericCorrelative: cleanN };
-              }).filter(q => {
-                if (!q) return false;
+              const dedupMap = new Map();
+              parsed.forEach(rawQ => {
+                if (!rawQ) return;
+                const cleanC = cleanCorrelativeString(rawQ.correlative);
+                const cleanN = cleanNumericCorrelative(rawQ.numericCorrelative || rawQ.correlative);
+                const q = { ...rawQ, correlative: cleanC, numericCorrelative: cleanN };
                 const c = String(q.correlative || '').trim().toUpperCase();
                 const f = String(q._fireId || '').trim().toUpperCase();
-                return (!c || !delSet.has(c)) && (!f || !delSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE';
+                if ((!c || !delSet.has(c)) && (!f || !delSet.has(f)) && !q.isDeleted && q.status !== 'ELIMINADA_PERMANENTE') {
+                  const key = c || f;
+                  if (key) {
+                    if (!dedupMap.has(key)) {
+                      dedupMap.set(key, q);
+                    } else {
+                      const existing = dedupMap.get(key);
+                      if ((q.timestamp || 0) >= (existing.timestamp || 0)) {
+                        dedupMap.set(key, { ...existing, ...q });
+                      }
+                    }
+                  }
+                }
               });
+              return Array.from(dedupMap.values());
             }
           }
         } catch(e) {}
@@ -9909,25 +9921,6 @@
                                     }
                                     return null;
                                   })()}
-
-                                  <button
-                                    onClick={() => {
-                                      handleOpenNewCalModal({
-                                        title: `${q.client && q.client.deliveryMethod === 'instalacion' ? 'Instalación' : 'Entrega'} ${q.correlative}`,
-                                        client: (q.client && q.client.name) || '',
-                                        phone: (q.client && q.client.phone) || '',
-                                        address: (q.client && q.client.deliveryAddress) || '',
-                                        correlative: q.correlative,
-                                        type: (q.client && q.client.deliveryMethod === 'instalacion') ? 'instalacion' : 'despacho'
-                                      });
-                                      setIntranetTab('calendario');
-                                    }}
-                                    className="bg-blue-50 hover:bg-blue-100 text-blue-900 px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-300 shadow-sm flex items-center gap-1.5 transition cursor-pointer"
-                                    title="Agendar fecha de entrega o instalación en el calendario del taller"
-                                  >
-                                    <Icon name="calendar" className="w-3.5 h-3.5 text-blue-700" />
-                                    <span>📅 Agendar Entrega</span>
-                                  </button>
 
                                   <button
                                     onClick={() => handleEditExistingQuote(q)}
