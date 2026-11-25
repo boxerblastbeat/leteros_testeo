@@ -524,6 +524,17 @@ export const erpService = {
     return updated;
   },
 
+  async deleteQuoteRequest(id) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('quote_requests').delete().eq('id', id);
+      if (error) throw error;
+      return;
+    }
+    const db = readLocal();
+    db.quoteRequests = db.quoteRequests.filter((r) => r.id !== id);
+    writeLocal(db);
+  },
+
   // --- QUOTES ---
   async saveQuote(quote) {
     if (isSupabaseConfigured) {

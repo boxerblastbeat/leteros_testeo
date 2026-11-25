@@ -1,10 +1,10 @@
 import React from 'react';
-import { Inbox, ArrowRightCircle, Trash2, MapPin, Ruler, Phone, Mail, Clock } from 'lucide-react';
+import { Inbox, ArrowRightCircle, Trash2, MapPin, Ruler, Phone, Mail, Clock, Archive } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatDateCL, DELIVERY_LABELS, DESIGN_LABELS } from '../../lib/formatters';
 
 export default function RequestsInbox({ onConvertRequest }) {
-  const { quoteRequests, updateRequestStatus, showToast } = useErp();
+  const { quoteRequests, updateRequestStatus, deleteQuoteRequest, showToast } = useErp();
 
   const statusBadge = {
     nueva: 'bg-red-50 text-red-700 border-red-200',
@@ -127,10 +127,21 @@ export default function RequestsInbox({ onConvertRequest }) {
                     }}
                     className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-1.5"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Archive className="w-3.5 h-3.5" />
                     Descartar
                   </button>
                 )}
+                <button
+                  onClick={async () => {
+                    if (window.confirm(`¿Eliminar permanentemente la solicitud de ${req.client_name}?`)) {
+                      await deleteQuoteRequest(req.id);
+                    }
+                  }}
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-500 hover:text-red-600 text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Eliminar
+                </button>
               </div>
             </div>
           ))}

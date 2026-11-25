@@ -116,6 +116,12 @@ export function ErpProvider({ children }) {
     return updated;
   };
 
+  const deleteQuoteRequest = async (id) => {
+    await erpService.deleteQuoteRequest(id);
+    setQuoteRequests((prev) => prev.filter((r) => r.id !== id));
+    showToast('Solicitud web eliminada');
+  };
+
   const saveQuote = async (quote) => {
     const saved = await erpService.saveQuote(quote);
     setQuotes((prev) => {
@@ -234,6 +240,7 @@ export function ErpProvider({ children }) {
         signOut,
         submitPublicRequest,
         updateRequestStatus,
+        deleteQuoteRequest,
         saveQuote,
         changeQuoteStatus,
         deleteQuote,
