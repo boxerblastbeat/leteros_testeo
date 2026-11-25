@@ -33,7 +33,7 @@ export default function IntranetApp({ onGoPublic }) {
   const [printQuote, setPrintQuote] = useState(null);
 
   const pendingRequestsCount = quoteRequests.filter((r) => r.status === 'nueva').length;
-  const activeOtsCount = workOrders.filter((w) => w.status !== 'entregado').length;
+  const activeOtsCount = workOrders.filter((w) => w.status !== 'pagada').length;
 
   const navItems = [
     { id: 'cotizaciones', label: 'Cotizaciones ERP', icon: FileText },

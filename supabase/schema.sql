@@ -173,7 +173,9 @@ create table if not exists public.work_orders (
   priority text not null default 'normal'
     check (priority in ('normal', 'urgente')),
   status text not null default 'pendiente'
-    check (status in ('pendiente', 'diseno', 'produccion', 'terminado', 'despachado', 'entregado')),
+    check (status in ('pendiente', 'diseno', 'produccion', 'terminado', 'despachado', 'entregado', 'facturada', 'pagada')),
+  invoice_number text not null default '',
+  invoice_date date,
   notes text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -606,6 +606,7 @@ export const erpService = {
         ...ot,
         quote_id: toNullable(ot.quote_id),
         deadline: toNullable(ot.deadline),
+        invoice_date: toNullable(ot.invoice_date),
       };
       if (cleanOt.id) {
         const { data, error } = await supabase

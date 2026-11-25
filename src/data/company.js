@@ -84,5 +84,7 @@ export const OT_STATUSES = [
   { id: 'produccion', label: 'En Producción', color: 'bg-amber-50 text-amber-800 border-amber-200' },
   { id: 'terminado', label: 'Terminado', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   { id: 'despachado', label: 'En Despacho / Obra', color: 'bg-orange-50 text-orange-700 border-orange-200' },
-  { id: 'entregado', label: 'Entregado', color: 'bg-green-100 text-green-800 border-green-300' },
+  { id: 'entregado', label: 'Entregado', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+  { id: 'facturada', label: 'Facturada', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+  { id: 'pagada', label: 'Pagada', color: 'bg-green-100 text-green-800 border-green-300' },
 ];
