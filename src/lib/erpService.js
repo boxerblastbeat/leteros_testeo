@@ -468,13 +468,15 @@ export const erpService = {
   // --- PUBLIC QUOTE REQUESTS ---
   async createQuoteRequest(payload) {
     if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('quote_requests')
-        .insert([payload])
-        .select()
-        .single();
+      // No encadenamos .select() porque el rol público (anon) solo tiene permiso INSERT por RLS
+      const { error } = await supabase.from('quote_requests').insert([payload]);
       if (error) throw error;
-      return data;
+      return {
+        ...payload,
+        id: uid(),
+        status: 'nueva',
+        created_at: new Date().toISOString(),
+      };
     }
     const db = readLocal();
     const record = {

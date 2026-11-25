@@ -1,18 +1,22 @@
 -- ============================================================================
 -- LETREROS OLIVAR SpA — ESQUEMA POSTGRESQL PARA SUPABASE (MINI-ERP v2.0)
--- Ejecutar completo en: Supabase Dashboard > SQL Editor > New Query > Run
+-- Ejecutar en: Supabase Dashboard > SQL Editor > New Query > Run
 -- ============================================================================
 
-create extension if not exists "pgcrypto";
-
--- 1. SECUENCIAS ATÓMICAS (Cero duplicación de correlativos)
+-- 1. SECUENCIAS ATÓMICAS Y FUNCIONES DE CORRELATIVOS
 create sequence if not exists public.quote_correlative_seq start 1;
 create sequence if not exists public.ot_correlative_seq start 1;
+
+revoke all on sequence public.quote_correlative_seq from public, anon;
+revoke all on sequence public.ot_correlative_seq from public, anon;
+grant usage, select on sequence public.quote_correlative_seq to authenticated;
+grant usage, select on sequence public.ot_correlative_seq to authenticated;
 
 create or replace function public.next_quote_correlative()
 returns text
 language plpgsql
-security definer
+security invoker
+set search_path = ''
 as $$
 declare
   seq_val bigint;
@@ -25,7 +29,8 @@ $$;
 create or replace function public.next_ot_number()
 returns text
 language plpgsql
-security definer
+security invoker
+set search_path = ''
 as $$
 declare
   seq_val bigint;
@@ -35,19 +40,38 @@ begin
 end;
 $$;
 
+revoke execute on function public.next_quote_correlative() from public, anon;
+revoke execute on function public.next_ot_number() from public, anon;
+grant execute on function public.next_quote_correlative() to authenticated;
+grant execute on function public.next_ot_number() to authenticated;
+
+-- Trigger genérico para updated_at
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
 -- 2. MAESTRO DE CLIENTES
 create table if not exists public.clients (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  rut text default '',
-  contact_name text default '',
-  phone text default '',
-  email text default '',
-  address text default '',
-  client_type text default 'Empresa', -- 'Empresa' | 'Particular' | 'Institución'
-  notes text default '',
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  rut text not null default '',
+  contact_name text not null default '',
+  phone text not null default '',
+  email text not null default '',
+  address text not null default '',
+  client_type text not null default 'Empresa'
+    check (client_type in ('Empresa', 'Particular', 'Institución')),
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 -- 3. TARIFARIO DE MATERIALES E INSUMOS
@@ -55,77 +79,82 @@ create table if not exists public.materials (
   id text primary key,
   name text not null,
   category text not null,
-  format text default 'A medida',
-  cost numeric default 0,
-  price_per_sqm numeric not null default 0,
-  unit text not null default 'm²', -- 'm²' | 'unidad' | 'tira'
-  active boolean default true,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  format text not null default 'A medida',
+  cost numeric not null default 0 check (cost >= 0),
+  price_per_sqm numeric not null default 0 check (price_per_sqm >= 0),
+  unit text not null default 'm²',
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.consumables (
   id text primary key,
   name text not null,
-  format text default 'Unidad',
-  cost numeric default 0,
-  price numeric not null default 0,
+  format text not null default 'Unidad',
+  cost numeric not null default 0 check (cost >= 0),
+  price numeric not null default 0 check (price >= 0),
   unit text not null default 'unidad',
-  active boolean default true,
-  created_at timestamptz default now()
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
--- 4. SOLICITUDES DE COTIZACIÓN DESDE LA WEB PÚBLICA
-create table if not exists public.quote_requests (
-  id uuid primary key default gen_random_uuid(),
-  service_type text not null,
-  material_id text default '',
-  material_name text not null,
-  width numeric,
-  height numeric,
-  quantity integer not null default 1,
-  delivery_method text not null default 'instalacion', -- 'instalacion' | 'retiro' | 'despacho'
-  delivery_address text default '',
-  has_design text default 'si', -- 'si' | 'no' | 'ajustes'
-  comments text default '',
-  client_name text not null,
-  client_rut text default '',
-  client_phone text not null,
-  client_email text default '',
-  status text not null default 'nueva', -- 'nueva' | 'en_revision' | 'convertida' | 'descartada'
-  converted_quote_id uuid,
-  created_at timestamptz default now()
-);
-
--- 5. COTIZACIONES OFICIALES (MINI-ERP)
+-- 4. COTIZACIONES OFICIALES (MINI-ERP)
 create table if not exists public.quotes (
   id uuid primary key default gen_random_uuid(),
   correlative text unique not null default public.next_quote_correlative(),
   client_id uuid references public.clients(id) on delete set null,
   client_snapshot jsonb not null default '{}'::jsonb,
   items jsonb not null default '[]'::jsonb,
-  status text not null default 'emitida',
-  -- Estados: 'borrador' | 'emitida' | 'aplazada' | 'aceptada' | 'en_taller' | 'despacho' | 'facturada' | 'pagada' | 'rechazada'
+  status text not null default 'emitida'
+    check (status in ('borrador', 'emitida', 'aplazada', 'aceptada', 'en_taller', 'despacho', 'facturada', 'pagada', 'rechazada')),
   postponed_until date,
-  postpone_reason text default '',
-  oc_number text default '',
-  invoice_number text default '',
+  postpone_reason text not null default '',
+  oc_number text not null default '',
+  invoice_number text not null default '',
   invoice_date date,
-  payment_terms text default '50% abono / 50% contra entrega',
-  delivery_method text default 'instalacion',
-  delivery_address text default '',
-  manufacturing_days text default '5 a 7 días hábiles',
-  installation_fee numeric default 0,
-  freight_fee numeric default 0,
-  discount_amount numeric default 0,
-  tax_rate numeric default 19,
-  subtotal numeric default 0,
-  tax_amount numeric default 0,
-  total numeric default 0,
-  notes text default '',
+  payment_terms text not null default '50% abono / 50% contra entrega',
+  delivery_method text not null default 'instalacion'
+    check (delivery_method in ('instalacion', 'retiro', 'despacho')),
+  delivery_address text not null default '',
+  manufacturing_days text not null default '5 a 7 días hábiles',
+  installation_fee numeric not null default 0,
+  freight_fee numeric not null default 0,
+  discount_amount numeric not null default 0,
+  tax_rate numeric not null default 19,
+  subtotal numeric not null default 0,
+  tax_amount numeric not null default 0,
+  total numeric not null default 0,
+  notes text not null default '',
   status_history jsonb not null default '[]'::jsonb,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 5. SOLICITUDES DE COTIZACIÓN DESDE LA WEB PÚBLICA
+create table if not exists public.quote_requests (
+  id uuid primary key default gen_random_uuid(),
+  service_type text not null,
+  material_id text not null default '',
+  material_name text not null,
+  width numeric,
+  height numeric,
+  quantity integer not null default 1 check (quantity > 0),
+  delivery_method text not null default 'instalacion'
+    check (delivery_method in ('instalacion', 'retiro', 'despacho')),
+  delivery_address text not null default '',
+  has_design text not null default 'si'
+    check (has_design in ('si', 'no', 'ajustes')),
+  comments text not null default '',
+  client_name text not null,
+  client_rut text not null default '',
+  client_phone text not null,
+  client_email text not null default '',
+  status text not null default 'nueva'
+    check (status in ('nueva', 'en_revision', 'convertida', 'descartada')),
+  converted_quote_id uuid references public.quotes(id) on delete set null,
+  created_at timestamptz not null default now()
 );
 
 -- 6. ÓRDENES DE TRABAJO (TALLER / PRODUCCIÓN)
@@ -133,42 +162,73 @@ create table if not exists public.work_orders (
   id uuid primary key default gen_random_uuid(),
   ot_number text unique not null default public.next_ot_number(),
   quote_id uuid references public.quotes(id) on delete set null,
-  quote_correlative text default '',
+  quote_correlative text not null default '',
   client_name text not null,
-  client_phone text default '',
+  client_phone text not null default '',
   items jsonb not null default '[]'::jsonb,
-  delivery_method text default 'instalacion',
-  delivery_address text default '',
+  delivery_method text not null default 'instalacion'
+    check (delivery_method in ('instalacion', 'retiro', 'despacho')),
+  delivery_address text not null default '',
   deadline date,
-  priority text default 'normal', -- 'normal' | 'urgente'
-  status text not null default 'pendiente', -- 'pendiente' | 'diseno' | 'produccion' | 'terminado' | 'despachado' | 'entregado'
-  notes text default '',
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  priority text not null default 'normal'
+    check (priority in ('normal', 'urgente')),
+  status text not null default 'pendiente'
+    check (status in ('pendiente', 'diseno', 'produccion', 'terminado', 'despachado', 'entregado')),
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 -- 7. CALENDARIO DE ENTREGAS, INSTALACIONES Y SEGUIMIENTOS
 create table if not exists public.calendar_events (
   id uuid primary key default gen_random_uuid(),
   title text not null,
-  event_type text not null default 'entrega', -- 'entrega' | 'instalacion' | 'seguimiento' | 'taller'
+  event_type text not null default 'entrega'
+    check (event_type in ('entrega', 'instalacion', 'seguimiento', 'taller')),
   event_date date not null,
-  event_time text default '10:00',
-  client_name text default '',
-  address text default '',
-  quote_correlative text default '',
-  ot_number text default '',
-  status text not null default 'programado', -- 'programado' | 'completado' | 'reprogramado'
-  notes text default '',
-  created_at timestamptz default now()
+  event_time text not null default '10:00',
+  client_name text not null default '',
+  address text not null default '',
+  quote_correlative text not null default '',
+  ot_number text not null default '',
+  status text not null default 'programado'
+    check (status in ('programado', 'completado', 'reprogramado')),
+  notes text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
--- ÍNDICES DE RENDIMIENTO
+-- TRIGGERS DE UPDATED_AT
+create trigger trg_clients_updated_at before update on public.clients
+  for each row execute function public.set_updated_at();
+
+create trigger trg_materials_updated_at before update on public.materials
+  for each row execute function public.set_updated_at();
+
+create trigger trg_consumables_updated_at before update on public.consumables
+  for each row execute function public.set_updated_at();
+
+create trigger trg_quotes_updated_at before update on public.quotes
+  for each row execute function public.set_updated_at();
+
+create trigger trg_work_orders_updated_at before update on public.work_orders
+  for each row execute function public.set_updated_at();
+
+create trigger trg_calendar_events_updated_at before update on public.calendar_events
+  for each row execute function public.set_updated_at();
+
+-- ÍNDICES DE RENDIMIENTO Y LLAVES FORÁNEAS
 create index if not exists idx_quotes_status on public.quotes(status);
 create index if not exists idx_quotes_created on public.quotes(created_at desc);
+create index if not exists idx_quotes_client_id on public.quotes(client_id);
 create index if not exists idx_requests_status on public.quote_requests(status);
+create index if not exists idx_requests_created on public.quote_requests(created_at desc);
+create index if not exists idx_requests_converted_quote_id on public.quote_requests(converted_quote_id);
 create index if not exists idx_ot_status on public.work_orders(status);
+create index if not exists idx_ot_quote_id on public.work_orders(quote_id);
+create index if not exists idx_ot_created on public.work_orders(created_at desc);
 create index if not exists idx_cal_date on public.calendar_events(event_date);
+create index if not exists idx_materials_active_category on public.materials(category) where active = true;
 
 -- ROW LEVEL SECURITY (RLS)
 alter table public.clients enable row level security;
@@ -179,20 +239,67 @@ alter table public.quotes enable row level security;
 alter table public.work_orders enable row level security;
 alter table public.calendar_events enable row level security;
 
--- Política pública: cualquier cliente web puede ver materiales y enviar solicitudes de cotización
-create policy "Public read materials" on public.materials for select using (true);
-create policy "Public insert quote_requests" on public.quote_requests for insert with check (true);
+-- Políticas públicas (rol anon): solo lectura de materiales activos y envío de solicitudes nuevas
+create policy "Public read active materials"
+  on public.materials for select
+  to anon
+  using (active = true);
 
--- Políticas Intranet: usuarios autenticados tienen control completo
-create policy "Auth all clients" on public.clients for all to authenticated using (true) with check (true);
-create policy "Auth all materials" on public.materials for all to authenticated using (true) with check (true);
-create policy "Auth all consumables" on public.consumables for all to authenticated using (true) with check (true);
-create policy "Auth all quote_requests" on public.quote_requests for all to authenticated using (true) with check (true);
-create policy "Auth all quotes" on public.quotes for all to authenticated using (true) with check (true);
-create policy "Auth all work_orders" on public.work_orders for all to authenticated using (true) with check (true);
-create policy "Auth all calendar_events" on public.calendar_events for all to authenticated using (true) with check (true);
+create policy "Public insert quote_requests"
+  on public.quote_requests for insert
+  to anon
+  with check (
+    char_length(trim(client_name)) > 0
+    and char_length(trim(client_phone)) > 0
+    and status = 'nueva'
+    and converted_quote_id is null
+  );
 
--- Habilitar Realtime para sincronización instantánea en la Intranet
+-- Políticas Intranet (usuarios autenticados del taller)
+create policy "Auth all clients"
+  on public.clients for all
+  to authenticated
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
+
+create policy "Auth all materials"
+  on public.materials for all
+  to authenticated
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
+
+create policy "Auth all consumables"
+  on public.consumables for all
+  to authenticated
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
+
+create policy "Auth all quote_requests"
+  on public.quote_requests for all
+  to authenticated
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
+
+create policy "Auth all quotes"
+  on public.quotes for all
+  to authenticated
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
+
+create policy "Auth all work_orders"
+  on public.work_orders for all
+  to authenticated
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
+
+create policy "Auth all calendar_events"
+  on public.calendar_events for all
+  to authenticated
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
+
+-- REALTIME
 alter publication supabase_realtime add table public.quote_requests;
 alter publication supabase_realtime add table public.quotes;
 alter publication supabase_realtime add table public.work_orders;
+alter publication supabase_realtime add table public.calendar_events;
