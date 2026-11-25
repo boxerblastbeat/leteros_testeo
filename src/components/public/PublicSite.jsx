@@ -221,21 +221,21 @@ export default function PublicSite({ onOpenIntranet }) {
               href={COMPANY_INFO.social.instagram}
               target="_blank"
               rel="noreferrer"
-              className="text-zinc-400 hover:text-pink-500 hidden sm:flex items-center gap-1 transition"
+              className="text-pink-400 hover:text-pink-300 font-semibold hidden sm:flex items-center gap-1.5 transition"
               title="Instagram @letreros_olivar"
             >
               <Instagram className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Instagram</span>
+              <span className="hidden md:inline">Instagram</span>
             </a>
             <a
               href={COMPANY_INFO.social.facebook}
               target="_blank"
               rel="noreferrer"
-              className="text-zinc-400 hover:text-blue-500 hidden sm:flex items-center gap-1 transition"
+              className="text-blue-400 hover:text-blue-300 font-semibold hidden sm:flex items-center gap-1.5 transition"
               title="Facebook Letreros Olivar"
             >
               <Facebook className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Facebook</span>
+              <span className="hidden md:inline">Facebook</span>
             </a>
 
             <div className="border-l border-zinc-800 pl-3 sm:pl-4">
