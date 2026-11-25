@@ -174,39 +174,40 @@ export default function PublicSite({ onOpenIntranet }) {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">
-      {/* BARRA SUPERIOR CORPORATIVA (Estilo oficial letrerosolivar.com) */}
-      <div className="bg-zinc-950 border-b border-zinc-900 text-xs py-2 px-3 sm:px-8 no-print">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2 sm:gap-3 text-zinc-400">
-          <div className="hidden sm:flex items-center gap-4">
-            <span className="flex items-center gap-2 text-white font-medium">
-              <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
+      {/* BARRA SUPERIOR CORPORATIVA (Visible completa en móvil y escritorio) */}
+      <div className="bg-zinc-950 border-b border-zinc-900 text-[11px] sm:text-xs py-2.5 px-3 sm:px-6 lg:px-10 no-print">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4 text-zinc-400">
+          {/* Ubicación y Dirección */}
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span className="text-zinc-200 font-medium">
               Taller Matriz: Olivar, Región de O&apos;Higgins
             </span>
-            <span className="hidden lg:inline text-zinc-700">|</span>
+            <span className="text-zinc-700">|</span>
             <a
               href={COMPANY_INFO.mapsUrl}
               target="_blank"
               rel="noreferrer"
-              className="hidden lg:inline-flex items-center gap-1 text-zinc-300 hover:text-red-500 transition underline underline-offset-4 decoration-red-600/50"
+              className="inline-flex items-center gap-1 text-zinc-300 hover:text-red-400 transition underline underline-offset-4 decoration-red-600/70"
             >
-              <MapPin className="w-3.5 h-3.5 text-red-500" />
-              {COMPANY_INFO.address}
+              <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
+              <span>{COMPANY_INFO.address}</span>
             </a>
           </div>
 
-          <div className="flex flex-1 sm:flex-initial items-center justify-between sm:justify-end gap-2.5 sm:gap-5">
-            <a
-              href={`mailto:${COMPANY_INFO.email}`}
-              className="text-zinc-300 hover:text-red-500 transition font-mono hidden md:flex items-center gap-1.5"
-              title={`Enviar correo a ${COMPANY_INFO.email}`}
-            >
-              <Mail className="w-3.5 h-3.5 text-red-500" />
-              <span>{COMPANY_INFO.email}</span>
-            </a>
-            <div className="flex items-center gap-3">
+          {/* Contacto, Redes y Acceso Intranet */}
+          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-x-3.5 sm:gap-x-4 lg:gap-x-5 gap-y-2 pt-1.5 lg:pt-0 border-t border-zinc-900 lg:border-t-0">
+            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5">
+              <a
+                href={`mailto:${COMPANY_INFO.email}`}
+                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
+                title={`Enviar correo a ${COMPANY_INFO.email}`}
+              >
+                <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <span>{COMPANY_INFO.email}</span>
+              </a>
               <a
                 href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
-                className="hover:text-red-500 transition font-mono flex items-center gap-1 text-[11px] sm:text-xs"
+                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
               >
                 <Phone className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 <span>{COMPANY_INFO.phone}</span>
@@ -216,55 +217,54 @@ export default function PublicSite({ onOpenIntranet }) {
                 target="_blank"
                 rel="noreferrer"
                 className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 transition"
-                aria-label="WhatsApp"
               >
-                <WhatsAppIcon className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">WhatsApp</span>
+                <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>WhatsApp</span>
+              </a>
+              <a
+                href={COMPANY_INFO.social.instagram}
+                target="_blank"
+                rel="noreferrer"
+                className="text-zinc-300 hover:text-white font-medium flex items-center gap-1.5 transition"
+                title="Instagram @letreros_olivar"
+              >
+                <Instagram className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span>Instagram</span>
+              </a>
+              <a
+                href={COMPANY_INFO.social.facebook}
+                target="_blank"
+                rel="noreferrer"
+                className="text-zinc-300 hover:text-white font-medium flex items-center gap-1.5 transition"
+                title="Facebook Letreros Olivar"
+              >
+                <Facebook className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span>Facebook</span>
               </a>
             </div>
-            <a
-              href={COMPANY_INFO.social.instagram}
-              target="_blank"
-              rel="noreferrer"
-              className="text-pink-400 hover:text-pink-300 font-semibold hidden sm:flex items-center gap-1.5 transition"
-              title="Instagram @letreros_olivar"
-            >
-              <Instagram className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Instagram</span>
-            </a>
-            <a
-              href={COMPANY_INFO.social.facebook}
-              target="_blank"
-              rel="noreferrer"
-              className="text-blue-400 hover:text-blue-300 font-semibold hidden sm:flex items-center gap-1.5 transition"
-              title="Facebook Letreros Olivar"
-            >
-              <Facebook className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Facebook</span>
-            </a>
 
-            <div className="sm:border-l sm:border-zinc-800 sm:pl-4">
+            <div className="lg:border-l lg:border-zinc-800 lg:pl-4">
               <button
                 onClick={onOpenIntranet}
-                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-red-600/30 text-[11px] sm:text-xs transition"
+                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/35 text-[11px] sm:text-xs transition whitespace-nowrap"
                 title="Acceso directo a la Intranet de Taller y Cotizaciones"
               >
-                <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>{session ? 'Intranet' : 'Intranet'}</span>
+                <Lock className="w-3.5 h-3.5" />
+                <span>{session ? 'Ir a Intranet' : 'Acceso Intranet'}</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* NAVBAR PRINCIPAL STICKY (Estilo oficial letrerosolivar.com) */}
-      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-8 py-3 sm:py-4 no-print">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          <a href="#inicio" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
+      {/* NAVBAR PRINCIPAL STICKY */}
+      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4 no-print">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
+          <a href="#inicio" className="flex items-center gap-2.5 group min-w-0 shrink-0">
             <img
               src="/logo-white.svg"
               alt={COMPANY_INFO.name}
-              className="h-9 sm:h-12 w-auto object-contain group-hover:scale-105 transition"
+              className="h-9 sm:h-11 w-auto object-contain group-hover:scale-105 transition"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
@@ -274,44 +274,60 @@ export default function PublicSite({ onOpenIntranet }) {
             </span>
           </a>
 
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-zinc-300">
-            <a href="#servicios" className="hover:text-red-500 transition">
+          <nav className="hidden lg:flex items-center gap-6 text-[13px] font-semibold text-zinc-300">
+            <a href="#servicios" className="hover:text-white transition">
               Servicios
             </a>
-            <a href="#portafolio" className="hover:text-red-500 transition">
+            <a href="#portafolio" className="hover:text-white transition">
               Galería de Trabajos
             </a>
             <a
               href="#cotizar"
               className="flex items-center gap-1.5 text-red-500 hover:text-red-400 transition font-bold"
             >
-              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
               Solicitar Cotización
             </a>
             <a
               href={COMPANY_INFO.mapsUrl}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-red-500 transition flex items-center gap-1"
+              className="hover:text-white transition flex items-center gap-1.5 text-zinc-300"
             >
-              <MapPin className="w-4 h-4 text-red-500" />
-              Cómo Llegar
+              <MapPin className="w-3.5 h-3.5 text-red-500" />
+              Ubicación
             </a>
+
+            <span className="h-4 w-px bg-zinc-800 mx-0.5" aria-hidden="true" />
+
+            <div className="flex items-center gap-3 text-zinc-400">
+              <a
+                href={COMPANY_INFO.social.instagram}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-white transition"
+                title="Instagram @letreros_olivar"
+                aria-label="Instagram"
+              >
+                <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href={COMPANY_INFO.social.facebook}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-white transition"
+                title="Facebook Letreros Olivar"
+                aria-label="Facebook"
+              >
+                <Facebook className="w-4 h-4" />
+              </a>
+            </div>
           </nav>
 
-          <div className="flex items-center gap-2">
-            <a
-              href={COMPANY_INFO.social.whatsapp}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/35 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition"
-            >
-              <WhatsAppIcon className="w-4 h-4" />
-              <span>WhatsApp</span>
-            </a>
+          <div className="flex items-center gap-2 shrink-0">
             <a
               href="#cotizar"
-              className="bg-red-600 hover:bg-red-500 text-white font-bold px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs tracking-wide shadow-lg shadow-red-600/25 transition hover:shadow-red-600/40 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap"
+              className="bg-red-600 hover:bg-red-500 text-white font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs tracking-wide shadow-lg shadow-red-600/25 transition hover:shadow-red-600/40 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap"
             >
               <span className="sm:hidden">Cotizar</span>
               <span className="hidden sm:inline">Cotizar mi Proyecto</span>
@@ -360,18 +376,40 @@ export default function PublicSite({ onOpenIntranet }) {
               className="px-3 py-2.5 rounded-xl hover:bg-zinc-900 transition flex items-center gap-2 text-zinc-300"
             >
               <MapPin className="w-4 h-4 text-red-500" />
-              Cómo Llegar (Taller Olivar)
+              Ubicación (Taller Olivar)
             </a>
-            <a
-              href={COMPANY_INFO.social.whatsapp}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2.5 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 flex items-center gap-2 transition"
-            >
-              <WhatsAppIcon className="w-4 h-4" />
-              Escribir por WhatsApp
-            </a>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <a
+                href={COMPANY_INFO.social.whatsapp}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2.5 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center gap-2 text-xs transition"
+              >
+                <WhatsAppIcon className="w-4 h-4" />
+                WhatsApp
+              </a>
+              <div className="flex items-center justify-center gap-4 px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
+                <a
+                  href={COMPANY_INFO.social.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Instagram"
+                  className="hover:text-white transition"
+                >
+                  <Instagram className="w-4 h-4" />
+                </a>
+                <a
+                  href={COMPANY_INFO.social.facebook}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Facebook"
+                  className="hover:text-white transition"
+                >
+                  <Facebook className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
           </nav>
         )}
       </header>
@@ -1031,27 +1069,37 @@ export default function PublicSite({ onOpenIntranet }) {
         </div>
       </section>
 
-      {/* FOOTER OFICIAL 4 COLUMNAS (Idéntico a letrerosolivar.com) */}
+      {/* FOOTER OFICIAL 4 COLUMNAS EQUITATIVAS */}
       <footer id="contacto" className="bg-black py-12 px-4 sm:px-8 border-t border-zinc-900">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-10">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 pb-10 items-stretch">
           {/* Columna 1: Marca */}
-          <div className="space-y-4">
-            <img
-              src="/logo-white.svg"
-              alt={COMPANY_INFO.name}
-              className="h-10 w-auto object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Letreros comerciales, gráfica corporativa, cajones luminosos y rotulación vehicular en
-              Olivar.
-            </p>
+          <div className="flex flex-col justify-between space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src="/logo-white.svg"
+                  alt={COMPANY_INFO.name}
+                  className="h-10 w-auto object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <span className="text-[10px] px-2 py-0.5 bg-red-600/10 text-red-500 rounded border border-red-600/30 font-mono font-bold">
+                  SpA
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Fabricación propia de letreros comerciales, gráfica corporativa, cajones luminosos,
+                corte CNC/láser y rotulación vehicular en la Región de O&apos;Higgins.
+              </p>
+            </div>
+            <div className="pt-2 border-t border-zinc-900 text-[11px] text-zinc-500 font-mono">
+              RUT: <span className="text-zinc-300">{COMPANY_INFO.rut}</span>
+            </div>
           </div>
 
           {/* Columna 2: Servicios */}
-          <div className="space-y-3">
+          <div className="flex flex-col space-y-3.5">
             <h4 className="font-bold text-white uppercase tracking-wider text-xs">Servicios</h4>
             <ul className="space-y-2.5 text-xs text-zinc-400">
               {[
@@ -1075,7 +1123,7 @@ export default function PublicSite({ onOpenIntranet }) {
           </div>
 
           {/* Columna 3: Taller & Showroom */}
-          <div className="space-y-3 text-xs">
+          <div className="flex flex-col space-y-3.5 text-xs">
             <h4 className="font-bold text-white uppercase tracking-wider">Taller & Showroom</h4>
             <div className="space-y-2.5 text-zinc-400">
               <div className="flex items-start gap-2">
@@ -1098,7 +1146,7 @@ export default function PublicSite({ onOpenIntranet }) {
                   <div className="text-zinc-500 mt-0.5">Sábados, Domingos y Festivos: Cerrado</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-0.5">
                 <Phone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <a
                   href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
@@ -1111,7 +1159,7 @@ export default function PublicSite({ onOpenIntranet }) {
                 <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 <a
                   href={`mailto:${COMPANY_INFO.email}`}
-                  className="text-red-500 hover:text-red-400 font-mono transition"
+                  className="text-red-500 hover:text-red-400 font-mono transition truncate"
                 >
                   {COMPANY_INFO.email}
                 </a>
@@ -1119,17 +1167,17 @@ export default function PublicSite({ onOpenIntranet }) {
             </div>
           </div>
 
-          {/* Columna 4: Contacto & Redes (compacta y alineada en altura con las demás columnas) */}
-          <div className="space-y-3">
+          {/* Columna 4: Contacto & Redes */}
+          <div className="flex flex-col space-y-3.5">
             <h4 className="font-bold text-white uppercase tracking-wider text-xs">
               Contacto & Redes
             </h4>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <a
                 href={`mailto:${COMPANY_INFO.email}`}
-                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-red-500/50 hover:bg-red-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-red-500/50 hover:bg-red-600/10 transition group"
               >
-                <span className="flex items-center gap-2 text-xs font-semibold text-white">
+                <span className="flex items-center gap-2 text-xs font-semibold text-white shrink-0">
                   <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
                   Correo
                 </span>
@@ -1142,9 +1190,9 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-600/10 transition group"
               >
-                <span className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                <span className="flex items-center gap-2 text-xs font-semibold text-emerald-400 shrink-0">
                   <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                   WhatsApp
                 </span>
@@ -1155,9 +1203,9 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.instagram}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-pink-500/50 hover:bg-pink-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-pink-500/50 hover:bg-pink-600/10 transition group"
               >
-                <span className="flex items-center gap-2 text-xs font-semibold text-pink-400">
+                <span className="flex items-center gap-2 text-xs font-semibold text-pink-400 shrink-0">
                   <Instagram className="w-3.5 h-3.5 shrink-0" />
                   Instagram
                 </span>
@@ -1168,9 +1216,9 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.facebook}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-600/10 transition group"
               >
-                <span className="flex items-center gap-2 text-xs font-semibold text-blue-400">
+                <span className="flex items-center gap-2 text-xs font-semibold text-blue-400 shrink-0">
                   <Facebook className="w-3.5 h-3.5 shrink-0" />
                   Facebook
                 </span>
@@ -1180,12 +1228,12 @@ export default function PublicSite({ onOpenIntranet }) {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto pt-6 border-t border-zinc-900 flex flex-col sm:flex-row justify-between items-center gap-4 text-zinc-500 text-[11px]">
+        <div className="max-w-7xl mx-auto pt-6 border-t border-zinc-900 flex flex-col sm:flex-row justify-between items-center gap-3 text-center sm:text-left text-zinc-500 text-[11px]">
           <div>
             © {new Date().getFullYear()} {COMPANY_INFO.name}. RUT: {COMPANY_INFO.rut}. Todos los
             derechos reservados.
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <button
               onClick={onOpenIntranet}
               className="text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition"
