@@ -341,7 +341,7 @@ export const erpService = {
     // Demo local login
     const validPasswords = ['olivar2026', 'admin', '1234'];
     if (!validPasswords.includes(password.trim())) {
-      throw new Error('Contraseña incorrecta. En modo demo usa: olivar2026');
+      throw new Error('Contraseña incorrecta. Verifica tus credenciales.');
     }
     const session = { user: { email: emailOrUser || 'admin@letrerosolivar.com', role: 'admin' } };
     sessionStorage.setItem('olivar_demo_auth', JSON.stringify(session));
