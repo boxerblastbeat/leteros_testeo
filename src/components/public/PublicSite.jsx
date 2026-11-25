@@ -19,6 +19,7 @@ import {
   Video,
   Instagram,
   Facebook,
+  Menu,
 } from 'lucide-react';
 import { COMPANY_INFO, PUBLIC_SERVICES } from '../../data/company';
 import { PORTFOLIO_PROJECTS } from '../../data/portfolioData';
@@ -40,6 +41,7 @@ export default function PublicSite({ onOpenIntranet }) {
   const [selectedProject, setSelectedProject] = useState(null);
   const [submittedRequest, setSubmittedRequest] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [form, setForm] = useState({
     service_type: PUBLIC_SERVICES[0].title,
@@ -173,9 +175,9 @@ export default function PublicSite({ onOpenIntranet }) {
   return (
     <div className="min-h-screen bg-black text-zinc-100">
       {/* BARRA SUPERIOR CORPORATIVA (Estilo oficial letrerosolivar.com) */}
-      <div className="bg-zinc-950 border-b border-zinc-900 text-xs py-2.5 px-4 sm:px-8 no-print">
-        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3 text-zinc-400">
-          <div className="flex items-center gap-4">
+      <div className="bg-zinc-950 border-b border-zinc-900 text-xs py-2 px-3 sm:px-8 no-print">
+        <div className="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2 sm:gap-3 text-zinc-400">
+          <div className="hidden sm:flex items-center gap-4">
             <span className="flex items-center gap-2 text-white font-medium">
               <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
               Taller Matriz: Olivar, Región de O&apos;Higgins
@@ -192,7 +194,7 @@ export default function PublicSite({ onOpenIntranet }) {
             </a>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 sm:gap-5">
+          <div className="flex flex-1 sm:flex-initial items-center justify-between sm:justify-end gap-2.5 sm:gap-5">
             <a
               href={`mailto:${COMPANY_INFO.email}`}
               className="text-zinc-300 hover:text-red-500 transition font-mono hidden md:flex items-center gap-1.5"
@@ -201,22 +203,25 @@ export default function PublicSite({ onOpenIntranet }) {
               <Mail className="w-3.5 h-3.5 text-red-500" />
               <span>{COMPANY_INFO.email}</span>
             </a>
-            <a
-              href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
-              className="hover:text-red-500 transition font-mono flex items-center gap-1"
-            >
-              <Phone className="w-3.5 h-3.5 text-red-500" />
-              <span>{COMPANY_INFO.phone}</span>
-            </a>
-            <a
-              href={COMPANY_INFO.social.whatsapp}
-              target="_blank"
-              rel="noreferrer"
-              className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 transition"
-            >
-              <WhatsAppIcon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">WhatsApp</span>
-            </a>
+            <div className="flex items-center gap-3">
+              <a
+                href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
+                className="hover:text-red-500 transition font-mono flex items-center gap-1 text-[11px] sm:text-xs"
+              >
+                <Phone className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <span>{COMPANY_INFO.phone}</span>
+              </a>
+              <a
+                href={COMPANY_INFO.social.whatsapp}
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 transition"
+                aria-label="WhatsApp"
+              >
+                <WhatsAppIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">WhatsApp</span>
+              </a>
+            </div>
             <a
               href={COMPANY_INFO.social.instagram}
               target="_blank"
@@ -238,14 +243,14 @@ export default function PublicSite({ onOpenIntranet }) {
               <span className="hidden md:inline">Facebook</span>
             </a>
 
-            <div className="border-l border-zinc-800 pl-3 sm:pl-4">
+            <div className="sm:border-l sm:border-zinc-800 sm:pl-4">
               <button
                 onClick={onOpenIntranet}
-                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/30 text-xs transition"
+                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-red-600/30 text-[11px] sm:text-xs transition"
                 title="Acceso directo a la Intranet de Taller y Cotizaciones"
               >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{session ? 'Ir a Intranet' : 'Acceso Intranet'}</span>
+                <Lock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>{session ? 'Intranet' : 'Intranet'}</span>
               </button>
             </div>
           </div>
@@ -253,13 +258,13 @@ export default function PublicSite({ onOpenIntranet }) {
       </div>
 
       {/* NAVBAR PRINCIPAL STICKY (Estilo oficial letrerosolivar.com) */}
-      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-4 sm:px-8 py-4 no-print">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <a href="#inicio" className="flex items-center gap-3 group">
+      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-8 py-3 sm:py-4 no-print">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+          <a href="#inicio" className="flex items-center gap-2.5 sm:gap-3 group min-w-0">
             <img
               src="/logo-white.svg"
               alt={COMPANY_INFO.name}
-              className="h-10 sm:h-12 w-auto object-contain group-hover:scale-105 transition"
+              className="h-9 sm:h-12 w-auto object-contain group-hover:scale-105 transition"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
@@ -294,7 +299,7 @@ export default function PublicSite({ onOpenIntranet }) {
             </a>
           </nav>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <a
               href={COMPANY_INFO.social.whatsapp}
               target="_blank"
@@ -306,13 +311,69 @@ export default function PublicSite({ onOpenIntranet }) {
             </a>
             <a
               href="#cotizar"
-              className="bg-red-600 hover:bg-red-500 text-white font-bold px-4 sm:px-5 py-2.5 rounded-xl text-xs tracking-wide shadow-lg shadow-red-600/25 transition hover:shadow-red-600/40 flex items-center gap-2"
+              className="bg-red-600 hover:bg-red-500 text-white font-bold px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs tracking-wide shadow-lg shadow-red-600/25 transition hover:shadow-red-600/40 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap"
             >
-              <span>Cotizar mi Proyecto</span>
+              <span className="sm:hidden">Cotizar</span>
+              <span className="hidden sm:inline">Cotizar mi Proyecto</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </a>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="lg:hidden p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 transition"
+              aria-label="Abrir menú de navegación"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* MENÚ DESPLEGABLE MÓVIL / TABLET */}
+        {mobileMenuOpen && (
+          <nav className="lg:hidden mt-3 pt-3 border-t border-zinc-800/80 flex flex-col gap-1.5 text-sm font-semibold text-zinc-200">
+            <a
+              href="#servicios"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2.5 rounded-xl hover:bg-zinc-900 transition"
+            >
+              Servicios
+            </a>
+            <a
+              href="#portafolio"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2.5 rounded-xl hover:bg-zinc-900 transition"
+            >
+              Galería de Trabajos
+            </a>
+            <a
+              href="#cotizar"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2.5 rounded-xl bg-red-600/10 text-red-400 border border-red-600/20 transition"
+            >
+              Solicitar Cotización
+            </a>
+            <a
+              href={COMPANY_INFO.mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2.5 rounded-xl hover:bg-zinc-900 transition flex items-center gap-2 text-zinc-300"
+            >
+              <MapPin className="w-4 h-4 text-red-500" />
+              Cómo Llegar (Taller Olivar)
+            </a>
+            <a
+              href={COMPANY_INFO.social.whatsapp}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2.5 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 flex items-center gap-2 transition"
+            >
+              <WhatsAppIcon className="w-4 h-4" />
+              Escribir por WhatsApp
+            </a>
+          </nav>
+        )}
       </header>
 
       {/* HERO SECTION (Estilo oficial letrerosolivar.com) */}
@@ -360,24 +421,24 @@ export default function PublicSite({ onOpenIntranet }) {
             </div>
 
             {/* Métricas oficiales */}
-            <div className="grid grid-cols-3 gap-6 pt-8 border-t border-zinc-900">
+            <div className="grid grid-cols-3 gap-3 sm:gap-6 pt-6 sm:pt-8 border-t border-zinc-900">
               <div>
-                <span className="text-2xl sm:text-3xl font-black text-white font-heading">
+                <span className="text-xl sm:text-3xl font-black text-white font-heading">
                   +1,800
                 </span>
-                <p className="text-xs text-zinc-400 font-medium mt-0.5">Letreros Instalados</p>
+                <p className="text-[11px] sm:text-xs text-zinc-400 font-medium mt-0.5">Letreros Instalados</p>
               </div>
               <div>
-                <span className="text-2xl sm:text-3xl font-black text-red-600 font-heading">
+                <span className="text-xl sm:text-3xl font-black text-red-600 font-heading">
                   Corte CNC
                 </span>
-                <p className="text-xs text-zinc-400 font-medium mt-0.5">Láser & Ruteado 3D</p>
+                <p className="text-[11px] sm:text-xs text-zinc-400 font-medium mt-0.5">Láser & Ruteado 3D</p>
               </div>
               <div>
-                <span className="text-2xl sm:text-3xl font-black text-white font-heading">
+                <span className="text-xl sm:text-3xl font-black text-white font-heading">
                   3.20m
                 </span>
-                <p className="text-xs text-zinc-400 font-medium mt-0.5">Impresión Ecosolvente</p>
+                <p className="text-[11px] sm:text-xs text-zinc-400 font-medium mt-0.5">Impresión Ecosolvente</p>
               </div>
             </div>
           </div>
@@ -726,7 +787,7 @@ export default function PublicSite({ onOpenIntranet }) {
 
               {/* BLOQUE 2 */}
               <div className="space-y-4 pt-6 border-t border-zinc-800/80">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm font-bold text-white">
                     <span className="w-6 h-6 rounded-lg bg-red-600 text-white text-xs flex items-center justify-center">
                       2
@@ -1139,14 +1200,14 @@ export default function PublicSite({ onOpenIntranet }) {
       {/* MODAL DETALLE PORTAFOLIO */}
       {selectedProject && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
           onClick={() => setSelectedProject(null)}
         >
           <div
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl"
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative h-60">
+            <div className="relative h-48 sm:h-60 shrink-0">
               <img
                 src={selectedProject.image}
                 alt={selectedProject.title}
@@ -1154,27 +1215,27 @@ export default function PublicSite({ onOpenIntranet }) {
               />
               <button
                 onClick={() => setSelectedProject(null)}
-                className="absolute top-4 right-4 p-2 rounded-full bg-black/75 text-white hover:bg-black transition"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-black/75 text-white hover:bg-black transition"
               >
                 <X className="w-4 h-4" />
               </button>
-              <span className="absolute bottom-4 left-6 px-3 py-1 rounded-full bg-red-600 text-white text-xs font-bold">
+              <span className="absolute bottom-3 left-4 sm:bottom-4 sm:left-6 px-3 py-1 rounded-full bg-red-600 text-white text-xs font-bold">
                 {selectedProject.category}
               </span>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div>
                 <span className="text-xs font-mono text-red-400 font-semibold">
                   {selectedProject.client}
                 </span>
-                <h3 className="font-heading text-xl font-bold text-white mt-1">
+                <h3 className="font-heading text-lg sm:text-xl font-bold text-white mt-1">
                   {selectedProject.title}
                 </h3>
-                <p className="text-sm text-zinc-300 mt-2 leading-relaxed">
+                <p className="text-xs sm:text-sm text-zinc-300 mt-2 leading-relaxed">
                   {selectedProject.description}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-zinc-900/70 border border-zinc-800 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 sm:p-4 rounded-xl bg-zinc-900/70 border border-zinc-800 text-xs">
                 <div>
                   <span className="text-zinc-500 block uppercase font-bold text-[10px]">
                     Materiales
@@ -1202,10 +1263,10 @@ export default function PublicSite({ onOpenIntranet }) {
                   <strong className="text-red-400">{selectedProject.specs.garantia}</strong>
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-2">
                 <button
                   onClick={() => setSelectedProject(null)}
-                  className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-semibold transition"
                 >
                   Cerrar
                 </button>
@@ -1216,7 +1277,7 @@ export default function PublicSite({ onOpenIntranet }) {
                     setForm((prev) => ({ ...prev, comments: `Proyecto similar a: ${title}` }));
                     document.getElementById('cotizar')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition"
+                  className="w-full sm:w-auto px-5 py-2.5 sm:py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition"
                 >
                   Cotizar Trabajo Similar
                 </button>

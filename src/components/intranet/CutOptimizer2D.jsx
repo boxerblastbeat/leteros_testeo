@@ -310,8 +310,8 @@ export default function CutOptimizer2D() {
             2. Piezas a Cortar (en milímetros)
           </h3>
 
-          <form onSubmit={addPart} className="grid grid-cols-12 gap-2 items-end">
-            <div className="col-span-4">
+          <form onSubmit={addPart} className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-end">
+            <div className="col-span-2 sm:col-span-4">
               <label className="block text-[10px] text-slate-500 mb-1">Etiqueta</label>
               <input
                 type="text"
@@ -321,7 +321,7 @@ export default function CutOptimizer2D() {
                 className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
               />
             </div>
-            <div className="col-span-3">
+            <div className="col-span-1 sm:col-span-3">
               <label className="block text-[10px] text-slate-500 mb-1">Largo (mm)</label>
               <input
                 type="number"
@@ -332,7 +332,7 @@ export default function CutOptimizer2D() {
                 className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <label className="block text-[10px] text-slate-500 mb-1">Alto (mm)</label>
               <input
                 type="number"
@@ -343,17 +343,17 @@ export default function CutOptimizer2D() {
                 className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
-            <div className="col-span-1">
+            <div className="col-span-1 sm:col-span-1">
               <label className="block text-[10px] text-slate-500 mb-1">Cant.</label>
               <input
                 type="number"
                 min="1"
                 value={newPart.qty}
                 onChange={(e) => setNewPart({ ...newPart, qty: e.target.value })}
-                className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900 text-center"
+                className="w-full px-2 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900 text-center"
               />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-1 sm:col-span-2">
               <button
                 type="submit"
                 className="w-full py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center justify-center gap-1"

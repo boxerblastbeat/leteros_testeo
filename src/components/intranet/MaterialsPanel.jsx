@@ -40,12 +40,12 @@ export default function MaterialsPanel() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Package className="w-5 h-5 text-red-600" />
-            Tarifario de Materiales e Insumos ({materials.length})
+          <h2 className="font-heading text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Package className="w-5 h-5 text-red-600 shrink-0" />
+            <span>Tarifario de Materiales e Insumos ({materials.length})</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Actualiza costos y precios de venta en CLP; se reflejan al instante en el Cotizador y la
@@ -66,7 +66,7 @@ export default function MaterialsPanel() {
             });
             setModalOpen(true);
           }}
-          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
+          className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" />
           Nuevo Material
@@ -74,12 +74,12 @@ export default function MaterialsPanel() {
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap scrollbar-none">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap shrink-0 ${
                 category === cat
                   ? 'bg-red-600 border-red-600 text-white shadow-xs'
                   : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -89,7 +89,7 @@ export default function MaterialsPanel() {
             </button>
           ))}
         </div>
-        <div className="relative md:w-64">
+        <div className="relative w-full md:w-64">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -101,7 +101,61 @@ export default function MaterialsPanel() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-xs">
+      {/* Vista Tarjetas en Móvil */}
+      <div className="md:hidden space-y-2.5">
+        {filtered.map((m) => (
+          <div
+            key={m.id}
+            className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2.5"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  {m.category}
+                </span>
+                <h3 className="font-bold text-slate-900 text-sm mt-1 break-words">{m.name}</h3>
+                <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  Formato: {m.format} · Unidad: {m.unit}
+                </div>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  onClick={() => {
+                    setForm(m);
+                    setModalOpen(true);
+                  }}
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
+                  aria-label="Editar material"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm(`¿Eliminar ${m.name} del tarifario?`)) {
+                      deleteMaterial(m.id);
+                    }
+                  }}
+                  className="p-2 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200"
+                  aria-label="Eliminar material"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+              <span className="text-slate-500">
+                Costo ref.: <strong className="font-mono text-slate-700">{formatCLP(m.cost)}</strong>
+              </span>
+              <span className="font-mono font-extrabold text-emerald-700 text-sm">
+                {formatCLP(m.pricePerSqm)} / {m.unit}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Vista Tabla en Tablet / Desktop */}
+      <div className="hidden md:block rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-xs">
         <table className="w-full text-xs">
           <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] border-b border-slate-200">
             <tr>
@@ -157,10 +211,10 @@ export default function MaterialsPanel() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <form
             onSubmit={handleSave}
-            className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
           >
             <div className="flex justify-between items-center">
               <h3 className="font-heading font-bold text-slate-900 text-lg">
@@ -169,7 +223,7 @@ export default function MaterialsPanel() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700"
+                className="p-1.5 text-slate-400 hover:text-slate-700"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -183,7 +237,7 @@ export default function MaterialsPanel() {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
               />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
@@ -202,7 +256,7 @@ export default function MaterialsPanel() {
                   className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] text-slate-500 mb-1">Costo (CLP)</label>
                   <input
@@ -224,7 +278,7 @@ export default function MaterialsPanel() {
                     className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm font-mono text-slate-900"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1">
                   <label className="block text-[11px] text-slate-500 mb-1">Unidad</label>
                   <select
                     value={form.unit}

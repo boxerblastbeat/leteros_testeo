@@ -194,47 +194,47 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
   return (
     <div className="space-y-6">
       {/* KPI CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs text-slate-500 font-medium">En Seguimiento (Emitidas)</div>
-          <div className="font-heading text-2xl font-bold text-slate-900 mt-1">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">En Seguimiento (Emitidas)</div>
+          <div className="font-heading text-lg sm:text-2xl font-bold text-slate-900 mt-1 truncate">
             {formatCLP(kpis.totalPipeline)}
           </div>
           <div className="text-[11px] text-sky-600 font-semibold mt-1">
             {kpis.emitidasCount} {kpis.emitidasCount === 1 ? 'cotización' : 'cotizaciones'}
           </div>
         </div>
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs text-slate-500 font-medium">Aplazadas (Por Retomar)</div>
-          <div className="font-heading text-2xl font-bold text-amber-600 mt-1">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Aplazadas (Por Retomar)</div>
+          <div className="font-heading text-lg sm:text-2xl font-bold text-amber-600 mt-1">
             {kpis.aplazadasCount}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">Con recordatorio de fecha</div>
         </div>
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs text-slate-500 font-medium">Ventas Cerradas / Taller</div>
-          <div className="font-heading text-2xl font-bold text-emerald-700 mt-1">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">Ventas Cerradas / Taller</div>
+          <div className="font-heading text-lg sm:text-2xl font-bold text-emerald-700 mt-1 truncate">
             {formatCLP(kpis.totalAprobado)}
           </div>
           <div className="text-[11px] text-emerald-600 font-semibold mt-1">
             {kpis.aprobadasCount} {kpis.aprobadasCount === 1 ? 'aprobada' : 'aprobadas'}
           </div>
         </div>
-        <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div className="text-xs text-slate-500 font-medium">Acción Rápida</div>
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between min-w-0">
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium">Acción Rápida</div>
           <button
             onClick={onNewQuote}
-            className="mt-2 w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-red-600/20"
+            className="mt-2 w-full py-2.5 px-3 sm:px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-red-600/20"
           >
-            <Plus className="w-4 h-4" />
-            Nueva Cotización
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="truncate">Nueva Cotización</span>
           </button>
         </div>
       </div>
 
       {/* FILTERS & SEARCH */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap scrollbar-none">
           {[
             { id: 'activas', label: 'Activas' },
             { id: 'emitida', label: 'Emitidas' },
@@ -249,7 +249,7 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border whitespace-nowrap shrink-0 ${
                 statusFilter === tab.id
                   ? 'bg-red-600 border-red-600 text-white shadow-xs'
                   : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'

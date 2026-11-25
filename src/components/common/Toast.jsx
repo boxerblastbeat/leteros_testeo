@@ -17,12 +17,12 @@ export default function Toast() {
     toast.type === 'error' ? AlertCircle : toast.type === 'info' ? Info : CheckCircle2;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[100] no-print animate-in fade-in slide-in-from-bottom-3">
+    <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:max-w-md z-[100] no-print animate-in fade-in slide-in-from-bottom-3">
       <div
-        className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md text-sm font-medium ${styles}`}
+        className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-2xl backdrop-blur-md text-xs sm:text-sm font-medium ${styles}`}
       >
         <Icon className="w-4 h-4 shrink-0" />
-        <span>{toast.message}</span>
+        <span className="break-words">{toast.message}</span>
       </div>
     </div>
   );
