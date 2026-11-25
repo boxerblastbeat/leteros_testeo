@@ -225,20 +225,20 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.instagram}
                 target="_blank"
                 rel="noreferrer"
-                className="text-zinc-300 hover:text-white font-medium flex items-center gap-1.5 transition"
+                className="text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1.5 transition"
                 title="Instagram @letreros_olivar"
               >
-                <Instagram className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <Instagram className="w-3.5 h-3.5 shrink-0" />
                 <span>Instagram</span>
               </a>
               <a
                 href={COMPANY_INFO.social.facebook}
                 target="_blank"
                 rel="noreferrer"
-                className="text-zinc-300 hover:text-white font-medium flex items-center gap-1.5 transition"
+                className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1.5 transition"
                 title="Facebook Letreros Olivar"
               >
-                <Facebook className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <Facebook className="w-3.5 h-3.5 shrink-0" />
                 <span>Facebook</span>
               </a>
             </div>
@@ -297,31 +297,6 @@ export default function PublicSite({ onOpenIntranet }) {
               <MapPin className="w-3.5 h-3.5 text-red-500" />
               Ubicación
             </a>
-
-            <span className="h-4 w-px bg-zinc-800 mx-0.5" aria-hidden="true" />
-
-            <div className="flex items-center gap-3 text-zinc-400">
-              <a
-                href={COMPANY_INFO.social.instagram}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-white transition"
-                title="Instagram @letreros_olivar"
-                aria-label="Instagram"
-              >
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a
-                href={COMPANY_INFO.social.facebook}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:text-white transition"
-                title="Facebook Letreros Olivar"
-                aria-label="Facebook"
-              >
-                <Facebook className="w-4 h-4" />
-              </a>
-            </div>
           </nav>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -378,38 +353,6 @@ export default function PublicSite({ onOpenIntranet }) {
               <MapPin className="w-4 h-4 text-red-500" />
               Ubicación (Taller Olivar)
             </a>
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <a
-                href={COMPANY_INFO.social.whatsapp}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2.5 rounded-xl bg-emerald-600/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center gap-2 text-xs transition"
-              >
-                <WhatsAppIcon className="w-4 h-4" />
-                WhatsApp
-              </a>
-              <div className="flex items-center justify-center gap-4 px-3 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-                <a
-                  href={COMPANY_INFO.social.instagram}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Instagram"
-                  className="hover:text-white transition"
-                >
-                  <Instagram className="w-4 h-4" />
-                </a>
-                <a
-                  href={COMPANY_INFO.social.facebook}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Facebook"
-                  className="hover:text-white transition"
-                >
-                  <Facebook className="w-4 h-4" />
-                </a>
-              </div>
-            </div>
           </nav>
         )}
       </header>
