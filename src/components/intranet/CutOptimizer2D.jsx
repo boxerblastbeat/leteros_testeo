@@ -431,47 +431,76 @@ export default function CutOptimizer2D() {
                     stroke="#52525b"
                     strokeWidth={Math.max(4, sheetW * 0.002)}
                   />
-                  {sheet.placed.map((p) => (
-                    <g key={p.uid}>
-                      <rect
-                        x={p.x}
-                        y={p.y}
-                        width={p.w}
-                        height={p.h}
-                        fill={p.color}
-                        fillOpacity={0.85}
-                        stroke="#ffffff"
-                        strokeWidth={Math.max(3, sheetW * 0.0015)}
-                      />
-                      {p.w > sheetW * 0.08 && p.h > sheetH * 0.08 && (
-                        <>
-                          <text
-                            x={p.x + p.w / 2}
-                            y={p.y + p.h / 2 - Math.min(p.w, p.h) * 0.08}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            fill="#ffffff"
-                            fontSize={Math.max(28, Math.min(p.w, p.h) * 0.14)}
-                            fontWeight="700"
+                  <defs>
+                    {sheet.placed.map((p) => (
+                      <clipPath key={`clip-${p.uid}`} id={`clip-${sheet.id}-${p.uid}`}>
+                        <rect x={p.x + 6} y={p.y + 6} width={Math.max(0, p.w - 12)} height={Math.max(0, p.h - 12)} />
+                      </clipPath>
+                    ))}
+                  </defs>
+                  {sheet.placed.map((p) => {
+                    const isTall = p.h > p.w * 1.35;
+                    const textAxis = isTall ? p.h : p.w;
+                    const crossAxis = isTall ? p.w : p.h;
+                    const dimText = `${p.w}×${p.h}${p.rotated ? ' ↻' : ''}`;
+                    const labelChars = Math.max(p.label.length, 6);
+                    const dimChars = Math.max(dimText.length, 6);
+                    const titleSize = Math.min(
+                      64,
+                      Math.max(16, Math.min((textAxis * 0.82) / (labelChars * 0.62), crossAxis * 0.24))
+                    );
+                    const dimSize = Math.min(
+                      48,
+                      Math.max(14, Math.min((textAxis * 0.82) / (dimChars * 0.62), crossAxis * 0.19, titleSize * 0.82))
+                    );
+                    const cx = p.x + p.w / 2;
+                    const cy = p.y + p.h / 2;
+                    const showText = textAxis >= 140 && crossAxis >= 90;
+
+                    return (
+                      <g key={p.uid}>
+                        <rect
+                          x={p.x}
+                          y={p.y}
+                          width={p.w}
+                          height={p.h}
+                          fill={p.color}
+                          fillOpacity={0.85}
+                          stroke="#ffffff"
+                          strokeWidth={Math.max(3, sheetW * 0.0015)}
+                        />
+                        {showText && (
+                          <g
+                            clipPath={`url(#clip-${sheet.id}-${p.uid})`}
+                            transform={isTall ? `rotate(-90 ${cx} ${cy})` : undefined}
                           >
-                            {p.label}
-                          </text>
-                          <text
-                            x={p.x + p.w / 2}
-                            y={p.y + p.h / 2 + Math.min(p.w, p.h) * 0.12}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            fill="#f4f4f5"
-                            fontSize={Math.max(24, Math.min(p.w, p.h) * 0.11)}
-                            fontFamily="monospace"
-                          >
-                            {p.w}×{p.h}
-                            {p.rotated ? ' ↻' : ''}
-                          </text>
-                        </>
-                      )}
-                    </g>
-                  ))}
+                            <text
+                              x={cx}
+                              y={cy - dimSize * 0.65}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="#ffffff"
+                              fontSize={titleSize}
+                              fontWeight="700"
+                            >
+                              {p.label}
+                            </text>
+                            <text
+                              x={cx}
+                              y={cy + titleSize * 0.72}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fill="#f4f4f5"
+                              fontSize={dimSize}
+                              fontFamily="monospace"
+                            >
+                              {dimText}
+                            </text>
+                          </g>
+                        )}
+                      </g>
+                    );
+                  })}
                 </svg>
               </div>
             </div>
