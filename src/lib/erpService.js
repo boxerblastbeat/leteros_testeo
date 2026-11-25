@@ -4,6 +4,9 @@ import { uid, todayISO, addDaysISO } from './formatters';
 
 const STORAGE_KEY = 'letreros_olivar_erp_v2';
 
+// Postgres rechaza "" en columnas uuid, date o numeric anulables
+const toNullable = (val) => (val === '' || val === undefined ? null : val);
+
 const buildInitialLocalState = () => {
   const year = new Date().getFullYear();
   const c1 = 'cli-demo-1';
@@ -468,11 +471,16 @@ export const erpService = {
   // --- PUBLIC QUOTE REQUESTS ---
   async createQuoteRequest(payload) {
     if (isSupabaseConfigured) {
+      const cleanPayload = {
+        ...payload,
+        width: toNullable(payload.width),
+        height: toNullable(payload.height),
+      };
       // No encadenamos .select() porque el rol público (anon) solo tiene permiso INSERT por RLS
-      const { error } = await supabase.from('quote_requests').insert([payload]);
+      const { error } = await supabase.from('quote_requests').insert([cleanPayload]);
       if (error) throw error;
       return {
-        ...payload,
+        ...cleanPayload,
         id: uid(),
         status: 'nueva',
         created_at: new Date().toISOString(),
@@ -519,17 +527,23 @@ export const erpService = {
   // --- QUOTES ---
   async saveQuote(quote) {
     if (isSupabaseConfigured) {
-      if (quote.id) {
+      const cleanQuote = {
+        ...quote,
+        client_id: toNullable(quote.client_id),
+        postponed_until: toNullable(quote.postponed_until),
+        invoice_date: toNullable(quote.invoice_date),
+      };
+      if (cleanQuote.id) {
         const { data, error } = await supabase
           .from('quotes')
-          .update({ ...quote, updated_at: new Date().toISOString() })
-          .eq('id', quote.id)
+          .update({ ...cleanQuote, updated_at: new Date().toISOString() })
+          .eq('id', cleanQuote.id)
           .select()
           .single();
         if (error) throw error;
         return data;
       }
-      const { id: _omit, correlative: _corr, ...insertData } = quote;
+      const { id: _omit, correlative: _corr, ...insertData } = cleanQuote;
       const { data, error } = await supabase
         .from('quotes')
         .insert([insertData])
@@ -588,17 +602,22 @@ export const erpService = {
   // --- WORK ORDERS (OT) ---
   async saveWorkOrder(ot) {
     if (isSupabaseConfigured) {
-      if (ot.id) {
+      const cleanOt = {
+        ...ot,
+        quote_id: toNullable(ot.quote_id),
+        deadline: toNullable(ot.deadline),
+      };
+      if (cleanOt.id) {
         const { data, error } = await supabase
           .from('work_orders')
-          .update({ ...ot, updated_at: new Date().toISOString() })
-          .eq('id', ot.id)
+          .update({ ...cleanOt, updated_at: new Date().toISOString() })
+          .eq('id', cleanOt.id)
           .select()
           .single();
         if (error) throw error;
         return data;
       }
-      const { id: _omit, ot_number: _num, ...insertData } = ot;
+      const { id: _omit, ot_number: _num, ...insertData } = cleanOt;
       const { data, error } = await supabase
         .from('work_orders')
         .insert([insertData])
@@ -643,17 +662,21 @@ export const erpService = {
   // --- CALENDAR ---
   async saveCalendarEvent(ev) {
     if (isSupabaseConfigured) {
-      if (ev.id) {
+      const cleanEv = {
+        ...ev,
+        event_date: ev.event_date || todayISO(),
+      };
+      if (cleanEv.id) {
         const { data, error } = await supabase
           .from('calendar_events')
-          .update(ev)
-          .eq('id', ev.id)
+          .update(cleanEv)
+          .eq('id', cleanEv.id)
           .select()
           .single();
         if (error) throw error;
         return data;
       }
-      const { id: _omit, ...insertData } = ev;
+      const { id: _omit, ...insertData } = cleanEv;
       const { data, error } = await supabase
         .from('calendar_events')
         .insert([insertData])
