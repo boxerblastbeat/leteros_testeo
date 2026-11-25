@@ -470,32 +470,31 @@ export default function CutOptimizer2D() {
                           strokeWidth={Math.max(3, sheetW * 0.0015)}
                         />
                         {showText && (
-                          <g
-                            clipPath={`url(#clip-${sheet.id}-${p.uid})`}
-                            transform={isTall ? `rotate(-90 ${cx} ${cy})` : undefined}
-                          >
-                            <text
-                              x={cx}
-                              y={cy - dimSize * 0.65}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              fill="#ffffff"
-                              fontSize={titleSize}
-                              fontWeight="700"
-                            >
-                              {p.label}
-                            </text>
-                            <text
-                              x={cx}
-                              y={cy + titleSize * 0.72}
-                              textAnchor="middle"
-                              dominantBaseline="middle"
-                              fill="#f4f4f5"
-                              fontSize={dimSize}
-                              fontFamily="monospace"
-                            >
-                              {dimText}
-                            </text>
+                          <g clipPath={`url(#clip-${sheet.id}-${p.uid})`}>
+                            <g transform={isTall ? `rotate(-90 ${cx} ${cy})` : undefined}>
+                              <text
+                                x={cx}
+                                y={cy - dimSize * 0.65}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill="#ffffff"
+                                fontSize={titleSize}
+                                fontWeight="700"
+                              >
+                                {p.label}
+                              </text>
+                              <text
+                                x={cx}
+                                y={cy + titleSize * 0.72}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fill="#f4f4f5"
+                                fontSize={dimSize}
+                                fontFamily="monospace"
+                              >
+                                {dimText}
+                              </text>
+                            </g>
                           </g>
                         )}
                       </g>
