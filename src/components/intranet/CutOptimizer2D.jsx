@@ -442,7 +442,7 @@ export default function CutOptimizer2D() {
                     const isTall = p.h > p.w * 1.35;
                     const textAxis = isTall ? p.h : p.w;
                     const crossAxis = isTall ? p.w : p.h;
-                    const dimText = `${p.w}×${p.h}${p.rotated ? ' ↻' : ''}`;
+                    const dimText = `${p.w}×${p.h}`;
                     const labelChars = Math.max(p.label.length, 6);
                     const dimChars = Math.max(dimText.length, 6);
                     const titleSize = Math.min(
