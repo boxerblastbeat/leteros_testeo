@@ -971,7 +971,7 @@ export default function PublicSite({ onOpenIntranet }) {
       </section>
 
       {/* FOOTER OFICIAL 4 COLUMNAS (Idéntico a letrerosolivar.com) */}
-      <footer id="contacto" className="bg-black pt-16 pb-20 sm:pb-12 px-4 sm:px-8 border-t border-zinc-900">
+      <footer id="contacto" className="bg-black py-12 px-4 sm:px-8 border-t border-zinc-900">
         <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-10">
           {/* Columna 1: Marca */}
           <div className="space-y-4">
@@ -1059,71 +1059,62 @@ export default function PublicSite({ onOpenIntranet }) {
             </div>
           </div>
 
-          {/* Columna 4: Contacto & Redes */}
-          <div>
-            <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-2">
+          {/* Columna 4: Contacto & Redes (compacta y alineada en altura con las demás columnas) */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-white uppercase tracking-wider text-xs">
               Contacto & Redes
             </h4>
-            <p className="text-xs text-zinc-500 leading-relaxed mb-3">
-              Revisa nuestros últimos trabajos y comunícate con nosotros:
-            </p>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               <a
                 href={`mailto:${COMPANY_INFO.email}`}
-                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-red-500/50 hover:bg-red-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-red-500/50 hover:bg-red-600/10 transition group"
               >
-                <div className="w-7 h-7 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="block text-xs text-white">Correo Oficial</strong>
-                  <span className="text-[10px] text-zinc-400 font-mono">{COMPANY_INFO.email}</span>
-                </div>
+                <span className="flex items-center gap-2 text-xs font-semibold text-white">
+                  <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                  Correo
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono truncate">
+                  {COMPANY_INFO.email}
+                </span>
               </a>
 
               <a
                 href={COMPANY_INFO.social.whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-600/10 transition group"
               >
-                <div className="w-7 h-7 rounded-lg bg-emerald-600/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition">
-                  <WhatsAppIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="block text-xs text-white">WhatsApp Taller</strong>
-                  <span className="text-[10px] text-zinc-300 font-mono">{COMPANY_INFO.phone}</span>
-                </div>
+                <span className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                  <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
+                  WhatsApp
+                </span>
+                <span className="text-[10px] text-zinc-300 font-mono">{COMPANY_INFO.phone}</span>
               </a>
 
               <a
                 href={COMPANY_INFO.social.instagram}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-pink-500/50 hover:bg-pink-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-pink-500/50 hover:bg-pink-600/10 transition group"
               >
-                <div className="w-7 h-7 rounded-lg bg-pink-600/20 text-pink-500 flex items-center justify-center group-hover:scale-110 transition">
-                  <Instagram className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="block text-xs text-white">Instagram</strong>
-                  <span className="text-[10px] text-zinc-300">@letreros_olivar</span>
-                </div>
+                <span className="flex items-center gap-2 text-xs font-semibold text-pink-400">
+                  <Instagram className="w-3.5 h-3.5 shrink-0" />
+                  Instagram
+                </span>
+                <span className="text-[10px] text-zinc-300">@letreros_olivar</span>
               </a>
 
               <a
                 href={COMPANY_INFO.social.facebook}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-600/10 transition group"
+                className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-600/10 transition group"
               >
-                <div className="w-7 h-7 rounded-lg bg-blue-600/20 text-blue-500 flex items-center justify-center group-hover:scale-110 transition">
-                  <Facebook className="w-4 h-4" />
-                </div>
-                <div>
-                  <strong className="block text-xs text-white">Facebook</strong>
-                  <span className="text-[10px] text-zinc-300">Letreros Olivar SpA</span>
-                </div>
+                <span className="flex items-center gap-2 text-xs font-semibold text-blue-400">
+                  <Facebook className="w-3.5 h-3.5 shrink-0" />
+                  Facebook
+                </span>
+                <span className="text-[10px] text-zinc-300">Letreros Olivar SpA</span>
               </a>
             </div>
           </div>
