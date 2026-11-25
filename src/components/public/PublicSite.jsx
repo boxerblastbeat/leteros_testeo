@@ -980,10 +980,11 @@ export default function PublicSite({ onOpenIntranet }) {
         </div>
       </section>
 
-      {/* FOOTER OFICIAL CON TARJETAS DE CONTACTO & REDES */}
-      <footer id="contacto" className="bg-black py-16 px-4 sm:px-8">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-10 pb-10">
-          <div className="space-y-3">
+      {/* FOOTER OFICIAL 4 COLUMNAS (Idéntico a letrerosolivar.com) */}
+      <footer id="contacto" className="bg-black pt-16 pb-20 sm:pb-12 px-4 sm:px-8 border-t border-zinc-900">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-10">
+          {/* Columna 1: Marca */}
+          <div className="space-y-4">
             <img
               src="/logo-white.svg"
               alt={COMPANY_INFO.name}
@@ -992,62 +993,101 @@ export default function PublicSite({ onOpenIntranet }) {
                 e.currentTarget.style.display = 'none';
               }}
             />
-            <p className="text-xs text-zinc-400 leading-relaxed">{COMPANY_INFO.tagline}</p>
-            <div className="space-y-1.5 text-xs text-zinc-400 pt-2">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Letreros comerciales, gráfica corporativa, cajones luminosos y rotulación vehicular en
+              Olivar.
+            </p>
+            <p className="text-xs font-mono text-zinc-500">RUT: {COMPANY_INFO.rut}</p>
+          </div>
+
+          {/* Columna 2: Servicios */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-white uppercase tracking-wider text-xs">Servicios</h4>
+            <ul className="space-y-2.5 text-xs text-zinc-400">
+              {[
+                { label: 'Gráfica Corporativa', mat: 'Acrílico Transparente 5mm' },
+                { label: 'Letreros en General', mat: 'Aluminio Compuesto 3mm (ACM)' },
+                { label: 'Cajones y Letreros Luminosos', mat: 'Cajón Luminoso Galvanizado' },
+                { label: 'Señaléticas Viales', mat: 'Adhesivo Reflectante 1.24m' },
+                { label: 'Gigantografías (Banner PVC)', mat: 'Tela PVC 380gr (3.20m Gran Formato)' },
+              ].map((item) => (
+                <li key={item.label}>
+                  <button
+                    type="button"
+                    onClick={() => selectServiceAndScroll(item.label, item.mat)}
+                    className="hover:text-red-500 transition text-left"
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Columna 3: Taller & Showroom */}
+          <div className="space-y-3 text-xs">
+            <h4 className="font-bold text-white uppercase tracking-wider">Taller & Showroom</h4>
+            <div className="space-y-2.5 text-zinc-400">
+              <div className="flex items-start gap-2">
+                <MapPin className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                 <a
                   href={COMPANY_INFO.mapsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-white transition"
+                  className="hover:text-white transition leading-relaxed"
                 >
                   {COMPANY_INFO.address}
                 </a>
               </div>
+              <div className="flex items-start gap-2">
+                <Clock className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-zinc-200 font-semibold">
+                    Lun a Vie: 10:00 - 20:00 hrs (Continuado)
+                  </div>
+                  <div className="text-zinc-500 mt-0.5">Sábados, Domingos y Festivos: Cerrado</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Phone className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <a
+                  href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
+                  className="text-zinc-200 hover:text-white font-mono transition"
+                >
+                  Tel: {COMPANY_INFO.phone}
+                </a>
+              </div>
               <div className="flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                <span>{COMPANY_INFO.hours}</span>
+                <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <a
+                  href={`mailto:${COMPANY_INFO.email}`}
+                  className="text-red-500 hover:text-red-400 font-mono transition"
+                >
+                  {COMPANY_INFO.email}
+                </a>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <h4 className="font-bold text-white uppercase tracking-wider">Cobertura Regional</h4>
-            <p className="text-zinc-400 leading-relaxed">
-              Atendemos fabricación, despachos e instalaciones en terreno en{' '}
-              <strong className="text-zinc-200">
-                Olivar, Rancagua, Machalí, Gultro, Requínoa, Rengo, Graneros, Mostazal, Doñihue,
-                Coltauco, Coinco y San Vicente
-              </strong>
-              .
-            </p>
-            <a
-              href={COMPANY_INFO.mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-red-500/40 text-zinc-300 hover:text-white font-semibold transition"
-            >
-              <MapPin className="w-3.5 h-3.5 text-red-500" />
-              Abrir ubicación en Google Maps
-            </a>
-          </div>
-
+          {/* Columna 4: Contacto & Redes */}
           <div>
-            <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-3">
+            <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-2">
               Contacto & Redes
             </h4>
+            <p className="text-xs text-zinc-500 leading-relaxed mb-3">
+              Revisa nuestros últimos trabajos y comunícate con nosotros:
+            </p>
             <div className="flex flex-col gap-2">
               <a
                 href={`mailto:${COMPANY_INFO.email}`}
-                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-red-500/50 hover:bg-red-600/10 transition group"
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-red-500/50 hover:bg-red-600/10 transition group"
               >
-                <div className="w-8 h-8 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-7 h-7 rounded-lg bg-red-600/20 text-red-500 flex items-center justify-center group-hover:scale-110 transition">
                   <Mail className="w-4 h-4" />
                 </div>
                 <div>
                   <strong className="block text-xs text-white">Correo Oficial</strong>
-                  <span className="text-[11px] text-zinc-400 font-mono">{COMPANY_INFO.email}</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">{COMPANY_INFO.email}</span>
                 </div>
               </a>
 
@@ -1055,14 +1095,14 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-600/10 transition group"
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-600/10 transition group"
               >
-                <div className="w-8 h-8 rounded-lg bg-emerald-600/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600/20 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition">
                   <WhatsAppIcon className="w-4 h-4" />
                 </div>
                 <div>
                   <strong className="block text-xs text-white">WhatsApp Taller</strong>
-                  <span className="text-[11px] text-zinc-300 font-mono">{COMPANY_INFO.phone}</span>
+                  <span className="text-[10px] text-zinc-300 font-mono">{COMPANY_INFO.phone}</span>
                 </div>
               </a>
 
@@ -1070,14 +1110,14 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.instagram}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-pink-500/50 hover:bg-pink-600/10 transition group"
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-pink-500/50 hover:bg-pink-600/10 transition group"
               >
-                <div className="w-8 h-8 rounded-lg bg-pink-600/20 text-pink-500 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-7 h-7 rounded-lg bg-pink-600/20 text-pink-500 flex items-center justify-center group-hover:scale-110 transition">
                   <Instagram className="w-4 h-4" />
                 </div>
                 <div>
                   <strong className="block text-xs text-white">Instagram</strong>
-                  <span className="text-[11px] text-zinc-300">@letreros_olivar</span>
+                  <span className="text-[10px] text-zinc-300">@letreros_olivar</span>
                 </div>
               </a>
 
@@ -1085,14 +1125,14 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.facebook}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-600/10 transition group"
+                className="flex items-center gap-2.5 p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-white hover:border-blue-500/50 hover:bg-blue-600/10 transition group"
               >
-                <div className="w-8 h-8 rounded-lg bg-blue-600/20 text-blue-500 flex items-center justify-center group-hover:scale-110 transition">
+                <div className="w-7 h-7 rounded-lg bg-blue-600/20 text-blue-500 flex items-center justify-center group-hover:scale-110 transition">
                   <Facebook className="w-4 h-4" />
                 </div>
                 <div>
                   <strong className="block text-xs text-white">Facebook</strong>
-                  <span className="text-[11px] text-zinc-300">Letreros Olivar SpA</span>
+                  <span className="text-[10px] text-zinc-300">Letreros Olivar SpA</span>
                 </div>
               </a>
             </div>
