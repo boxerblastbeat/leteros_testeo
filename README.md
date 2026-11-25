@@ -1,59 +1,48 @@
-# LETREROS OLIVAR SpA — Plataforma Web & Intranet Privada de Cotizaciones
+# Letreros Olivar SpA — Plataforma Web & Mini-ERP (v2.0)
 
-Plataforma oficial para **Letreros Olivar SpA** (Olivar, Región de O'Higgins, Chile), construida con arquitectura dual:
+Plataforma optimizada para **Letreros Olivar SpA** (Olivar, Región de O'Higgins, Chile), construida con **Vite + React 18 + Tailwind CSS compilado + Supabase (PostgreSQL)** y lista para despliegue automático en **Cloudflare Pages**.
 
-1. **Sitio Público para Clientes:** Presentación de portafolio, servicios, taller en Olivar y **formulario de requerimientos sin precios** donde el cliente selecciona materiales, medidas y modalidad (**Instalación en Terreno** o **Retiro en Taller**).
-2. **Intranet Privada de Taller:** Acceso protegido por contraseña para el equipo interno donde se reciben las solicitudes web, se convierten en **cotizaciones correlativas oficiales (`COT-2026-XXXX`) con cálculo de precios netos + IVA 19% (CLP)** y se emiten los documentos en PDF formal A4 o por WhatsApp.
+## Módulos Incluidos
 
----
+1. **Web Pública & Cotizador Interactivo de Clientes (`/`)**
+   - Presentación de servicios, portafolio filtrable y formulario de cotización a medida (material exacto del tarifario, ancho × alto en metros con cálculo automático de m², cantidad, estado del diseño y modalidad de entrega: *Instalación en Terreno*, *Retiro en Taller* o *Despacho*).
+   - Las solicitudes ingresan directo a la bandeja de la Intranet y permiten envío rápido por WhatsApp.
 
-## 🔐 Acceso a la Intranet de Taller
-
-* **Acceso:** Botón discreto `"Acceso Intranet"` en la barra superior o en el pie de página.
-* **Contraseña por defecto:** `olivar2026` (o `admin` / `1234`).
-* **Secciones de la Intranet:**
-  1. **Cotizador Correlativo:** Calculadora oficial por $m^2$ y unidad en Pesos Chilenos (CLP), acabados, descuentos, IVA (19%) y exportación a PDF formal con el RUT 77.880.952-4.
-  2. **Bandeja de Solicitudes Web:** Permite revisar los requerimientos enviados por los clientes con un clic en **"Convertir en Cotización Correlativa"** para precargar los datos de inmediato.
-  3. **Historial de Cotizaciones:** Registro oficial de cotizaciones emitidas para seguimiento comercial o reimpresión.
-
----
-
-## 🏢 Formulario Público del Cliente (Sin Precios Visibles)
-
-El usuario final en la web solo completa:
-* **Servicio requerido:** Gráfica corporativa, Señéticas viales, Gigantografías, Letreros en general, Cajones luminosos, Corte láser en acrílico, CNC en aluminio compuesto ACM, Impresión gran formato, etc.
-* **Material preferido:** Acrílico, Polyfan, Lona pesada, Vinilo microperforado, etc.
-* **Dimensiones y cantidad:** Ancho y alto estimados en metros, cantidad de piezas.
-* **Modalidad de Entrega:**
-  * 🚚 **Instalación en Terreno / Obra** (solicita dirección de obra).
-  * 🏬 **Retiro en Taller** (Ruta H-40, Olivar).
-* **Datos de contacto:** Nombre, RUT, WhatsApp, Email y comentarios.
-* **Envío:** Se guarda automáticamente en la bandeja de la Intranet y abre un chat en WhatsApp con el requerimiento estructurado.
+2. **Intranet Mini-ERP (`/intranet`)**
+   - **Control de Cotizaciones:** Correlativos estrictos (`COT-YYYY-XXXX`), estados completos (`Borrador`, `Emitida`, `Aplazada` con fecha y motivo de seguimiento, `Aceptada`, `En Taller`, `Despacho`, `Facturada`, `Pagada`, `Rechazada`), exportación a CSV/Excel y vista previa/impresión **PDF tamaño Carta**.
+   - **Bandeja de Solicitudes Web:** Conversión de requerimientos de clientes en cotización oficial en 1 clic.
+   - **Producción y Taller (OTs):** Generación automática de Órdenes de Trabajo (`OT-YYYY-XXXX`) al aceptar una cotización, avance secuencial de estados y ficha técnica imprimible para taller.
+   - **Agenda de Entregas, Instalaciones y Seguimientos:** Sincronizada automáticamente con OTs y cotizaciones aplazadas.
+   - **Optimizador de Cortes 2D:** Cálculo de aprovechamiento de planchas (ACM, Acrílico, Trovicel, Lata) con sangría de disco (kerf), rotación 90° e impresión de planos SVG.
+   - **Maestro de Clientes & Tarifario Editable:** Gestión centralizada de clientes y precios CLP.
 
 ---
 
-## 📁 Archivos del Proyecto
+## Desarrollo Local
 
-```
-publicidad-grafica-web/
-├── index.html              ← Aplicación completa autónoma (abre con doble clic)
-├── package.json            ← React 18, Vite, Tailwind CSS
-├── vite.config.js          
-├── tailwind.config.js      ← Paleta Negro, Rojo (#dc2626) y Blanco
-├── README.md               ← Documentación
-└── src/
-    ├── main.jsx
-    ├── App.jsx             ← Componente principal con soporte de Intranet y vista pública
-    ├── index.css           ← Estilos e impresión @media print
-    └── data/
-        ├── products.js     ← Catálogo de precios internos del taller en CLP
-        └── portfolioData.js← Proyectos con especificaciones técnicas
+```bash
+npm install
+npm run dev
 ```
 
+- Sin variables de entorno de Supabase, la app arranca en **Modo Local Demo** (clave de prueba de Intranet: `olivar2026`).
+
 ---
 
-## ⚡ Cómo Usar y Probar
+## Conexión a Supabase (PostgreSQL + Auth + Realtime)
 
-Haz doble clic sobre [**index.html**](file:///C:/Users/AccessAIT/.gemini/antigravity/scratch/publicidad-grafica-web/index.html) para abrirlo en tu navegador.
-* Para probar como cliente: completa el formulario de solicitud al final de la página.
-* Para probar la Intranet: haz clic en **"Acceso Intranet"** en la barra superior (clave: `olivar2026`).
+1. Crea un proyecto gratuito en [supabase.com](https://supabase.com).
+2. En **SQL Editor**, ejecuta completo el archivo [`supabase/schema.sql`](supabase/schema.sql).
+3. En **Authentication → Users**, crea el usuario administrador del taller (correo y contraseña).
+4. Copia `.env.example` a `.env` y completa `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+
+---
+
+## Despliegue en Cloudflare Pages
+
+1. Conecta el repositorio de GitHub en **Cloudflare Pages**.
+2. Configura:
+   - **Build command:** `npm run build`
+   - **Build output directory:** `dist`
+3. Agrega las variables de entorno `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+4. El archivo `public/_redirects` ya está configurado para enrutamiento SPA (`/* /index.html 200`).

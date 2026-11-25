@@ -36,7 +36,7 @@ export const PORTFOLIO_PROJECTS = [
     title: 'Letreros de Gran Formato y Lona Frontlight Exterior',
     client: 'Polo Comercial La Ribera',
     category: 'Gran Formato',
-    image: 'https://images.unsplash.com/photo-1508873696983-2df5293cb325?auto=format&fit=crop&w=1200&q=80',
+    image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
     tags: ['Lona 13oz UV', 'Estructura Metálica', 'Montaje con Grúa'],
     description: 'Gigantografía de 10x3.5 metros sobre bastidor metálico tensado, impresa en 1440 DPI con tintas resistentes a radiación solar intensa.',
     specs: {
