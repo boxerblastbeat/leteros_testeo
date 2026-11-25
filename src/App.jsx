@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { ErpProvider, useErp } from './context/ErpContext';
 import PublicSite from './components/public/PublicSite';
-import IntranetApp from './components/intranet/IntranetApp';
 import LoginModal from './components/common/LoginModal';
 import Toast from './components/common/Toast';
+
+const IntranetApp = lazy(() => import('./components/intranet/IntranetApp'));
 
 function MainRouter() {
   const { session, loading } = useErp();
@@ -37,7 +38,15 @@ function MainRouter() {
   return (
     <>
       {view === 'intranet' && session ? (
-        <IntranetApp onGoPublic={handleGoPublic} />
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 text-sm font-medium">
+              Cargando Intranet Mini-ERP...
+            </div>
+          }
+        >
+          <IntranetApp onGoPublic={handleGoPublic} />
+        </Suspense>
       ) : (
         <PublicSite onOpenIntranet={handleOpenIntranet} />
       )}

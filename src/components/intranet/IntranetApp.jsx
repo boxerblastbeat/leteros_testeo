@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import {
   FileText,
   Inbox,
@@ -18,11 +18,12 @@ import QuotesManager from './QuotesManager';
 import RequestsInbox from './RequestsInbox';
 import WorkOrdersPanel from './WorkOrdersPanel';
 import CalendarPanel from './CalendarPanel';
-import CutOptimizer2D from './CutOptimizer2D';
 import ClientsPanel from './ClientsPanel';
 import MaterialsPanel from './MaterialsPanel';
 import QuoteEditorModal from './QuoteEditorModal';
 import QuotePrintModal from './QuotePrintModal';
+
+const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
 
 export default function IntranetApp({ onGoPublic }) {
   const { quoteRequests, workOrders, isCloud, signOut } = useErp();
@@ -145,7 +146,17 @@ export default function IntranetApp({ onGoPublic }) {
         )}
         {activeTab === 'taller' && <WorkOrdersPanel />}
         {activeTab === 'calendario' && <CalendarPanel />}
-        {activeTab === 'optimizador' && <CutOptimizer2D />}
+        {activeTab === 'optimizador' && (
+          <Suspense
+            fallback={
+              <div className="p-10 text-center text-xs text-slate-500">
+                Cargando Optimizador 2D...
+              </div>
+            }
+          >
+            <CutOptimizer2D />
+          </Suspense>
+        )}
         {activeTab === 'clientes' && <ClientsPanel />}
         {activeTab === 'tarifario' && <MaterialsPanel />}
       </main>

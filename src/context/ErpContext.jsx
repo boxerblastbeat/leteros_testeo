@@ -65,14 +65,14 @@ export function ErpProvider({ children }) {
 
       const channel = supabase
         .channel('erp-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_requests' }, () => {
-          refreshErp();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_requests' }, async () => {
+          setQuoteRequests(await erpService.loadQuoteRequests());
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'quotes' }, () => {
-          refreshErp();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'quotes' }, async () => {
+          setQuotes(await erpService.loadQuotes());
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, () => {
-          refreshErp();
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, async () => {
+          setWorkOrders(await erpService.loadWorkOrders());
         })
         .subscribe();
 

@@ -379,17 +379,53 @@ export const erpService = {
     return readLocal().materials;
   },
 
+  async loadQuoteRequests() {
+    if (isSupabaseConfigured) {
+      const { data } = await supabase
+        .from('quote_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(250);
+      return data || [];
+    }
+    return readLocal().quoteRequests;
+  },
+
+  async loadQuotes() {
+    if (isSupabaseConfigured) {
+      const { data } = await supabase
+        .from('quotes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(300);
+      return data || [];
+    }
+    return readLocal().quotes;
+  },
+
+  async loadWorkOrders() {
+    if (isSupabaseConfigured) {
+      const { data } = await supabase
+        .from('work_orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(250);
+      return data || [];
+    }
+    return readLocal().workOrders;
+  },
+
   async loadAllErpData() {
     if (isSupabaseConfigured) {
       const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes] =
         await Promise.all([
-          supabase.from('clients').select('*').order('created_at', { ascending: false }),
-          supabase.from('materials').select('*').order('category', { ascending: true }),
-          supabase.from('consumables').select('*').order('name', { ascending: true }),
-          supabase.from('quote_requests').select('*').order('created_at', { ascending: false }),
-          supabase.from('quotes').select('*').order('created_at', { ascending: false }),
-          supabase.from('work_orders').select('*').order('created_at', { ascending: false }),
-          supabase.from('calendar_events').select('*').order('event_date', { ascending: true }),
+          supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(500),
+          supabase.from('materials').select('*').order('category', { ascending: true }).limit(300),
+          supabase.from('consumables').select('*').order('name', { ascending: true }).limit(200),
+          supabase.from('quote_requests').select('*').order('created_at', { ascending: false }).limit(250),
+          supabase.from('quotes').select('*').order('created_at', { ascending: false }).limit(300),
+          supabase.from('work_orders').select('*').order('created_at', { ascending: false }).limit(250),
+          supabase.from('calendar_events').select('*').order('event_date', { ascending: true }).limit(300),
         ]);
 
       return {
