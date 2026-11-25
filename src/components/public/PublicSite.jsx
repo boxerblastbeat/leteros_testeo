@@ -954,7 +954,7 @@ export default function PublicSite({ onOpenIntranet }) {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-zinc-800/80">
                 <div className="flex items-center gap-2 text-xs text-zinc-400">
                   <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>Sin compromiso · Emitimos cotización formal con RUT {COMPANY_INFO.rut}</span>
+                  <span>Sin compromiso · Emitimos cotización formal en PDF con valores netos + IVA</span>
                 </div>
                 <button
                   type="submit"
@@ -987,7 +987,6 @@ export default function PublicSite({ onOpenIntranet }) {
               Letreros comerciales, gráfica corporativa, cajones luminosos y rotulación vehicular en
               Olivar.
             </p>
-            <p className="text-xs font-mono text-zinc-500">RUT: {COMPANY_INFO.rut}</p>
           </div>
 
           {/* Columna 2: Servicios */}
