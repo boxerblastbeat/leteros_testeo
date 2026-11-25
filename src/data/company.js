@@ -67,22 +67,22 @@ export const PUBLIC_SERVICES = [
 ];
 
 export const QUOTE_STATUSES = [
-  { id: 'borrador', label: 'Borrador', color: 'bg-zinc-800 text-zinc-300 border-zinc-700', dot: 'bg-zinc-400' },
-  { id: 'emitida', label: 'Emitida', color: 'bg-sky-500/15 text-sky-300 border-sky-500/30', dot: 'bg-sky-400' },
-  { id: 'aplazada', label: 'Aplazada', color: 'bg-amber-500/15 text-amber-300 border-amber-500/30', dot: 'bg-amber-400' },
-  { id: 'aceptada', label: 'Aceptada', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400' },
-  { id: 'en_taller', label: 'En Taller (OT)', color: 'bg-violet-500/15 text-violet-300 border-violet-500/30', dot: 'bg-violet-400' },
-  { id: 'despacho', label: 'Despacho / Inst.', color: 'bg-orange-500/15 text-orange-300 border-orange-500/30', dot: 'bg-orange-400' },
-  { id: 'facturada', label: 'Facturada', color: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30', dot: 'bg-cyan-400' },
-  { id: 'pagada', label: 'Pagada', color: 'bg-green-600/20 text-green-300 border-green-500/40', dot: 'bg-green-400' },
-  { id: 'rechazada', label: 'Rechazada', color: 'bg-red-500/15 text-red-300 border-red-500/30', dot: 'bg-red-400' },
+  { id: 'borrador', label: 'Borrador', color: 'bg-slate-100 text-slate-700 border-slate-200', dot: 'bg-slate-400' },
+  { id: 'emitida', label: 'Emitida', color: 'bg-sky-50 text-sky-700 border-sky-200', dot: 'bg-sky-500' },
+  { id: 'aplazada', label: 'Aplazada', color: 'bg-amber-50 text-amber-800 border-amber-200', dot: 'bg-amber-500' },
+  { id: 'aceptada', label: 'Aceptada', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  { id: 'en_taller', label: 'En Taller (OT)', color: 'bg-violet-50 text-violet-700 border-violet-200', dot: 'bg-violet-500' },
+  { id: 'despacho', label: 'Despacho / Inst.', color: 'bg-orange-50 text-orange-700 border-orange-200', dot: 'bg-orange-500' },
+  { id: 'facturada', label: 'Facturada', color: 'bg-cyan-50 text-cyan-700 border-cyan-200', dot: 'bg-cyan-500' },
+  { id: 'pagada', label: 'Pagada', color: 'bg-green-100 text-green-800 border-green-300', dot: 'bg-green-600' },
+  { id: 'rechazada', label: 'Rechazada', color: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
 ];
 
 export const OT_STATUSES = [
-  { id: 'pendiente', label: 'Pendiente', color: 'bg-zinc-800 text-zinc-300 border-zinc-700' },
-  { id: 'diseno', label: 'Diseño / Preprensa', color: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
-  { id: 'produccion', label: 'En Producción', color: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-  { id: 'terminado', label: 'Terminado', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  { id: 'despachado', label: 'En Despacho / Obra', color: 'bg-orange-500/15 text-orange-300 border-orange-500/30' },
-  { id: 'entregado', label: 'Entregado', color: 'bg-green-600/20 text-green-300 border-green-500/40' },
+  { id: 'pendiente', label: 'Pendiente', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { id: 'diseno', label: 'Diseño / Preprensa', color: 'bg-sky-50 text-sky-700 border-sky-200' },
+  { id: 'produccion', label: 'En Producción', color: 'bg-amber-50 text-amber-800 border-amber-200' },
+  { id: 'terminado', label: 'Terminado', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { id: 'despachado', label: 'En Despacho / Obra', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+  { id: 'entregado', label: 'Entregado', color: 'bg-green-100 text-green-800 border-green-300' },
 ];

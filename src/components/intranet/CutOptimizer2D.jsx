@@ -19,7 +19,6 @@ const PART_COLORS = [
   '#4f46e5',
 ];
 
-// Algoritmo Guillotine / Shelf 2D con soporte de rotación 90° y sangría de disco (kerf)
 function packParts2D(sheetW, sheetH, kerf, allowRotate, partsList) {
   const expanded = [];
   partsList.forEach((p, idx) => {
@@ -37,7 +36,6 @@ function packParts2D(sheetW, sheetH, kerf, allowRotate, partsList) {
     }
   });
 
-  // Ordenar por lado mayor descendente (First-Fit Decreasing)
   expanded.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || b.w * b.h - a.w * a.h);
 
   const sheets = [];
@@ -86,7 +84,6 @@ function packParts2D(sheetW, sheetH, kerf, allowRotate, partsList) {
     };
     sheet.placed.push(placed);
 
-    // Split Guillotine (corte más largo)
     sheet.freeRects.splice(bestRectIdx, 1);
     const rightW = r.w - placed.w - kerf;
     const bottomH = r.h - placed.h - kerf;
@@ -158,7 +155,14 @@ export default function CutOptimizer2D() {
   const [newPart, setNewPart] = useState({ label: '', w: 500, h: 300, qty: 1 });
 
   const result = useMemo(
-    () => packParts2D(Number(sheetW) || 2440, Number(sheetH) || 1220, Number(kerf) || 0, allowRotate, parts),
+    () =>
+      packParts2D(
+        Number(sheetW) || 2440,
+        Number(sheetH) || 1220,
+        Number(kerf) || 0,
+        allowRotate,
+        parts
+      ),
     [sheetW, sheetH, kerf, allowRotate, parts]
   );
 
@@ -191,18 +195,18 @@ export default function CutOptimizer2D() {
     <div className="space-y-6">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2">
-            <Scissors className="w-5 h-5 text-red-500" />
+          <h2 className="font-heading text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Scissors className="w-5 h-5 text-red-600" />
             Optimizador de Cortes 2D de Planchas (Taller)
           </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Calcula el aprovechamiento óptimo de ACM, Acrílico, Trovicel y Lata con sangría de disco
             en milímetros.
           </p>
         </div>
         <button
           onClick={() => window.print()}
-          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5"
+          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
         >
           <Printer className="w-4 h-4" />
           Imprimir Planos de Corte
@@ -211,16 +215,16 @@ export default function CutOptimizer2D() {
 
       {/* CONFIGURACIÓN Y PIEZAS */}
       <div className="no-print grid lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-5 p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-            <Layers className="w-4 h-4 text-red-500" />
+        <div className="lg:col-span-5 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <Layers className="w-4 h-4 text-red-600" />
             1. Formato de Plancha Base (mm)
           </h3>
 
           <select
             value={preset}
             onChange={(e) => handlePresetChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white"
+            className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
           >
             {PRESET_SHEETS.map((s) => (
               <option key={s.id} value={s.id}>
@@ -231,7 +235,7 @@ export default function CutOptimizer2D() {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-[11px] text-zinc-400 mb-1">Largo (mm)</label>
+              <label className="block text-[11px] text-slate-500 mb-1">Largo (mm)</label>
               <input
                 type="number"
                 value={sheetW}
@@ -239,11 +243,11 @@ export default function CutOptimizer2D() {
                   setPreset('custom');
                   setSheetW(Number(e.target.value));
                 }}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
             <div>
-              <label className="block text-[11px] text-zinc-400 mb-1">Ancho (mm)</label>
+              <label className="block text-[11px] text-slate-500 mb-1">Ancho (mm)</label>
               <input
                 type="number"
                 value={sheetH}
@@ -251,48 +255,49 @@ export default function CutOptimizer2D() {
                   setPreset('custom');
                   setSheetH(Number(e.target.value));
                 }}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
             <div>
-              <label className="block text-[11px] text-zinc-400 mb-1">Sangría (mm)</label>
+              <label className="block text-[11px] text-slate-500 mb-1">Sangría (mm)</label>
               <input
                 type="number"
                 min="0"
                 max="15"
                 value={kerf}
                 onChange={(e) => setKerf(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer pt-1">
+          <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer pt-1">
             <input
               type="checkbox"
               checked={allowRotate}
               onChange={(e) => setAllowRotate(e.target.checked)}
-              className="rounded border-zinc-700 bg-zinc-950 text-red-600"
+              className="rounded border-slate-300 text-red-600 focus:ring-red-600"
             />
-            <RotateCw className="w-3.5 h-3.5 text-zinc-400" />
+            <RotateCw className="w-3.5 h-3.5 text-slate-500" />
             Permitir rotar piezas 90° para mejorar aprovechamiento
           </label>
 
-          {/* Resumen KPI */}
-          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-zinc-800 text-center">
-            <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800">
-              <div className="text-[10px] text-zinc-500 uppercase">Planchas</div>
-              <div className="font-mono text-lg font-bold text-white">{result.sheets.length}</div>
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-200 text-center">
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[10px] text-slate-500 uppercase">Planchas</div>
+              <div className="font-mono text-lg font-bold text-slate-900">
+                {result.sheets.length}
+              </div>
             </div>
-            <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800">
-              <div className="text-[10px] text-zinc-500 uppercase">Eficiencia</div>
-              <div className="font-mono text-lg font-bold text-emerald-400">
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[10px] text-slate-500 uppercase">Eficiencia</div>
+              <div className="font-mono text-lg font-bold text-emerald-700">
                 {result.efficiency.toFixed(1)}%
               </div>
             </div>
-            <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800">
-              <div className="text-[10px] text-zinc-500 uppercase">Merma</div>
-              <div className="font-mono text-lg font-bold text-amber-400">
+            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="text-[10px] text-slate-500 uppercase">Merma</div>
+              <div className="font-mono text-lg font-bold text-amber-600">
                 {(100 - result.efficiency).toFixed(1)}%
               </div>
             </div>
@@ -300,58 +305,58 @@ export default function CutOptimizer2D() {
         </div>
 
         {/* LISTA DE PIEZAS */}
-        <div className="lg:col-span-7 p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+        <div className="lg:col-span-7 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
             2. Piezas a Cortar (en milímetros)
           </h3>
 
           <form onSubmit={addPart} className="grid grid-cols-12 gap-2 items-end">
             <div className="col-span-4">
-              <label className="block text-[10px] text-zinc-500 mb-1">Etiqueta</label>
+              <label className="block text-[10px] text-slate-500 mb-1">Etiqueta</label>
               <input
                 type="text"
                 placeholder="Ej: Letrero Lateral"
                 value={newPart.label}
                 onChange={(e) => setNewPart({ ...newPart, label: e.target.value })}
-                className="w-full px-2.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white"
+                className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
               />
             </div>
             <div className="col-span-3">
-              <label className="block text-[10px] text-zinc-500 mb-1">Largo (mm)</label>
+              <label className="block text-[10px] text-slate-500 mb-1">Largo (mm)</label>
               <input
                 type="number"
                 required
                 min="10"
                 value={newPart.w}
                 onChange={(e) => setNewPart({ ...newPart, w: e.target.value })}
-                className="w-full px-2.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white"
+                className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
             <div className="col-span-2">
-              <label className="block text-[10px] text-zinc-500 mb-1">Alto (mm)</label>
+              <label className="block text-[10px] text-slate-500 mb-1">Alto (mm)</label>
               <input
                 type="number"
                 required
                 min="10"
                 value={newPart.h}
                 onChange={(e) => setNewPart({ ...newPart, h: e.target.value })}
-                className="w-full px-2.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white"
+                className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
               />
             </div>
             <div className="col-span-1">
-              <label className="block text-[10px] text-zinc-500 mb-1">Cant.</label>
+              <label className="block text-[10px] text-slate-500 mb-1">Cant.</label>
               <input
                 type="number"
                 min="1"
                 value={newPart.qty}
                 onChange={(e) => setNewPart({ ...newPart, qty: e.target.value })}
-                className="w-full px-2 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-white text-center"
+                className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900 text-center"
               />
             </div>
             <div className="col-span-2">
               <button
                 type="submit"
-                className="w-full py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center justify-center gap-1"
+                className="w-full py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center justify-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Sumar
@@ -363,22 +368,22 @@ export default function CutOptimizer2D() {
             {parts.map((p, idx) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs"
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"
               >
                 <div className="flex items-center gap-2.5">
                   <span
                     className="w-3 h-3 rounded-sm shrink-0"
                     style={{ backgroundColor: PART_COLORS[idx % PART_COLORS.length] }}
                   />
-                  <span className="font-semibold text-white">{p.label}</span>
+                  <span className="font-semibold text-slate-900">{p.label}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-mono text-zinc-400">
-                    {p.w} × {p.h} mm · <strong className="text-white">{p.qty} unid.</strong>
+                  <span className="font-mono text-slate-600">
+                    {p.w} × {p.h} mm · <strong className="text-slate-900">{p.qty} unid.</strong>
                   </span>
                   <button
                     onClick={() => setParts((prev) => prev.filter((x) => x.id !== p.id))}
-                    className="text-zinc-500 hover:text-red-400"
+                    className="text-slate-400 hover:text-red-600"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -390,7 +395,7 @@ export default function CutOptimizer2D() {
       </div>
 
       {result.unplaced.length > 0 && (
-        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-xs text-red-300">
+        <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-xs text-red-700">
           Atención: {result.unplaced.length} pieza(s) superan las dimensiones máximas de la plancha (
           {sheetW} × {sheetH} mm).
         </div>
@@ -404,19 +409,19 @@ export default function CutOptimizer2D() {
           return (
             <div
               key={sheet.id}
-              className="print-sheet print-avoid-break p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-3"
+              className="print-sheet print-avoid-break p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3"
             >
               <div className="flex items-center justify-between text-xs">
-                <span className="font-heading font-bold text-white text-sm">
+                <span className="font-heading font-bold text-slate-900 text-sm">
                   Plancha #{sheet.id} — {sheetW} × {sheetH} mm
                 </span>
-                <span className="font-mono text-zinc-400">
+                <span className="font-mono text-slate-500">
                   {sheet.placed.length} piezas · Aprovechamiento:{' '}
-                  <strong className="text-emerald-400">{pct}%</strong>
+                  <strong className="text-emerald-700">{pct}%</strong>
                 </span>
               </div>
 
-              <div className="w-full overflow-x-auto bg-zinc-950 rounded-xl p-3 border border-zinc-800">
+              <div className="w-full overflow-x-auto bg-slate-50 rounded-xl p-3 border border-slate-200">
                 <svg
                   viewBox={`0 0 ${sheetW} ${sheetH}`}
                   className="w-full h-auto max-h-[380px]"
@@ -427,14 +432,19 @@ export default function CutOptimizer2D() {
                     y={0}
                     width={sheetW}
                     height={sheetH}
-                    fill="#18181b"
-                    stroke="#52525b"
+                    fill="#f8fafc"
+                    stroke="#94a3b8"
                     strokeWidth={Math.max(4, sheetW * 0.002)}
                   />
                   <defs>
                     {sheet.placed.map((p) => (
                       <clipPath key={`clip-${p.uid}`} id={`clip-${sheet.id}-${p.uid}`}>
-                        <rect x={p.x + 6} y={p.y + 6} width={Math.max(0, p.w - 12)} height={Math.max(0, p.h - 12)} />
+                        <rect
+                          x={p.x + 6}
+                          y={p.y + 6}
+                          width={Math.max(0, p.w - 12)}
+                          height={Math.max(0, p.h - 12)}
+                        />
                       </clipPath>
                     ))}
                   </defs>
@@ -451,7 +461,10 @@ export default function CutOptimizer2D() {
                     );
                     const dimSize = Math.min(
                       48,
-                      Math.max(14, Math.min((textAxis * 0.82) / (dimChars * 0.62), crossAxis * 0.19, titleSize * 0.82))
+                      Math.max(
+                        14,
+                        Math.min((textAxis * 0.82) / (dimChars * 0.62), crossAxis * 0.19, titleSize * 0.82)
+                      )
                     );
                     const cx = p.x + p.w / 2;
                     const cy = p.y + p.h / 2;
@@ -465,7 +478,7 @@ export default function CutOptimizer2D() {
                           width={p.w}
                           height={p.h}
                           fill={p.color}
-                          fillOpacity={0.85}
+                          fillOpacity={0.9}
                           stroke="#ffffff"
                           strokeWidth={Math.max(3, sheetW * 0.0015)}
                         />
@@ -488,7 +501,7 @@ export default function CutOptimizer2D() {
                                 y={cy + titleSize * 0.72}
                                 textAnchor="middle"
                                 dominantBaseline="middle"
-                                fill="#f4f4f5"
+                                fill="#f8fafc"
                                 fontSize={dimSize}
                                 fontFamily="monospace"
                               >

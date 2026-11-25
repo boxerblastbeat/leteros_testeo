@@ -7,21 +7,21 @@ export default function RequestsInbox({ onConvertRequest }) {
   const { quoteRequests, updateRequestStatus, showToast } = useErp();
 
   const statusBadge = {
-    nueva: 'bg-red-500/15 text-red-400 border-red-500/30',
-    en_revision: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    convertida: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    descartada: 'bg-zinc-800 text-zinc-400 border-zinc-700',
+    nueva: 'bg-red-50 text-red-700 border-red-200',
+    en_revision: 'bg-amber-50 text-amber-800 border-amber-200',
+    convertida: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    descartada: 'bg-slate-100 text-slate-600 border-slate-200',
   };
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2">
-            <Inbox className="w-5 h-5 text-red-500" />
+          <h2 className="font-heading text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Inbox className="w-5 h-5 text-red-600" />
             Bandeja de Solicitudes Web
           </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Requerimientos enviados por clientes desde la web pública. Conviértelos en cotización
             oficial en 1 clic.
           </p>
@@ -29,7 +29,7 @@ export default function RequestsInbox({ onConvertRequest }) {
       </div>
 
       {quoteRequests.length === 0 ? (
-        <div className="p-12 rounded-2xl bg-zinc-900/40 border border-zinc-800 text-center text-zinc-400 text-sm">
+        <div className="p-12 rounded-2xl bg-white border border-slate-200 text-center text-slate-500 text-sm shadow-xs">
           No hay solicitudes web pendientes en este momento.
         </div>
       ) : (
@@ -37,7 +37,7 @@ export default function RequestsInbox({ onConvertRequest }) {
           {quoteRequests.map((req) => (
             <div
               key={req.id}
-              className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 hover:border-zinc-700 transition flex flex-col lg:flex-row lg:items-center justify-between gap-5"
+              className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-xs transition flex flex-col lg:flex-row lg:items-center justify-between gap-5"
             >
               <div className="space-y-2.5 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -48,56 +48,59 @@ export default function RequestsInbox({ onConvertRequest }) {
                   >
                     {req.status}
                   </span>
-                  <span className="text-xs text-zinc-400 flex items-center gap-1">
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5" />
                     {formatDateCL(req.created_at)}
                   </span>
-                  <span className="text-xs font-semibold text-red-400">{req.service_type}</span>
+                  <span className="text-xs font-semibold text-red-600">{req.service_type}</span>
                 </div>
 
                 <div>
-                  <h3 className="text-base font-bold text-white">
+                  <h3 className="text-base font-bold text-slate-900">
                     {req.client_name}{' '}
                     {req.client_rut && (
-                      <span className="text-xs font-mono text-zinc-400 font-normal">
+                      <span className="text-xs font-mono text-slate-500 font-normal">
                         ({req.client_rut})
                       </span>
                     )}
                   </h3>
-                  <p className="text-sm text-zinc-300 mt-0.5">
-                    Material: <strong className="text-white">{req.material_name}</strong> · Cantidad:{' '}
-                    <strong>{req.quantity}</strong>
+                  <p className="text-sm text-slate-700 mt-0.5">
+                    Material: <strong className="text-slate-900">{req.material_name}</strong> ·
+                    Cantidad: <strong>{req.quantity}</strong>
                     {req.width && req.height && (
-                      <span className="ml-2 font-mono text-xs text-zinc-400 inline-flex items-center gap-1">
-                        <Ruler className="w-3.5 h-3.5 text-red-500" />
+                      <span className="ml-2 font-mono text-xs text-slate-500 inline-flex items-center gap-1">
+                        <Ruler className="w-3.5 h-3.5 text-red-600" />
                         {req.width}m × {req.height}m ({(req.width * req.height).toFixed(2)} m²)
                       </span>
                     )}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-zinc-400">
+                <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-slate-600">
                   <span className="flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 text-zinc-500" />
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
                     {req.client_phone}
                   </span>
                   {req.client_email && (
                     <span className="flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5 text-zinc-500" />
+                      <Mail className="w-3.5 h-3.5 text-slate-400" />
                       {req.client_email}
                     </span>
                   )}
                   <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-zinc-500" />
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     {DELIVERY_LABELS[req.delivery_method] || req.delivery_method}
                     {req.delivery_address ? ` — ${req.delivery_address}` : ''}
                   </span>
                 </div>
 
-                <div className="text-xs text-zinc-400">
-                  Diseño: <span className="text-zinc-300">{DESIGN_LABELS[req.has_design] || req.has_design}</span>
+                <div className="text-xs text-slate-500">
+                  Diseño:{' '}
+                  <span className="text-slate-700 font-medium">
+                    {DESIGN_LABELS[req.has_design] || req.has_design}
+                  </span>
                   {req.comments && (
-                    <p className="mt-1.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-zinc-300">
+                    <p className="mt-1.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700">
                       “{req.comments}”
                     </p>
                   )}
@@ -108,7 +111,7 @@ export default function RequestsInbox({ onConvertRequest }) {
                 {req.status !== 'convertida' && (
                   <button
                     onClick={() => onConvertRequest(req)}
-                    className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/20"
+                    className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-red-600/20"
                   >
                     <ArrowRightCircle className="w-4 h-4" />
                     Convertir en Cotización
@@ -120,7 +123,7 @@ export default function RequestsInbox({ onConvertRequest }) {
                       await updateRequestStatus(req.id, 'descartada');
                       showToast('Solicitud archivada', 'info');
                     }}
-                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition flex items-center justify-center gap-1.5"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     Descartar

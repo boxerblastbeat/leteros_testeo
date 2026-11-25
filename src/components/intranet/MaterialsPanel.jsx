@@ -43,11 +43,11 @@ export default function MaterialsPanel() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="font-heading text-xl font-bold text-white flex items-center gap-2">
-            <Package className="w-5 h-5 text-red-500" />
+          <h2 className="font-heading text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Package className="w-5 h-5 text-red-600" />
             Tarifario de Materiales e Insumos ({materials.length})
           </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Actualiza costos y precios de venta en CLP; se reflejan al instante en el Cotizador y la
             Web Pública.
           </p>
@@ -66,7 +66,7 @@ export default function MaterialsPanel() {
             });
             setModalOpen(true);
           }}
-          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5"
+          className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
         >
           <Plus className="w-4 h-4" />
           Nuevo Material
@@ -81,8 +81,8 @@ export default function MaterialsPanel() {
               onClick={() => setCategory(cat)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
                 category === cat
-                  ? 'bg-red-600 border-red-500 text-white'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'
+                  ? 'bg-red-600 border-red-600 text-white shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
               {cat}
@@ -90,20 +90,20 @@ export default function MaterialsPanel() {
           ))}
         </div>
         <div className="relative md:w-64">
-          <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar material..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white focus:outline-none focus:border-red-500"
+            className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600"
           />
         </div>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 overflow-x-auto">
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-xs">
         <table className="w-full text-xs">
-          <thead className="bg-zinc-900 text-zinc-400 uppercase text-[10px]">
+          <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] border-b border-slate-200">
             <tr>
               <th className="py-3 px-4 text-left">Material</th>
               <th className="py-3 px-4 text-left">Categoría</th>
@@ -114,19 +114,19 @@ export default function MaterialsPanel() {
               <th className="py-3 px-4 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/80">
+          <tbody className="divide-y divide-slate-100">
             {filtered.map((m) => (
-              <tr key={m.id} className="bg-zinc-950/60 hover:bg-zinc-900/50 transition">
-                <td className="py-3 px-4 font-semibold text-white">{m.name}</td>
-                <td className="py-3 px-4 text-zinc-400">{m.category}</td>
-                <td className="py-3 px-4 text-center font-mono text-zinc-400">{m.format}</td>
-                <td className="py-3 px-4 text-right font-mono text-zinc-400">
+              <tr key={m.id} className="hover:bg-slate-50 transition">
+                <td className="py-3 px-4 font-semibold text-slate-900">{m.name}</td>
+                <td className="py-3 px-4 text-slate-600">{m.category}</td>
+                <td className="py-3 px-4 text-center font-mono text-slate-500">{m.format}</td>
+                <td className="py-3 px-4 text-right font-mono text-slate-500">
                   {formatCLP(m.cost)}
                 </td>
-                <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400">
+                <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
                   {formatCLP(m.pricePerSqm)}
                 </td>
-                <td className="py-3 px-4 text-center text-zinc-300">{m.unit}</td>
+                <td className="py-3 px-4 text-center text-slate-700">{m.unit}</td>
                 <td className="py-3 px-4 text-right">
                   <div className="inline-flex gap-1">
                     <button
@@ -134,7 +134,7 @@ export default function MaterialsPanel() {
                         setForm(m);
                         setModalOpen(true);
                       }}
-                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200"
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
@@ -144,7 +144,7 @@ export default function MaterialsPanel() {
                           deleteMaterial(m.id);
                         }
                       }}
-                      className="p-1.5 rounded-lg bg-zinc-900 hover:bg-red-500/20 text-zinc-500 hover:text-red-400"
+                      className="p-1.5 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -157,16 +157,20 @@ export default function MaterialsPanel() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleSave}
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-md p-6 space-y-4"
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
             <div className="flex justify-between items-center">
-              <h3 className="font-heading font-bold text-white text-lg">
+              <h3 className="font-heading font-bold text-slate-900 text-lg">
                 {form.id ? 'Editar Material' : 'Nuevo Material'}
               </h3>
-              <button type="button" onClick={() => setModalOpen(false)} className="text-zinc-400">
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -177,13 +181,13 @@ export default function MaterialsPanel() {
                 placeholder="Nombre del material *"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
               />
               <div className="grid grid-cols-2 gap-3">
                 <select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white"
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                 >
                   <option value="Acrílicos y Rígidos">Acrílicos y Rígidos</option>
                   <option value="Telas PVC & Banners">Telas PVC & Banners</option>
@@ -195,37 +199,37 @@ export default function MaterialsPanel() {
                   placeholder="Formato (ej: 1.22x2.44)"
                   value={form.format}
                   onChange={(e) => setForm({ ...form, format: e.target.value })}
-                  className="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white"
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                 />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] text-zinc-400 mb-1">Costo (CLP)</label>
+                  <label className="block text-[11px] text-slate-500 mb-1">Costo (CLP)</label>
                   <input
                     type="number"
                     min="0"
                     value={form.cost}
                     onChange={(e) => setForm({ ...form, cost: Number(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-mono text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm font-mono text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-zinc-400 mb-1">Precio Venta</label>
+                  <label className="block text-[11px] text-slate-500 mb-1">Precio Venta</label>
                   <input
                     type="number"
                     min="0"
                     required
                     value={form.pricePerSqm}
                     onChange={(e) => setForm({ ...form, pricePerSqm: Number(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm font-mono text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm font-mono text-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-zinc-400 mb-1">Unidad</label>
+                  <label className="block text-[11px] text-slate-500 mb-1">Unidad</label>
                   <select
                     value={form.unit}
                     onChange={(e) => setForm({ ...form, unit: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-sm text-white"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                   >
                     <option value="m²">m²</option>
                     <option value="unidad">unidad</option>
@@ -238,13 +242,13 @@ export default function MaterialsPanel() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-zinc-900 text-zinc-300 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-red-600 text-white text-xs font-bold"
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold"
               >
                 Guardar Material
               </button>

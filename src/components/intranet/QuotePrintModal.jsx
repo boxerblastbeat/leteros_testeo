@@ -22,35 +22,35 @@ export default function QuotePrintModal({ quote, onClose }) {
     : `https://wa.me/?text=${whatsappText}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm overflow-y-auto p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-3 sm:p-6">
       <div className="max-w-4xl mx-auto">
         {/* Action Bar (hidden on print) */}
-        <div className="no-print flex flex-wrap items-center justify-between gap-3 mb-4 bg-zinc-950 border border-zinc-800 rounded-2xl p-3.5">
-          <div className="text-sm font-bold text-white flex items-center gap-2">
-            <span className="font-mono text-red-400">{quote.correlative}</span>
-            <span className="text-zinc-500">·</span>
-            <span className="text-zinc-300">Vista Previa Documento Carta</span>
+        <div className="no-print flex flex-wrap items-center justify-between gap-3 mb-4 bg-white border border-slate-200 rounded-2xl p-3.5 shadow-lg">
+          <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span className="font-mono text-red-600">{quote.correlative}</span>
+            <span className="text-slate-300">·</span>
+            <span className="text-slate-600">Vista Previa Documento Carta</span>
           </div>
           <div className="flex items-center gap-2">
             <a
               href={whatsappUrl}
               target="_blank"
               rel="noreferrer"
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5"
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5"
             >
               <MessageCircle className="w-4 h-4" />
               Enviar WhatsApp
             </a>
             <button
               onClick={() => window.print()}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5"
             >
               <Printer className="w-4 h-4" />
               Imprimir / Guardar PDF
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white transition"
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition"
             >
               <X className="w-4 h-4" />
             </button>
