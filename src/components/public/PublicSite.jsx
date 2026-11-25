@@ -349,16 +349,6 @@ export default function PublicSite({ onOpenIntranet }) {
               </a>
 
               <a
-                href={COMPANY_INFO.social.whatsapp}
-                target="_blank"
-                rel="noreferrer"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition text-sm flex items-center gap-2"
-              >
-                <WhatsAppIcon className="w-4 h-4" />
-                <span>WhatsApp Taller</span>
-              </a>
-
-              <a
                 href={COMPANY_INFO.mapsUrl}
                 target="_blank"
                 rel="noreferrer"
@@ -1155,18 +1145,6 @@ export default function PublicSite({ onOpenIntranet }) {
           </div>
         </div>
       </footer>
-
-      {/* BOTÓN FLOTANTE DE WHATSAPP */}
-      <a
-        href={COMPANY_INFO.social.whatsapp}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Contactar por WhatsApp"
-        className="no-print fixed bottom-5 right-5 z-40 flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-2xl shadow-emerald-600/40 border border-emerald-400/40 transition hover:scale-105"
-      >
-        <WhatsAppIcon className="w-5 h-5" />
-        <span className="hidden sm:inline">WhatsApp Taller</span>
-      </a>
 
       {/* MODAL DETALLE PORTAFOLIO */}
       {selectedProject && (
