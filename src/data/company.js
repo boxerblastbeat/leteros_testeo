@@ -80,7 +80,7 @@ export const QUOTE_STATUSES = [
 
 export const OT_STATUSES = [
   { id: 'pendiente', label: 'Pendiente', color: 'bg-slate-100 text-slate-700 border-slate-200' },
-  { id: 'diseno', label: 'Diseño / Preprensa', color: 'bg-sky-50 text-sky-700 border-sky-200' },
+  { id: 'diseno', label: 'Diseño', color: 'bg-sky-50 text-sky-700 border-sky-200' },
   { id: 'produccion', label: 'En Producción', color: 'bg-amber-50 text-amber-800 border-amber-200' },
   { id: 'terminado', label: 'Terminado Taller', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   { id: 'despachado', label: 'Despachado / Entregado', color: 'bg-orange-50 text-orange-700 border-orange-200' },
