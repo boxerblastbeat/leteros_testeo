@@ -14,15 +14,13 @@ import {
   RotateCcw,
   Truck,
   BadgeDollarSign,
-  X,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { QUOTE_STATUSES, OT_PRIORITIES, OT_STATUSES } from '../../data/company';
+import { QUOTE_STATUSES } from '../../data/company';
 import { formatCLP, formatDateCL, addDaysISO, todayISO } from '../../lib/formatters';
-import ModalBackdrop from '../common/ModalBackdrop';
 
-export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, onGoWorkshop }) {
-  const { quotes, workOrders, changeQuoteStatus, saveWorkOrder, saveCalendarEvent, deleteQuote, showToast } =
+export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote }) {
+  const { quotes, changeQuoteStatus, saveWorkOrder, saveCalendarEvent, deleteQuote, showToast } =
     useErp();
 
   const [statusFilter, setStatusFilter] = useState('activas');
@@ -65,17 +63,6 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
       totalPipeline,
       totalAprobado,
     };
-  }, [quotes]);
-
-  const quoteTabCounts = useMemo(() => {
-    const counts = {
-      activas: quotes.filter((q) => !['pagada', 'rechazada'].includes(q.status)).length,
-      todas: quotes.length,
-    };
-    QUOTE_STATUSES.forEach((s) => {
-      counts[s.id] = quotes.filter((q) => q.status === s.id).length;
-    });
-    return counts;
   }, [quotes]);
 
   const filteredQuotes = useMemo(() => {
@@ -176,19 +163,6 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
       },
       `Facturada N° ${invoiceForm.invoice_number.trim()}`
     );
-    const linkedOt = workOrders.find(
-      (ot) =>
-        ot.quote_id === invoiceModal.id ||
-        (ot.quote_correlative && ot.quote_correlative === invoiceModal.correlative)
-    );
-    if (linkedOt) {
-      await saveWorkOrder({
-        ...linkedOt,
-        status: 'facturada',
-        invoice_number: invoiceForm.invoice_number.trim(),
-        invoice_date: invoiceForm.invoice_date,
-      });
-    }
     setInvoiceModal(null);
     showToast(`${invoiceModal.correlative} marcada como Facturada`);
   };
@@ -263,7 +237,6 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
         <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap scrollbar-none">
           {[
             { id: 'activas', label: 'Activas' },
-            { id: 'borrador', label: 'Borrador' },
             { id: 'emitida', label: 'Emitidas' },
             { id: 'aplazada', label: 'Aplazadas' },
             { id: 'en_taller', label: 'En Taller' },
@@ -272,39 +245,19 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
             { id: 'pagada', label: 'Pagadas' },
             { id: 'rechazada', label: 'Rechazadas' },
             { id: 'todas', label: 'Todas' },
-          ].map((tab) => {
-            const count = quoteTabCounts[tab.id] || 0;
-            const isActive = statusFilter === tab.id;
-            const isPendingStage = !['todas', 'pagada', 'rechazada'].includes(tab.id) && count > 0;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-red-600 border-red-600 text-white shadow-xs'
-                    : isPendingStage
-                      ? 'bg-amber-50/70 border-amber-300 text-slate-900 hover:bg-amber-100/70'
-                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <span>{tab.label}</span>
-                {count > 0 && (
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
-                      isActive
-                        ? 'bg-white/25 text-white'
-                        : isPendingStage
-                          ? 'bg-red-600 text-white'
-                          : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border whitespace-nowrap shrink-0 ${
+                statusFilter === tab.id
+                  ? 'bg-red-600 border-red-600 text-white shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className="flex items-center gap-2">
@@ -337,21 +290,10 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
         ) : (
           filteredQuotes.map((q) => {
             const meta = getStatusMeta(q.status);
-            const linkedOt = workOrders.find(
-              (ot) => ot.quote_id === q.id || (ot.quote_correlative && ot.quote_correlative === q.correlative)
-            );
-            const linkedOtMeta = linkedOt
-              ? OT_STATUSES.find((s) => s.id === linkedOt.status) || OT_STATUSES[0]
-              : null;
-            const linkedOtPrio = linkedOt
-              ? OT_PRIORITIES.find((p) => p.id === linkedOt.priority) || OT_PRIORITIES[0]
-              : null;
             return (
               <div
                 key={q.id}
-                className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 ${
-                  linkedOtPrio ? linkedOtPrio.cardBorder : ''
-                } shadow-xs transition space-y-3`}
+                className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-xs transition space-y-3"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="space-y-1">
@@ -365,32 +307,6 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                         {meta.label}
                       </span>
-                      {linkedOt && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => onGoWorkshop?.()}
-                            title="Ver esta orden en Taller & OTs"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition"
-                          >
-                            <Wrench className="w-3 h-3" />
-                            <span className="font-mono">{linkedOt.ot_number}</span>
-                            <span className="font-normal text-violet-600">· {linkedOtMeta?.label}</span>
-                          </button>
-                          {linkedOtPrio && (
-                            <span
-                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${linkedOtPrio.badge}`}
-                            >
-                              <span
-                                className={`w-1.5 h-1.5 rounded-full ${
-                                  linkedOtPrio.id === 'urgente' ? 'bg-white' : linkedOtPrio.dot
-                                }`}
-                              />
-                              Prioridad {linkedOtPrio.label}
-                            </span>
-                          )}
-                        </>
-                      )}
                       <span className="text-xs text-slate-500">{formatDateCL(q.created_at)}</span>
                       {q.oc_number && (
                         <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
@@ -433,7 +349,7 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                   <div className="flex flex-wrap items-center justify-between lg:justify-end gap-4">
                     <div className="text-left lg:text-right">
                       <div className="text-[10px] uppercase text-slate-400 font-bold">
-                        {Number(q.tax_rate ?? 19) > 0 ? 'Total c/IVA' : 'Total Neto (Sin IVA)'}
+                        Total c/IVA
                       </div>
                       <div className="font-mono text-lg font-extrabold text-slate-900">
                         {formatCLP(q.total)}
@@ -498,9 +414,6 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                               {},
                               'Lista para despacho / instalación'
                             );
-                            if (linkedOt && !['despachado', 'entregado', 'facturada', 'pagada'].includes(linkedOt.status)) {
-                              await saveWorkOrder({ ...linkedOt, status: 'despachado' });
-                            }
                             showToast(`${q.correlative} pasada a Despacho`);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 text-xs font-bold flex items-center gap-1"
@@ -530,9 +443,6 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                         <button
                           onClick={async () => {
                             await changeQuoteStatus(q, 'pagada', {}, 'Pago confirmado');
-                            if (linkedOt && linkedOt.status !== 'pagada') {
-                              await saveWorkOrder({ ...linkedOt, status: 'pagada' });
-                            }
                             showToast(`${q.correlative} marcada como Pagada`);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1"
@@ -582,55 +492,6 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                     </div>
                   </div>
                 </div>
-
-                {/* Seguimiento en vivo del avance en Taller sin perder visibilidad en Cotizaciones */}
-                {linkedOt && (() => {
-                  const otIdx = OT_STATUSES.findIndex((s) => s.id === linkedOt.status);
-                  const stepIdx = otIdx >= 0 ? otIdx : 0;
-                  return (
-                    <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                        <div className="flex flex-wrap items-center gap-2 text-slate-600">
-                          {linkedOtPrio && (
-                            <span
-                              className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md border ${linkedOtPrio.badge}`}
-                            >
-                              {linkedOtPrio.label}
-                            </span>
-                          )}
-                          <span>
-                            Avance en Taller (<strong className="font-mono text-slate-800">{linkedOt.ot_number}</strong>):{' '}
-                            <strong className="text-slate-900">
-                              Paso {stepIdx + 1} de {OT_STATUSES.length} · {linkedOtMeta?.label}
-                            </strong>
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onGoWorkshop?.()}
-                          className="text-[11px] font-bold text-violet-700 hover:text-violet-900 underline underline-offset-2"
-                        >
-                          Gestionar en Taller & OTs →
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-7 gap-1">
-                        {OT_STATUSES.map((step, idx) => (
-                          <div
-                            key={step.id}
-                            title={step.label}
-                            className={`h-1.5 rounded-full transition ${
-                              idx <= stepIdx
-                                ? linkedOt.status === 'pagada'
-                                  ? 'bg-green-600'
-                                  : 'bg-violet-600'
-                                : 'bg-slate-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
               </div>
             );
           })
@@ -639,30 +500,16 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
 
       {/* MODAL ACEPTAR -> OT */}
       {approveModal && (
-        <ModalBackdrop
-          onClose={() => setApproveModal(null)}
-          confirmOnOutsideClick
-          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
-        >
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleConfirmApprove}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 text-emerald-600">
-                <Wrench className="w-5 h-5" />
-                <h3 className="font-heading font-bold text-slate-900 text-lg">
-                  Aceptar {approveModal.correlative} y Crear OT
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setApproveModal(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                aria-label="Cerrar"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="flex items-center gap-2.5 text-emerald-600">
+              <Wrench className="w-5 h-5" />
+              <h3 className="font-heading font-bold text-slate-900 text-lg">
+                Aceptar {approveModal.correlative} y Crear OT
+              </h3>
             </div>
             <p className="text-xs text-slate-500">
               Se generará automáticamente una Orden de Trabajo en Taller y un evento en el
@@ -671,51 +518,41 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-600 font-medium mb-1">
-                  N° Orden de Compra del Cliente (Opcional)
+                  N° Orden de Compra (Opcional)
                 </label>
                 <input
                   type="text"
                   value={approveForm.oc_number}
                   onChange={(e) => setApproveForm({ ...approveForm, oc_number: e.target.value })}
-                  placeholder="Ej: OC-45001234 (solo si el cliente emite OC)"
+                  placeholder="Ej: OC-2026-884"
                   className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-slate-600 font-medium mb-1">
-                  Fecha Entrega / Obra
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={approveForm.deadline}
-                  onChange={(e) => setApproveForm({ ...approveForm, deadline: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-600 font-medium mb-1.5">
-                  Prioridad Taller
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {OT_PRIORITIES.map((p) => {
-                    const active = approveForm.priority === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setApproveForm({ ...approveForm, priority: p.id })}
-                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                          active ? p.activeBtn : p.idleBtn
-                        }`}
-                      >
-                        <span
-                          className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-white' : p.dot}`}
-                        />
-                        <span>{p.label}</span>
-                      </button>
-                    );
-                  })}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-600 font-medium mb-1">
+                    Fecha Entrega / Obra
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={approveForm.deadline}
+                    onChange={(e) => setApproveForm({ ...approveForm, deadline: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-600 font-medium mb-1">
+                    Prioridad Taller
+                  </label>
+                  <select
+                    value={approveForm.priority}
+                    onChange={(e) => setApproveForm({ ...approveForm, priority: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="urgente">Urgente</option>
+                  </select>
                 </div>
               </div>
               <div>
@@ -747,35 +584,21 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
               </button>
             </div>
           </form>
-        </ModalBackdrop>
+        </div>
       )}
 
       {/* MODAL APLAZAR */}
       {postponeModal && (
-        <ModalBackdrop
-          onClose={() => setPostponeModal(null)}
-          confirmOnOutsideClick
-          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
-        >
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleConfirmPostpone}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 text-amber-600">
-                <Clock className="w-5 h-5" />
-                <h3 className="font-heading font-bold text-slate-900 text-lg">
-                  Aplazar {postponeModal.correlative}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPostponeModal(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                aria-label="Cerrar"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="flex items-center gap-2.5 text-amber-600">
+              <Clock className="w-5 h-5" />
+              <h3 className="font-heading font-bold text-slate-900 text-lg">
+                Aplazar {postponeModal.correlative}
+              </h3>
             </div>
             <div className="space-y-3">
               <div>
@@ -824,35 +647,21 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
               </button>
             </div>
           </form>
-        </ModalBackdrop>
+        </div>
       )}
 
       {/* MODAL FACTURAR */}
       {invoiceModal && (
-        <ModalBackdrop
-          onClose={() => setInvoiceModal(null)}
-          confirmOnOutsideClick
-          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
-        >
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleConfirmInvoice}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 text-cyan-600">
-                <Receipt className="w-5 h-5" />
-                <h3 className="font-heading font-bold text-slate-900 text-lg">
-                  Registrar Factura · {invoiceModal.correlative}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInvoiceModal(null)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                aria-label="Cerrar"
-              >
-                <X className="w-4 h-4" />
-              </button>
+            <div className="flex items-center gap-2.5 text-cyan-600">
+              <Receipt className="w-5 h-5" />
+              <h3 className="font-heading font-bold text-slate-900 text-lg">
+                Registrar Factura · {invoiceModal.correlative}
+              </h3>
             </div>
             <div className="space-y-3">
               <div>
@@ -899,7 +708,7 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
               </button>
             </div>
           </form>
-        </ModalBackdrop>
+        </div>
       )}
     </div>
   );

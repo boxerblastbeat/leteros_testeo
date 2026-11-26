@@ -73,3 +73,88 @@ export const PRODUCTS_CATALOG = DEFAULT_WORKSHOP_MATERIALS.map(m => ({
   description: `Formato: ${m.format} | Precio: $${m.pricePerSqm.toLocaleString('es-CL')} / ${m.unit}`,
   options: []
 }));
+
+// --- COMPOSICIÓN DEL LETRERO (MULTICAPA) Y ACABADOS / SERVICIOS ---
+export const DEFAULT_COMPOSITION_LAYERS = {
+  adhesivo: {
+    active: false,
+    label: 'Adhesivo Vinilo Impreso (1440dpi)',
+    price: 14000,
+    perSqm: true,
+  },
+  laminado: {
+    active: false,
+    label: 'Termolaminado de Protección UV (Mate / Brillo)',
+    price: 8000,
+    perSqm: true,
+  },
+  dobleContacto: {
+    active: false,
+    label: 'Cinta Doble Contacto Espumada de Montaje',
+    price: 3500,
+    perSqm: true,
+  },
+  placaExtra: {
+    active: false,
+    label: 'Segunda Placa / Respaldo Adicional',
+    price: 15000,
+    perSqm: true,
+  },
+};
+
+export const DEFAULT_FINISHES = {
+  termosellado: {
+    active: false,
+    label: 'Termosellado perimetral con ojetillos',
+    price: 2500,
+    perSqm: true,
+  },
+  bolsillo: {
+    active: false,
+    label: 'Bolsillo pasante de caño (PVC o madera)',
+    price: 3500,
+    perSqm: true,
+  },
+  bastidorMadera: {
+    active: false,
+    label: 'Bastidor de madera (pino cepillado)',
+    price: 15000,
+    perSqm: false,
+  },
+  bastidorFierro: {
+    active: false,
+    label: 'Bastidor de fierro estructurado',
+    price: 25000,
+    perSqm: false,
+  },
+  instalacion: {
+    active: false,
+    label: 'Instalación con estructura en terreno',
+    price: 30000,
+    perSqm: false,
+  },
+  espaciadores: {
+    active: false,
+    label: 'Espaciadores metálicos inox',
+    price: 6000,
+    perSqm: false,
+  },
+  iluminacion: {
+    active: false,
+    label: 'Iluminación LED instalada',
+    price: 25000,
+    perSqm: false,
+  },
+};
+
+// Detecta sustratos rígidos (Foam, Fomex/Trovicel, ACM, Acrílico, Lata) que llevan adhesivo por defecto
+export const isRigidSubstrate = (materialOrName) => {
+  if (!materialOrName) return false;
+  if (typeof materialOrName === 'object') {
+    if (materialOrName.category === 'Acrílicos y Rígidos') return true;
+    materialOrName = materialOrName.name || '';
+  }
+  return /foam|fomex|trovicel|pvc espumado|acm|aluminio compuesto|acr[ií]lico|lata/i.test(
+    String(materialOrName)
+  );
+};

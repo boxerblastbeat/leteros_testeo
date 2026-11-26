@@ -324,29 +324,39 @@ export const erpService = {
 
   // --- AUTH ---
   async getSession() {
-    if (!isSupabaseConfigured) return null;
-    const { data } = await supabase.auth.getSession();
-    return data?.session || null;
+    if (isSupabaseConfigured) {
+      const { data } = await supabase.auth.getSession();
+      return data?.session || null;
+    }
+    const localSession = sessionStorage.getItem('olivar_demo_auth');
+    return localSession ? JSON.parse(localSession) : null;
   },
 
-  async signIn(email, password) {
-    if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase no está configurado en este entorno. Define VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.'
-      );
+  async signIn(emailOrUser, password) {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailOrUser,
+        password,
+      });
+      if (error) throw error;
+      return data.session;
     }
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    return data.session;
+    // Demo local login
+    const validPasswords = ['olivar2026', 'admin', '1234'];
+    if (!validPasswords.includes(password.trim())) {
+      throw new Error('Contraseña incorrecta. Verifica tus credenciales.');
+    }
+    const session = { user: { email: emailOrUser || 'admin@letrerosolivar.com', role: 'admin' } };
+    sessionStorage.setItem('olivar_demo_auth', JSON.stringify(session));
+    return session;
   },
 
   async signOut() {
     if (isSupabaseConfigured) {
       await supabase.auth.signOut();
+      return;
     }
+    sessionStorage.removeItem('olivar_demo_auth');
   },
 
   // --- LOAD ALL ---
@@ -408,64 +418,9 @@ export const erpService = {
     return readLocal().workOrders;
   },
 
-  async loadCalendarEvents() {
-    if (isSupabaseConfigured) {
-      const { data } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .order('event_date', { ascending: true })
-        .limit(300);
-      return data || [];
-    }
-    return readLocal().calendarEvents;
-  },
-
-  async loadActivityLogs() {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(400);
-      if (error) return [];
-      return data || [];
-    }
-    return readLocal().activityLogs || [];
-  },
-
-  async createActivityLog(entry) {
-    const clean = {
-      user_id: toNullable(entry.user_id),
-      user_email: entry.user_email || 'sistema',
-      module: entry.module || 'sistema',
-      action: entry.action || 'accion',
-      entity_ref: entry.entity_ref || '',
-      summary: entry.summary || '',
-      details: entry.details || {},
-    };
-    if (isSupabaseConfigured) {
-      try {
-        const { data, error } = await supabase
-          .from('activity_logs')
-          .insert([clean])
-          .select()
-          .single();
-        if (error) return null;
-        return data;
-      } catch {
-        return null;
-      }
-    }
-    const db = readLocal();
-    const created = { ...clean, id: uid(), created_at: new Date().toISOString() };
-    db.activityLogs = [created, ...(db.activityLogs || [])].slice(0, 400);
-    writeLocal(db);
-    return created;
-  },
-
   async loadAllErpData() {
     if (isSupabaseConfigured) {
-      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes, logsRes] =
+      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes] =
         await Promise.all([
           supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(500),
           supabase.from('materials').select('*').order('category', { ascending: true }).limit(300),
@@ -474,7 +429,6 @@ export const erpService = {
           supabase.from('quotes').select('*').order('created_at', { ascending: false }).limit(300),
           supabase.from('work_orders').select('*').order('created_at', { ascending: false }).limit(250),
           supabase.from('calendar_events').select('*').order('event_date', { ascending: true }).limit(300),
-          supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(400),
         ]);
 
       return {
@@ -499,7 +453,6 @@ export const erpService = {
         quotes: quotesRes.data || [],
         workOrders: otRes.data || [],
         calendarEvents: calRes.data || [],
-        activityLogs: logsRes.error ? [] : logsRes.data || [],
       };
     }
 
@@ -512,7 +465,6 @@ export const erpService = {
       quotes: local.quotes,
       workOrders: local.workOrders,
       calendarEvents: local.calendarEvents,
-      activityLogs: local.activityLogs || [],
     };
   },
 
@@ -717,17 +669,6 @@ export const erpService = {
     db.workOrders = [created, ...db.workOrders];
     writeLocal(db);
     return created;
-  },
-
-  async deleteWorkOrder(id) {
-    if (isSupabaseConfigured) {
-      const { error } = await supabase.from('work_orders').delete().eq('id', id);
-      if (error) throw error;
-      return;
-    }
-    const db = readLocal();
-    db.workOrders = db.workOrders.filter((w) => w.id !== id);
-    writeLocal(db);
   },
 
   // --- CALENDAR ---

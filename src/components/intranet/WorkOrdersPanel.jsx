@@ -12,14 +12,10 @@ import {
   ArrowLeft,
   Receipt,
   BadgeDollarSign,
-  Scissors,
-  Trash2,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
+import { OT_STATUSES, COMPANY_INFO } from '../../data/company';
 import { formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
-import { computeOtCubicationAndCuts } from '../../lib/cutOptimizer';
-import ModalBackdrop from '../common/ModalBackdrop';
 
 const OT_TO_QUOTE_STATUS = {
   pendiente: 'en_taller',
@@ -32,8 +28,8 @@ const OT_TO_QUOTE_STATUS = {
   pagada: 'pagada',
 };
 
-export default function WorkOrdersPanel({ onOpenInOptimizer }) {
-  const { workOrders, quotes, saveWorkOrder, deleteWorkOrder, changeQuoteStatus, showToast } = useErp();
+export default function WorkOrdersPanel() {
+  const { workOrders, quotes, saveWorkOrder, changeQuoteStatus, showToast } = useErp();
 
   const [filter, setFilter] = useState('activas');
   const [printOt, setPrintOt] = useState(null);
@@ -57,26 +53,12 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
     notes: '',
   });
 
-  const otTabCounts = useMemo(() => {
-    const counts = {
-      activas: workOrders.filter((ot) => ot.status !== 'pagada').length,
-      todas: workOrders.length,
-    };
-    OT_STATUSES.forEach((s) => {
-      counts[s.id] = workOrders.filter((ot) => ot.status === s.id).length;
-    });
-    return counts;
-  }, [workOrders]);
-
   const filtered = useMemo(() => {
-    const rankOf = (prio) => OT_PRIORITIES.find((p) => p.id === prio)?.rank ?? 3;
-    return workOrders
-      .filter((ot) => {
-        if (filter === 'activas') return ot.status !== 'pagada';
-        if (filter === 'todas') return true;
-        return ot.status === filter;
-      })
-      .sort((a, b) => rankOf(a.priority) - rankOf(b.priority));
+    return workOrders.filter((ot) => {
+      if (filter === 'activas') return ot.status !== 'pagada';
+      if (filter === 'todas') return true;
+      return ot.status === filter;
+    });
   }, [workOrders, filter]);
 
   const syncLinkedQuote = async (ot, targetOtStatus, extraQuoteFields = {}, note = '') => {
@@ -222,39 +204,19 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
           { id: 'activas', label: 'Activas (Sin Pagar)' },
           ...OT_STATUSES,
           { id: 'todas', label: 'Todas' },
-        ].map((tab) => {
-          const count = otTabCounts[tab.id] || 0;
-          const isActive = filter === tab.id;
-          const isPendingStage = !['todas', 'pagada'].includes(tab.id) && count > 0;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 ${
-                isActive
-                  ? 'bg-red-600 border-red-600 text-white shadow-xs'
-                  : isPendingStage
-                    ? 'bg-amber-50/70 border-amber-300 text-slate-900 hover:bg-amber-100/70'
-                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <span>{tab.label}</span>
-              {count > 0 && (
-                <span
-                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
-                    isActive
-                      ? 'bg-white/25 text-white'
-                      : isPendingStage
-                        ? 'bg-red-600 text-white'
-                        : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setFilter(tab.id)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap shrink-0 ${
+              filter === tab.id
+                ? 'bg-red-600 border-red-600 text-white shadow-xs'
+                : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {filtered.length === 0 ? (
@@ -269,13 +231,11 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
             const meta = OT_STATUSES[currentIdx];
             const prevMeta = currentIdx > 0 ? OT_STATUSES[currentIdx - 1] : null;
             const nextMeta = currentIdx < OT_STATUSES.length - 1 ? OT_STATUSES[currentIdx + 1] : null;
-            const prioMeta =
-              OT_PRIORITIES.find((p) => p.id === ot.priority) || OT_PRIORITIES[0];
 
             return (
               <div
                 key={ot.id}
-                className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 ${prioMeta.cardBorder} shadow-xs flex flex-col justify-between gap-4`}
+                className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-4"
               >
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -293,14 +253,12 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                           FAC: {ot.invoice_number}
                         </span>
                       )}
-                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 ${prioMeta.badge}`}>
-                        {ot.priority === 'urgente' ? (
+                      {ot.priority === 'urgente' && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
-                        ) : (
-                          <span className={`w-1.5 h-1.5 rounded-full ${prioMeta.dot}`} />
-                        )}
-                        Prioridad {prioMeta.label}
-                      </span>
+                          Urgente
+                        </span>
+                      )}
                     </div>
                     <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${meta.color}`}>
                       {meta.label}
@@ -309,7 +267,7 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
 
                   {/* Barra visual de avance paso a paso */}
                   <div className="space-y-1">
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className="grid grid-cols-8 gap-1">
                       {OT_STATUSES.map((step, sIdx) => (
                         <div
                           key={step.id}
@@ -346,86 +304,29 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
                     {(ot.items || []).map((item, i) => (
-                      <div key={item.id || i} className="text-xs flex justify-between gap-2">
-                        <span className="text-slate-800 font-medium break-words">
-                          {item.quantity}× {item.name}
-                        </span>
-                        {item.width && item.height && (
-                          <span className="font-mono text-slate-500 shrink-0">
-                            {item.width}m × {item.height}m
+                      <div key={item.id || i} className="text-xs space-y-0.5">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-slate-800 font-semibold break-words">
+                            {item.quantity}× {item.name}
                           </span>
+                          {item.width && item.height && (
+                            <span className="font-mono text-slate-500 shrink-0">
+                              {item.width}m × {item.height}m
+                            </span>
+                          )}
+                        </div>
+                        {item.detail && (
+                          <div className="text-[11px] text-slate-500 italic break-words leading-snug">
+                            {item.detail}
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
 
                   {ot.notes && <p className="text-xs text-slate-500 italic break-words">“{ot.notes}”</p>}
-
-                  {/* Glosa automática de cortes optimizados */}
-                  {(() => {
-                    const cub = computeOtCubicationAndCuts(ot.items);
-                    if (!cub.hasOptimization) return null;
-                    return (
-                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px]">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide text-[10px]">
-                            <Scissors className="w-3.5 h-3.5 text-red-600" />
-                            Glosa de Cortes Optimizados ({cub.totalAreaSqm.toFixed(2)} m²)
-                          </span>
-                          {onOpenInOptimizer && cub.rigidResults.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const first = cub.rigidResults[0];
-                                onOpenInOptimizer({
-                                  sheetW: first.sheetW,
-                                  sheetH: first.sheetH,
-                                  parts: first.parts,
-                                });
-                              }}
-                              className="text-[10px] font-bold text-red-600 hover:text-red-700 underline underline-offset-2"
-                            >
-                              Ver en Cortes 2D
-                            </button>
-                          )}
-                        </div>
-                        {cub.rigidResults.map((r, idx) => (
-                          <div key={idx} className="text-slate-700 leading-snug">
-                            • <strong>{r.sheetCount} {r.sheetCount === 1 ? 'plancha' : 'planchas'}</strong>{' '}
-                            de <span className="font-semibold">{r.label}</span> ({r.sheetW}×{r.sheetH} mm) ·{' '}
-                            <span className="text-emerald-700 font-semibold">{r.efficiency.toFixed(1)}% aprov.</span>
-                            {r.patterns.length > 0 && (
-                              <div className="text-[10px] text-slate-500 pl-3 mt-0.5">
-                                {r.patterns.map((pat, pIdx) => (
-                                  <div key={pIdx}>
-                                    {pat.sheetIds.length > 1
-                                      ? `Planchas #${pat.sheetIds[0]}–#${pat.sheetIds[pat.sheetIds.length - 1]} (×${pat.sheetIds.length}): `
-                                      : `Plancha #${pat.sheetIds[0]}: `}
-                                    {pat.summaryItems
-                                      .map((si) => `${si.qty}× (${si.dims} mm)`)
-                                      .join(', ')}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {cub.rollResults.map((roll, idx) => (
-                          <div key={idx} className="text-slate-700 leading-snug">
-                            • <strong>{roll.linearMeters.toFixed(2)} ml</strong> de{' '}
-                            <span className="font-semibold">{roll.label}</span> (rollo {roll.rollWidthM}m ·{' '}
-                            {roll.areaSqm.toFixed(2)} m²)
-                            <span className="text-slate-500">
-                              {' '}
-                              — {roll.cuts.map((c) => `${c.qty}× ${c.wM}×${c.hM}m (${c.orientNote})`).join('; ')}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
@@ -438,7 +339,7 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                       <span>Ficha</span>
                     </button>
 
-                    {prevMeta && ot.status !== 'pagada' && (
+                    {prevMeta && (
                       <button
                         onClick={() => revertStatus(ot)}
                         title={`Devolver a ${prevMeta.label}`}
@@ -448,19 +349,6 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                         <span>Devolver</span>
                       </button>
                     )}
-
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`¿Eliminar definitivamente la orden ${ot.ot_number}?`)) {
-                          deleteWorkOrder(ot.id);
-                        }
-                      }}
-                      title="Eliminar OT"
-                      aria-label={`Eliminar ${ot.ot_number}`}
-                      className="p-2 sm:p-1.5 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-400 hover:text-red-600 transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
                   </div>
 
                   {nextMeta ? (
@@ -500,7 +388,7 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
 
       {/* MODAL FACTURAR OT */}
       {invoiceOt && (
-        <ModalBackdrop onClose={() => setInvoiceOt(null)} confirmOnOutsideClick>
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <form
             onSubmit={handleConfirmInvoiceOt}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -569,11 +457,11 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
               </button>
             </div>
           </form>
-        </ModalBackdrop>
+        </div>
       )}
 
       {showNewModal && (
-        <ModalBackdrop onClose={() => setShowNewModal(false)} confirmOnOutsideClick>
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <form
             onSubmit={handleCreateManualOt}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -634,9 +522,8 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                 onChange={(e) => setNewOt({ ...newOt, priority: e.target.value })}
                 className="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
               >
-                <option value="normal">Prioridad Normal (Verde)</option>
-                <option value="alta">Prioridad Alta (Ámbar)</option>
-                <option value="urgente">Prioridad Urgente (Rojo)</option>
+                <option value="normal">Prioridad Normal</option>
+                <option value="urgente">Prioridad Urgente</option>
               </select>
               <textarea
                 rows={2}
@@ -662,15 +549,12 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
               </button>
             </div>
           </form>
-        </ModalBackdrop>
+        </div>
       )}
 
       {printOt && (
-        <ModalBackdrop
-          onClose={() => setPrintOt(null)}
-          className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4"
-        >
-          <div className="print-modal-container max-w-3xl mx-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4">
+          <div className="max-w-3xl mx-auto">
             <div className="no-print flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 shadow-lg">
               <span className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
                 Ficha de Producción · {printOt.ot_number}
@@ -725,7 +609,7 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                   <span className="text-zinc-500 block">Entrega / Instalación:</span>
                   <strong>{formatDateCL(printOt.deadline)}</strong>
                   <div>{DELIVERY_LABELS[printOt.delivery_method] || printOt.delivery_method}</div>
-                  {printOt.delivery_method !== 'retiro' && printOt.delivery_address && <div className="break-words">{printOt.delivery_address}</div>}
+                  {printOt.delivery_address && <div className="break-words">{printOt.delivery_address}</div>}
                 </div>
               </div>
 
@@ -757,123 +641,6 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                 </table>
               </div>
 
-              {/* CUBICACIÓN Y GLOSA DE CORTES OPTIMIZADOS EN FICHA IMPRIMIBLE */}
-              {(() => {
-                const cub = computeOtCubicationAndCuts(printOt.items);
-                if (!cub.hasOptimization) return null;
-                return (
-                  <div className="space-y-3 border border-zinc-300 rounded-xl p-4 bg-zinc-50 print-avoid-break">
-                    <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
-                      <strong className="text-xs uppercase tracking-wider text-zinc-900">
-                        Cubicación y Glosa de Cortes Optimizados (Sangría 3 mm)
-                      </strong>
-                      <span className="text-[11px] font-mono text-zinc-600">
-                        {cub.totalPieces} piezas · {cub.totalAreaSqm.toFixed(2)} m² totales
-                      </span>
-                    </div>
-
-                    {cub.rigidResults.map((r, rIdx) => (
-                      <div key={rIdx} className="space-y-2.5 bg-white border border-zinc-200 rounded-lg p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                          <strong className="text-zinc-900">
-                            {r.label} — Formato {r.sheetW} × {r.sheetH} mm
-                          </strong>
-                          <span className="font-mono text-zinc-700">
-                            Retirar bodega: <strong>{r.sheetCount} {r.sheetCount === 1 ? 'plancha' : 'planchas'}</strong> ·
-                            Aprovechamiento: <strong className="text-emerald-700">{r.efficiency.toFixed(1)}%</strong>
-                          </span>
-                        </div>
-
-                        <div className="space-y-1 text-[11px] text-zinc-700">
-                          {r.patterns.map((pat, pIdx) => (
-                            <div key={pIdx} className="flex flex-wrap items-center justify-between gap-2 py-1 border-b border-zinc-100 last:border-0">
-                              <span>
-                                <strong>
-                                  {pat.sheetIds.length > 1
-                                    ? `Planchas #${pat.sheetIds[0]} a #${pat.sheetIds[pat.sheetIds.length - 1]} (×${pat.sheetIds.length} idénticas)`
-                                    : `Plancha #${pat.sheetIds[0]}`}
-                                  :
-                                </strong>{' '}
-                                {pat.summaryItems
-                                  .map((si) => `${si.qty} cortes de ${si.dims} mm (${si.label})`)
-                                  .join(' + ')}
-                              </span>
-                              <span className="font-mono text-[10px] text-zinc-500">
-                                {pat.efficiency.toFixed(1)}%
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Mini-planos SVG de cada patrón único */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-3 pt-1">
-                          {r.patterns.slice(0, 4).map((pat, pIdx) => (
-                            <div key={pIdx} className="border border-zinc-200 rounded-lg p-2 bg-zinc-50">
-                              <div className="text-[10px] font-mono text-zinc-600 mb-1 flex justify-between">
-                                <span>
-                                  {pat.sheetIds.length > 1
-                                    ? `Patrón ×${pat.sheetIds.length} planchas`
-                                    : `Plancha #${pat.sheetIds[0]}`}
-                                </span>
-                                <span>{pat.efficiency.toFixed(1)}%</span>
-                              </div>
-                              <svg
-                                viewBox={`0 0 ${r.sheetW} ${r.sheetH}`}
-                                className="w-full h-auto max-h-28"
-                                preserveAspectRatio="xMidYMid meet"
-                              >
-                                <rect
-                                  x={0}
-                                  y={0}
-                                  width={r.sheetW}
-                                  height={r.sheetH}
-                                  fill="#ffffff"
-                                  stroke="#52525b"
-                                  strokeWidth={Math.max(8, r.sheetW * 0.004)}
-                                />
-                                {pat.sampleSheet.placed.map((p) => (
-                                  <rect
-                                    key={p.uid}
-                                    x={p.x}
-                                    y={p.y}
-                                    width={p.w}
-                                    height={p.h}
-                                    fill={p.color}
-                                    fillOpacity={0.8}
-                                    stroke="#ffffff"
-                                    strokeWidth={Math.max(6, r.sheetW * 0.003)}
-                                  />
-                                ))}
-                              </svg>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-
-                    {cub.rollResults.map((roll, idx) => (
-                      <div key={idx} className="bg-white border border-zinc-200 rounded-lg p-3 text-xs space-y-1">
-                        <div className="flex flex-wrap justify-between gap-2">
-                          <strong className="text-zinc-900">
-                            Rollo Flexible: {roll.label} (Ancho {roll.rollWidthM}m)
-                          </strong>
-                          <span className="font-mono text-zinc-700">
-                            Consumo estimado: <strong>{roll.linearMeters.toFixed(2)} metros lineales</strong> ({roll.areaSqm.toFixed(2)} m²)
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-zinc-600">
-                          {roll.cuts.map((c, cIdx) => (
-                            <div key={cIdx}>
-                              • {c.qty}× piezas de {c.wM}m × {c.hM}m — {c.orientNote} ({c.linearMeters.toFixed(2)} ml)
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
-
               {printOt.notes && (
                 <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs">
                   <strong className="block uppercase text-[10px] text-amber-800">
@@ -884,7 +651,7 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
               )}
             </div>
           </div>
-        </ModalBackdrop>
+        </div>
       )}
     </div>
   );

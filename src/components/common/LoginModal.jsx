@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, X, ShieldCheck, Database } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import ModalBackdrop from './ModalBackdrop';
 
 export default function LoginModal({ open, onClose, onSuccess }) {
   const { signIn, isCloud } = useErp();
@@ -28,11 +27,7 @@ export default function LoginModal({ open, onClose, onSuccess }) {
   };
 
   return (
-    <ModalBackdrop
-      onClose={onClose}
-      confirmOnOutsideClick
-      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
-    >
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-900">
         <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-3">
@@ -64,23 +59,25 @@ export default function LoginModal({ open, onClose, onSuccess }) {
             <span>
               {isCloud
                 ? 'Conectado a Supabase Auth (PostgreSQL en la nube).'
-                : 'Faltan variables de Supabase (.env) en este entorno.'}
+                : 'Acceso restringido a personal autorizado de Letreros Olivar.'}
             </span>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Correo corporativo
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
-              placeholder="contacto@letrerosolivar.com"
-            />
-          </div>
+          {isCloud && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Correo corporativo
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                placeholder="contacto@letrerosolivar.com"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">Contraseña</label>
@@ -111,6 +108,6 @@ export default function LoginModal({ open, onClose, onSuccess }) {
           </button>
         </form>
       </div>
-    </ModalBackdrop>
+    </div>
   );
 }

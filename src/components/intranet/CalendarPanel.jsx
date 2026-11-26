@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Calendar as CalendarIcon, Plus, CheckCircle2, Trash2, MapPin, Clock, X } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatDateCL, todayISO } from '../../lib/formatters';
-import ModalBackdrop from '../common/ModalBackdrop';
 
 const TYPE_STYLES = {
   instalacion: 'bg-orange-50 text-orange-700 border-orange-200',
@@ -183,7 +182,7 @@ export default function CalendarPanel() {
       )}
 
       {showAdd && (
-        <ModalBackdrop onClose={() => setShowAdd(false)} confirmOnOutsideClick>
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <form
             onSubmit={handleAdd}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -263,7 +262,7 @@ export default function CalendarPanel() {
               </button>
             </div>
           </form>
-        </ModalBackdrop>
+        </div>
       )}
     </div>
   );

@@ -25,7 +25,6 @@ import { COMPANY_INFO, PUBLIC_SERVICES } from '../../data/company';
 import { PORTFOLIO_PROJECTS } from '../../data/portfolioData';
 import { useErp } from '../../context/ErpContext';
 import { DELIVERY_LABELS, DESIGN_LABELS } from '../../lib/formatters';
-import ModalBackdrop from '../common/ModalBackdrop';
 
 function WhatsAppIcon({ className = 'w-4 h-4' }) {
   return (
@@ -49,7 +48,6 @@ export default function PublicSite({ onOpenIntranet }) {
     material_category: 'Acrílicos y Rígidos',
     material_id: 'mat-3',
     material_name: 'Acrílico Transparente 5mm',
-    dimUnit: 'm',
     width: '1.50',
     height: '0.80',
     quantity: 1,
@@ -84,28 +82,10 @@ export default function PublicSite({ onOpenIntranet }) {
   }, [activePortfolioCat]);
 
   const areaPerUnit = useMemo(() => {
-    const factor = form.dimUnit === 'cm' ? 0.01 : 1;
-    const w = (parseFloat(form.width) || 0) * factor;
-    const h = (parseFloat(form.height) || 0) * factor;
+    const w = parseFloat(form.width) || 0;
+    const h = parseFloat(form.height) || 0;
     return w * h;
-  }, [form.width, form.height, form.dimUnit]);
-
-  const suspiciousMeters =
-    form.dimUnit === 'm' && ((parseFloat(form.width) || 0) > 15 || (parseFloat(form.height) || 0) > 15);
-
-  const handleDimUnitChange = (nextUnit) => {
-    if (nextUnit === form.dimUnit) return;
-    setForm((prev) => {
-      // Si están los valores por defecto exactos, los convertimos para que el ejemplo siga teniendo sentido
-      if (prev.dimUnit === 'm' && nextUnit === 'cm' && prev.width === '1.50' && prev.height === '0.80') {
-        return { ...prev, dimUnit: 'cm', width: '150', height: '80' };
-      }
-      if (prev.dimUnit === 'cm' && nextUnit === 'm' && prev.width === '150' && prev.height === '80') {
-        return { ...prev, dimUnit: 'm', width: '1.50', height: '0.80' };
-      }
-      return { ...prev, dimUnit: nextUnit };
-    });
-  };
+  }, [form.width, form.height]);
 
   const totalArea = useMemo(
     () => areaPerUnit * (parseInt(form.quantity, 10) || 1),
@@ -147,15 +127,12 @@ export default function PublicSite({ onOpenIntranet }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const factor = form.dimUnit === 'cm' ? 0.01 : 1;
-      const rawW = parseFloat(form.width);
-      const rawH = parseFloat(form.height);
       const payload = {
         service_type: form.service_type,
         material_id: form.material_id,
         material_name: form.material_name,
-        width: Number.isFinite(rawW) && rawW > 0 ? Number((rawW * factor).toFixed(3)) : null,
-        height: Number.isFinite(rawH) && rawH > 0 ? Number((rawH * factor).toFixed(3)) : null,
+        width: parseFloat(form.width) || null,
+        height: parseFloat(form.height) || null,
         quantity: Math.max(1, parseInt(form.quantity, 10) || 1),
         delivery_method: form.delivery_method,
         delivery_address:
@@ -197,38 +174,32 @@ export default function PublicSite({ onOpenIntranet }) {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">
-      {/* BARRA SUPERIOR CORPORATIVA (Una sola línea limpia en escritorio, ordenada en móvil) */}
-      <div className="bg-zinc-950 border-b border-zinc-900 text-[11px] sm:text-xs py-2 px-3 sm:px-6 lg:px-8 no-print">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4 text-zinc-400">
-          {/* Ubicación */}
-          <div className="flex items-center gap-2 min-w-0">
+      {/* BARRA SUPERIOR CORPORATIVA (Visible completa en móvil y escritorio) */}
+      <div className="bg-zinc-950 border-b border-zinc-900 text-[11px] sm:text-xs py-2.5 px-3 sm:px-6 lg:px-10 no-print">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4 text-zinc-400">
+          {/* Ubicación y Dirección */}
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span className="text-zinc-200 font-medium">
+              Taller Matriz: Olivar, Región de O&apos;Higgins
+            </span>
+            <span className="text-zinc-700">|</span>
             <a
               href={COMPANY_INFO.mapsUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-zinc-200 hover:text-red-400 font-medium transition whitespace-nowrap truncate"
-              title={COMPANY_INFO.address}
+              className="inline-flex items-center gap-1 text-zinc-300 hover:text-red-400 transition underline underline-offset-4 decoration-red-600/70"
             >
               <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
-              <span>Taller Matriz: Olivar, O&apos;Higgins</span>
-            </a>
-            <span className="hidden 2xl:inline text-zinc-700">|</span>
-            <a
-              href={COMPANY_INFO.mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden 2xl:inline text-zinc-400 hover:text-zinc-200 transition underline underline-offset-4 decoration-red-600/60 whitespace-nowrap"
-            >
-              {COMPANY_INFO.address}
+              <span>{COMPANY_INFO.address}</span>
             </a>
           </div>
 
           {/* Contacto, Redes y Acceso Intranet */}
-          <div className="flex flex-wrap lg:flex-nowrap items-center justify-between lg:justify-end gap-x-3.5 xl:gap-x-4 gap-y-1.5 pt-1.5 lg:pt-0 border-t border-zinc-900 lg:border-t-0">
-            <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 xl:gap-x-4 gap-y-1 whitespace-nowrap">
+          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-x-3.5 sm:gap-x-4 lg:gap-x-5 gap-y-2 pt-1.5 lg:pt-0 border-t border-zinc-900 lg:border-t-0">
+            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5">
               <a
                 href={`mailto:${COMPANY_INFO.email}`}
-                className="text-zinc-300 hover:text-white transition font-mono hidden xl:flex items-center gap-1.5"
+                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
                 title={`Enviar correo a ${COMPANY_INFO.email}`}
               >
                 <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
@@ -236,7 +207,7 @@ export default function PublicSite({ onOpenIntranet }) {
               </a>
               <a
                 href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
-                className="text-zinc-200 hover:text-white transition font-mono flex items-center gap-1.5"
+                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
               >
                 <Phone className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 <span>{COMPANY_INFO.phone}</span>
@@ -272,10 +243,10 @@ export default function PublicSite({ onOpenIntranet }) {
               </a>
             </div>
 
-            <div className="lg:border-l lg:border-zinc-800 lg:pl-3.5 shrink-0">
+            <div className="lg:border-l lg:border-zinc-800 lg:pl-4">
               <button
                 onClick={onOpenIntranet}
-                className="text-red-400 hover:text-red-300 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/35 text-[11px] sm:text-xs transition whitespace-nowrap"
+                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/35 text-[11px] sm:text-xs transition whitespace-nowrap"
                 title="Acceso directo a la Intranet de Taller y Cotizaciones"
               >
                 <Lock className="w-3.5 h-3.5" />
@@ -287,8 +258,8 @@ export default function PublicSite({ onOpenIntranet }) {
       </div>
 
       {/* NAVBAR PRINCIPAL STICKY */}
-      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-6 lg:px-8 py-3 sm:py-3.5 no-print">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
+      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4 no-print">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
           <a href="#inicio" className="flex items-center gap-2.5 group min-w-0 shrink-0">
             <img
               src="/logo-white.svg"
@@ -386,14 +357,14 @@ export default function PublicSite({ onOpenIntranet }) {
         )}
       </header>
 
-      {/* HERO SECTION (Encuadre limpio above-the-fold en notebooks y escritorios) */}
+      {/* HERO SECTION (Estilo oficial letrerosolivar.com) */}
       <section
         id="inicio"
-        className="relative overflow-hidden py-10 sm:py-14 lg:py-16 px-4 sm:px-6 lg:px-8 border-b border-zinc-900"
+        className="relative overflow-hidden py-16 sm:py-24 px-4 sm:px-8 border-b border-zinc-900"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-950/35 via-black to-black pointer-events-none" />
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center relative">
-          <div className="lg:col-span-7 space-y-5">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative">
+          <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-600/10 border border-red-600/30 text-red-500 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-red-500" />
               Fabricación Propia • Instalación en Terreno o Retiro en Taller
@@ -804,91 +775,42 @@ export default function PublicSite({ onOpenIntranet }) {
                     </span>
                     Dimensiones y Diseño
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center rounded-lg bg-zinc-950 border border-zinc-800 p-0.5 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => handleDimUnitChange('m')}
-                        className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
-                          form.dimUnit === 'm'
-                            ? 'bg-red-600 text-white'
-                            : 'text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        Metros (m)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDimUnitChange('cm')}
-                        className={`px-2.5 py-1 rounded-md font-semibold transition-colors ${
-                          form.dimUnit === 'cm'
-                            ? 'bg-red-600 text-white'
-                            : 'text-zinc-400 hover:text-white'
-                        }`}
-                      >
-                        Centímetros (cm)
-                      </button>
-                    </div>
-                    {totalArea > 0 && (
-                      <span className="text-xs font-mono px-3 py-1 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-300 flex items-center gap-1.5">
-                        <Ruler className="w-3.5 h-3.5 text-red-500" />
-                        Superficie estimada:{' '}
-                        <strong className="text-white">{totalArea.toFixed(2)} m²</strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {suspiciousMeters && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 text-xs text-amber-200">
-                    <span>
-                      ⚠️ Ingresaste más de <strong>15 metros</strong>. Si tu medida está en centímetros (ej: 70 cm = 0.70 m), cámbiala a <strong>cm</strong>.
+                  {totalArea > 0 && (
+                    <span className="text-xs font-mono px-3 py-1 rounded-full bg-zinc-950 border border-zinc-800 text-zinc-300 flex items-center gap-1.5">
+                      <Ruler className="w-3.5 h-3.5 text-red-500" />
+                      Superficie estimada:{' '}
+                      <strong className="text-white">{totalArea.toFixed(2)} m²</strong>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setForm((prev) => ({ ...prev, dimUnit: 'cm' }))}
-                      className="px-3 py-1 rounded-lg bg-amber-500 text-zinc-950 font-bold hover:bg-amber-400 transition-colors shrink-0"
-                    >
-                      Usar como cm
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
-                      Ancho ({form.dimUnit === 'cm' ? 'cm' : 'metros'})
+                      Ancho (metros)
                     </label>
                     <input
                       type="number"
-                      step={form.dimUnit === 'cm' ? '1' : '0.01'}
+                      step="0.01"
                       min="0"
                       value={form.width}
                       onChange={(e) => setForm({ ...form, width: e.target.value })}
-                      placeholder={form.dimUnit === 'cm' ? 'Ej: 70' : 'Ej: 1.50'}
-                      className={`w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border text-sm text-white focus:outline-none focus:border-red-500 ${
-                        suspiciousMeters && (parseFloat(form.width) || 0) > 15
-                          ? 'border-amber-500'
-                          : 'border-zinc-800'
-                      }`}
+                      placeholder="Ej: 2.40"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-red-500"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-zinc-400 mb-1.5">
-                      Alto ({form.dimUnit === 'cm' ? 'cm' : 'metros'})
+                      Alto (metros)
                     </label>
                     <input
                       type="number"
-                      step={form.dimUnit === 'cm' ? '1' : '0.01'}
+                      step="0.01"
                       min="0"
                       value={form.height}
                       onChange={(e) => setForm({ ...form, height: e.target.value })}
-                      placeholder={form.dimUnit === 'cm' ? 'Ej: 100' : 'Ej: 0.80'}
-                      className={`w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border text-sm text-white focus:outline-none focus:border-red-500 ${
-                        suspiciousMeters && (parseFloat(form.height) || 0) > 15
-                          ? 'border-amber-500'
-                          : 'border-zinc-800'
-                      }`}
+                      placeholder="Ej: 1.20"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white focus:outline-none focus:border-red-500"
                     />
                   </div>
                   <div>
@@ -1268,11 +1190,14 @@ export default function PublicSite({ onOpenIntranet }) {
 
       {/* MODAL DETALLE PORTAFOLIO */}
       {selectedProject && (
-        <ModalBackdrop
-          onClose={() => setSelectedProject(null)}
+        <div
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+          onClick={() => setSelectedProject(null)}
         >
-          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto shadow-2xl">
+          <div
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="relative h-48 sm:h-60 shrink-0">
               <img
                 src={selectedProject.image}
@@ -1350,7 +1275,7 @@ export default function PublicSite({ onOpenIntranet }) {
               </div>
             </div>
           </div>
-        </ModalBackdrop>
+        </div>
       )}
     </div>
   );

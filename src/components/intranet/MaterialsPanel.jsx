@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react';
 import { Package, Plus, Search, Edit3, Trash2, X } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatCLP } from '../../lib/formatters';
-import ModalBackdrop from '../common/ModalBackdrop';
 
 export default function MaterialsPanel() {
   const { materials, saveMaterial, deleteMaterial, showToast } = useErp();
@@ -212,7 +211,7 @@ export default function MaterialsPanel() {
       </div>
 
       {modalOpen && (
-        <ModalBackdrop onClose={() => setModalOpen(false)} confirmOnOutsideClick>
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
           <form
             onSubmit={handleSave}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -309,7 +308,7 @@ export default function MaterialsPanel() {
               </button>
             </div>
           </form>
-        </ModalBackdrop>
+        </div>
       )}
     </div>
   );
