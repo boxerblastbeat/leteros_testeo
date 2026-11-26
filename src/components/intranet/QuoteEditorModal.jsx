@@ -14,6 +14,15 @@ const MANUFACTURING_OPTIONS = [
 
 const VALIDITY_OPTIONS = [5, 15, 30];
 
+const isBlank = (val) => val === '' || val === null || val === undefined || (typeof val === 'string' && val.trim() === '');
+
+const highlightInput = (val, base = '') =>
+  `${base} ${
+    isBlank(val)
+      ? 'bg-amber-50/50 border-amber-300 placeholder:text-slate-400 focus:bg-white focus:border-red-600'
+      : 'bg-white border-slate-300 focus:border-red-600'
+  } focus:outline-none transition`;
+
 export default function QuoteEditorModal({
   open,
   initialQuote = null,
@@ -270,6 +279,9 @@ export default function QuoteEditorModal({
     try {
       const payload = {
         ...form,
+        installation_fee: Number(form.installation_fee) || 0,
+        freight_fee: Number(form.freight_fee) || 0,
+        discount_amount: Number(form.discount_amount) || 0,
         status: targetStatus || form.status,
         subtotal: totals.netSubtotal,
         tax_amount: totals.taxAmount,
@@ -363,7 +375,7 @@ export default function QuoteEditorModal({
                     client_snapshot: { ...form.client_snapshot, name: e.target.value },
                   })
                 }
-                className="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                className={highlightInput(form.client_snapshot.name, 'sm:col-span-2 px-3 py-2 rounded-xl border text-sm text-slate-900')}
               />
               <input
                 type="text"
@@ -375,7 +387,7 @@ export default function QuoteEditorModal({
                     client_snapshot: { ...form.client_snapshot, rut: e.target.value },
                   })
                 }
-                className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                className={highlightInput(form.client_snapshot.rut, 'px-3 py-2 rounded-xl border text-sm text-slate-900')}
               />
               <input
                 type="text"
@@ -387,7 +399,7 @@ export default function QuoteEditorModal({
                     client_snapshot: { ...form.client_snapshot, phone: e.target.value },
                   })
                 }
-                className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                className={highlightInput(form.client_snapshot.phone, 'px-3 py-2 rounded-xl border text-sm text-slate-900')}
               />
               <input
                 type="email"
@@ -399,7 +411,7 @@ export default function QuoteEditorModal({
                     client_snapshot: { ...form.client_snapshot, email: e.target.value },
                   })
                 }
-                className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                className={highlightInput(form.client_snapshot.email, 'px-3 py-2 rounded-xl border text-sm text-slate-900')}
               />
               <select
                 value={form.delivery_method}
@@ -415,7 +427,7 @@ export default function QuoteEditorModal({
                 placeholder="Dirección de obra o entrega"
                 value={form.delivery_address}
                 onChange={(e) => setForm({ ...form, delivery_address: e.target.value })}
-                className="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                className={highlightInput(form.delivery_address, 'sm:col-span-2 px-3 py-2 rounded-xl border text-sm text-slate-900')}
               />
             </div>
           </div>
@@ -471,8 +483,9 @@ export default function QuoteEditorModal({
                   type="number"
                   min="1"
                   value={draftItem.quantity}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setDraftItem({ ...draftItem, quantity: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                  className={highlightInput(draftItem.quantity, 'w-full px-3 py-2 rounded-xl border text-xs text-slate-900')}
                 />
               </div>
 
@@ -484,8 +497,9 @@ export default function QuoteEditorModal({
                       type="number"
                       step="0.01"
                       value={draftItem.width}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => setDraftItem({ ...draftItem, width: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                      className={highlightInput(draftItem.width, 'w-full px-3 py-2 rounded-xl border text-xs text-slate-900')}
                     />
                   </div>
                   <div className="col-span-1 sm:col-span-2">
@@ -494,8 +508,9 @@ export default function QuoteEditorModal({
                       type="number"
                       step="0.01"
                       value={draftItem.height}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => setDraftItem({ ...draftItem, height: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                      className={highlightInput(draftItem.height, 'w-full px-3 py-2 rounded-xl border text-xs text-slate-900')}
                     />
                   </div>
                 </>
@@ -510,7 +525,7 @@ export default function QuoteEditorModal({
                   value={draftItem.detail}
                   onChange={(e) => setDraftItem({ ...draftItem, detail: e.target.value })}
                   placeholder="Ej: Laminado UV + bastidor metálico"
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                  className={highlightInput(draftItem.detail, 'w-full px-3 py-2 rounded-xl border text-xs text-slate-900')}
                 />
               </div>
 
@@ -522,8 +537,9 @@ export default function QuoteEditorModal({
                   type="number"
                   placeholder={String(computedDraftUnitPrice())}
                   value={draftItem.customUnitPrice}
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setDraftItem({ ...draftItem, customUnitPrice: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
+                  className={highlightInput(draftItem.customUnitPrice, 'w-full px-3 py-2 rounded-xl border text-xs font-mono text-slate-900')}
                 />
               </div>
 
@@ -706,9 +722,19 @@ export default function QuoteEditorModal({
                 <input
                   type="number"
                   min="0"
-                  value={form.installation_fee}
-                  onChange={(e) => setForm({ ...form, installation_fee: Number(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
+                  placeholder="0"
+                  value={Number(form.installation_fee) === 0 ? '' : form.installation_fee}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      installation_fee: e.target.value === '' ? '' : Math.max(0, Number(e.target.value) || 0),
+                    })
+                  }
+                  className={highlightInput(
+                    Number(form.installation_fee) === 0 ? '' : form.installation_fee,
+                    'w-full px-3 py-2 rounded-xl border text-xs font-mono text-slate-900'
+                  )}
                 />
               </div>
               <div>
@@ -716,9 +742,19 @@ export default function QuoteEditorModal({
                 <input
                   type="number"
                   min="0"
-                  value={form.freight_fee}
-                  onChange={(e) => setForm({ ...form, freight_fee: Number(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
+                  placeholder="0"
+                  value={Number(form.freight_fee) === 0 ? '' : form.freight_fee}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      freight_fee: e.target.value === '' ? '' : Math.max(0, Number(e.target.value) || 0),
+                    })
+                  }
+                  className={highlightInput(
+                    Number(form.freight_fee) === 0 ? '' : form.freight_fee,
+                    'w-full px-3 py-2 rounded-xl border text-xs font-mono text-slate-900'
+                  )}
                 />
               </div>
               <div>
@@ -726,9 +762,19 @@ export default function QuoteEditorModal({
                 <input
                   type="number"
                   min="0"
-                  value={form.discount_amount}
-                  onChange={(e) => setForm({ ...form, discount_amount: Number(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-emerald-700"
+                  placeholder="0"
+                  value={Number(form.discount_amount) === 0 ? '' : form.discount_amount}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      discount_amount: e.target.value === '' ? '' : Math.max(0, Number(e.target.value) || 0),
+                    })
+                  }
+                  className={highlightInput(
+                    Number(form.discount_amount) === 0 ? '' : form.discount_amount,
+                    'w-full px-3 py-2 rounded-xl border text-xs font-mono text-emerald-700'
+                  )}
                 />
               </div>
               <div>
@@ -774,18 +820,20 @@ export default function QuoteEditorModal({
                 <label className="block text-[11px] text-slate-500 mb-1">Condición de Pago</label>
                 <input
                   type="text"
+                  placeholder="Ej: 50% abono / 50% contra entrega"
                   value={form.payment_terms}
                   onChange={(e) => setForm({ ...form, payment_terms: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                  className={highlightInput(form.payment_terms, 'w-full px-3 py-2 rounded-xl border text-xs text-slate-900')}
                 />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-[11px] text-slate-500 mb-1">Observaciones</label>
                 <textarea
                   rows={2}
+                  placeholder="Notas adicionales visibles en la cotización..."
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 resize-none"
+                  className={highlightInput(form.notes, 'w-full px-3 py-2 rounded-xl border text-xs text-slate-900 resize-none')}
                 />
               </div>
             </div>
