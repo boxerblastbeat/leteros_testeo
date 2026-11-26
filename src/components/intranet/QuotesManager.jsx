@@ -16,11 +16,11 @@ import {
   BadgeDollarSign,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { QUOTE_STATUSES, OT_PRIORITIES } from '../../data/company';
+import { QUOTE_STATUSES, OT_PRIORITIES, OT_STATUSES } from '../../data/company';
 import { formatCLP, formatDateCL, addDaysISO, todayISO } from '../../lib/formatters';
 
-export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote }) {
-  const { quotes, changeQuoteStatus, saveWorkOrder, saveCalendarEvent, deleteQuote, showToast } =
+export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, onGoWorkshop }) {
+  const { quotes, workOrders, changeQuoteStatus, saveWorkOrder, saveCalendarEvent, deleteQuote, showToast } =
     useErp();
 
   const [statusFilter, setStatusFilter] = useState('activas');
@@ -63,6 +63,17 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
       totalPipeline,
       totalAprobado,
     };
+  }, [quotes]);
+
+  const quoteTabCounts = useMemo(() => {
+    const counts = {
+      activas: quotes.filter((q) => !['pagada', 'rechazada'].includes(q.status)).length,
+      todas: quotes.length,
+    };
+    QUOTE_STATUSES.forEach((s) => {
+      counts[s.id] = quotes.filter((q) => q.status === s.id).length;
+    });
+    return counts;
   }, [quotes]);
 
   const filteredQuotes = useMemo(() => {
@@ -237,6 +248,7 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
         <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap scrollbar-none">
           {[
             { id: 'activas', label: 'Activas' },
+            { id: 'borrador', label: 'Borrador' },
             { id: 'emitida', label: 'Emitidas' },
             { id: 'aplazada', label: 'Aplazadas' },
             { id: 'en_taller', label: 'En Taller' },
@@ -245,19 +257,39 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
             { id: 'pagada', label: 'Pagadas' },
             { id: 'rechazada', label: 'Rechazadas' },
             { id: 'todas', label: 'Todas' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border whitespace-nowrap shrink-0 ${
-                statusFilter === tab.id
-                  ? 'bg-red-600 border-red-600 text-white shadow-xs'
-                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+          ].map((tab) => {
+            const count = quoteTabCounts[tab.id] || 0;
+            const isActive = statusFilter === tab.id;
+            const isPendingStage = !['todas', 'pagada', 'rechazada'].includes(tab.id) && count > 0;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setStatusFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 ${
+                  isActive
+                    ? 'bg-red-600 border-red-600 text-white shadow-xs'
+                    : isPendingStage
+                      ? 'bg-amber-50/70 border-amber-300 text-slate-900 hover:bg-amber-100/70'
+                      : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                      isActive
+                        ? 'bg-white/25 text-white'
+                        : isPendingStage
+                          ? 'bg-red-600 text-white'
+                          : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-2">
@@ -290,6 +322,12 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
         ) : (
           filteredQuotes.map((q) => {
             const meta = getStatusMeta(q.status);
+            const linkedOt = workOrders.find(
+              (ot) => ot.quote_id === q.id || (ot.quote_correlative && ot.quote_correlative === q.correlative)
+            );
+            const linkedOtMeta = linkedOt
+              ? OT_STATUSES.find((s) => s.id === linkedOt.status) || OT_STATUSES[0]
+              : null;
             return (
               <div
                 key={q.id}
@@ -307,6 +345,18 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
                         <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                         {meta.label}
                       </span>
+                      {linkedOt && (
+                        <button
+                          type="button"
+                          onClick={() => onGoWorkshop?.()}
+                          title="Ver esta orden en Taller & OTs"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition"
+                        >
+                          <Wrench className="w-3 h-3" />
+                          <span className="font-mono">{linkedOt.ot_number}</span>
+                          <span className="font-normal text-violet-600">· {linkedOtMeta?.label}</span>
+                        </button>
+                      )}
                       <span className="text-xs text-slate-500">{formatDateCL(q.created_at)}</span>
                       {q.oc_number && (
                         <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">

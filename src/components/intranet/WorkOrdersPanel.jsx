@@ -53,6 +53,17 @@ export default function WorkOrdersPanel() {
     notes: '',
   });
 
+  const otTabCounts = useMemo(() => {
+    const counts = {
+      activas: workOrders.filter((ot) => ot.status !== 'pagada').length,
+      todas: workOrders.length,
+    };
+    OT_STATUSES.forEach((s) => {
+      counts[s.id] = workOrders.filter((ot) => ot.status === s.id).length;
+    });
+    return counts;
+  }, [workOrders]);
+
   const filtered = useMemo(() => {
     return workOrders.filter((ot) => {
       if (filter === 'activas') return ot.status !== 'pagada';
@@ -204,19 +215,39 @@ export default function WorkOrdersPanel() {
           { id: 'activas', label: 'Activas (Sin Pagar)' },
           ...OT_STATUSES,
           { id: 'todas', label: 'Todas' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setFilter(tab.id)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap shrink-0 ${
-              filter === tab.id
-                ? 'bg-red-600 border-red-600 text-white shadow-xs'
-                : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        ].map((tab) => {
+          const count = otTabCounts[tab.id] || 0;
+          const isActive = filter === tab.id;
+          const isPendingStage = !['todas', 'pagada'].includes(tab.id) && count > 0;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 ${
+                isActive
+                  ? 'bg-red-600 border-red-600 text-white shadow-xs'
+                  : isPendingStage
+                    ? 'bg-amber-50/70 border-amber-300 text-slate-900 hover:bg-amber-100/70'
+                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                    isActive
+                      ? 'bg-white/25 text-white'
+                      : isPendingStage
+                        ? 'bg-red-600 text-white'
+                        : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {filtered.length === 0 ? (

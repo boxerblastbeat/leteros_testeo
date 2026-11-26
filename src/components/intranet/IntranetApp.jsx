@@ -26,17 +26,18 @@ import QuotePrintModal from './QuotePrintModal';
 const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
 
 export default function IntranetApp({ onGoPublic }) {
-  const { quoteRequests, workOrders, isCloud, signOut } = useErp();
+  const { quotes, quoteRequests, workOrders, isCloud, signOut } = useErp();
 
   const [activeTab, setActiveTab] = useState('cotizaciones');
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
   const [printQuote, setPrintQuote] = useState(null);
 
+  const activeQuotesCount = quotes.filter((q) => !['pagada', 'rechazada'].includes(q.status)).length;
   const pendingRequestsCount = quoteRequests.filter((r) => r.status === 'nueva').length;
   const activeOtsCount = workOrders.filter((w) => w.status !== 'pagada').length;
 
   const navItems = [
-    { id: 'cotizaciones', label: 'Cotizaciones ERP', icon: FileText },
+    { id: 'cotizaciones', label: 'Cotizaciones ERP', icon: FileText, badge: activeQuotesCount },
     { id: 'solicitudes', label: 'Solicitudes Web', icon: Inbox, badge: pendingRequestsCount },
     { id: 'taller', label: 'Taller & OTs', icon: Wrench, badge: activeOtsCount },
     { id: 'calendario', label: 'Agenda & Despachos', icon: Calendar },
@@ -140,6 +141,7 @@ export default function IntranetApp({ onGoPublic }) {
             onNewQuote={() => setEditorState({ open: true, quote: null, request: null })}
             onEditQuote={(q) => setEditorState({ open: true, quote: q, request: null })}
             onPrintQuote={(q) => setPrintQuote(q)}
+            onGoWorkshop={() => setActiveTab('taller')}
           />
         )}
         {activeTab === 'solicitudes' && (
