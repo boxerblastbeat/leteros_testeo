@@ -31,6 +31,7 @@ export default function IntranetApp({ onGoPublic }) {
   const [activeTab, setActiveTab] = useState('cotizaciones');
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
   const [printQuote, setPrintQuote] = useState(null);
+  const [optimizerPayload, setOptimizerPayload] = useState(null);
 
   const activeQuotesCount = quotes.filter((q) => !['pagada', 'rechazada'].includes(q.status)).length;
   const pendingRequestsCount = quoteRequests.filter((r) => r.status === 'nueva').length;
@@ -151,7 +152,14 @@ export default function IntranetApp({ onGoPublic }) {
             }}
           />
         )}
-        {activeTab === 'taller' && <WorkOrdersPanel />}
+        {activeTab === 'taller' && (
+          <WorkOrdersPanel
+            onOpenInOptimizer={(payload) => {
+              setOptimizerPayload(payload);
+              setActiveTab('optimizador');
+            }}
+          />
+        )}
         {activeTab === 'calendario' && <CalendarPanel />}
         {activeTab === 'optimizador' && (
           <Suspense
@@ -161,7 +169,7 @@ export default function IntranetApp({ onGoPublic }) {
               </div>
             }
           >
-            <CutOptimizer2D />
+            <CutOptimizer2D initialPayload={optimizerPayload} />
           </Suspense>
         )}
         {activeTab === 'clientes' && <ClientsPanel />}

@@ -12,10 +12,12 @@ import {
   ArrowLeft,
   Receipt,
   BadgeDollarSign,
+  Scissors,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
 import { formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
+import { computeOtCubicationAndCuts } from '../../lib/cutOptimizer';
 
 const OT_TO_QUOTE_STATUS = {
   pendiente: 'en_taller',
@@ -28,7 +30,7 @@ const OT_TO_QUOTE_STATUS = {
   pagada: 'pagada',
 };
 
-export default function WorkOrdersPanel() {
+export default function WorkOrdersPanel({ onOpenInOptimizer }) {
   const { workOrders, quotes, saveWorkOrder, changeQuoteStatus, showToast } = useErp();
 
   const [filter, setFilter] = useState('activas');
@@ -353,6 +355,70 @@ export default function WorkOrdersPanel() {
                   </div>
 
                   {ot.notes && <p className="text-xs text-slate-500 italic break-words">“{ot.notes}”</p>}
+
+                  {/* Glosa automática de cortes optimizados */}
+                  {(() => {
+                    const cub = computeOtCubicationAndCuts(ot.items);
+                    if (!cub.hasOptimization) return null;
+                    return (
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide text-[10px]">
+                            <Scissors className="w-3.5 h-3.5 text-red-600" />
+                            Glosa de Cortes Optimizados ({cub.totalAreaSqm.toFixed(2)} m²)
+                          </span>
+                          {onOpenInOptimizer && cub.rigidResults.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const first = cub.rigidResults[0];
+                                onOpenInOptimizer({
+                                  sheetW: first.sheetW,
+                                  sheetH: first.sheetH,
+                                  parts: first.parts,
+                                });
+                              }}
+                              className="text-[10px] font-bold text-red-600 hover:text-red-700 underline underline-offset-2"
+                            >
+                              Ver en Cortes 2D
+                            </button>
+                          )}
+                        </div>
+                        {cub.rigidResults.map((r, idx) => (
+                          <div key={idx} className="text-slate-700 leading-snug">
+                            • <strong>{r.sheetCount} {r.sheetCount === 1 ? 'plancha' : 'planchas'}</strong>{' '}
+                            de <span className="font-semibold">{r.label}</span> ({r.sheetW}×{r.sheetH} mm) ·{' '}
+                            <span className="text-emerald-700 font-semibold">{r.efficiency.toFixed(1)}% aprov.</span>
+                            {r.patterns.length > 0 && (
+                              <div className="text-[10px] text-slate-500 pl-3 mt-0.5">
+                                {r.patterns.map((pat, pIdx) => (
+                                  <div key={pIdx}>
+                                    {pat.sheetIds.length > 1
+                                      ? `Planchas #${pat.sheetIds[0]}–#${pat.sheetIds[pat.sheetIds.length - 1]} (×${pat.sheetIds.length}): `
+                                      : `Plancha #${pat.sheetIds[0]}: `}
+                                    {pat.summaryItems
+                                      .map((si) => `${si.qty}× (${si.dims} mm)`)
+                                      .join(', ')}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {cub.rollResults.map((roll, idx) => (
+                          <div key={idx} className="text-slate-700 leading-snug">
+                            • <strong>{roll.linearMeters.toFixed(2)} ml</strong> de{' '}
+                            <span className="font-semibold">{roll.label}</span> (rollo {roll.rollWidthM}m ·{' '}
+                            {roll.areaSqm.toFixed(2)} m²)
+                            <span className="text-slate-500">
+                              {' '}
+                              — {roll.cuts.map((c) => `${c.qty}× ${c.wM}×${c.hM}m (${c.orientNote})`).join('; ')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
@@ -667,6 +733,123 @@ export default function WorkOrdersPanel() {
                   </tbody>
                 </table>
               </div>
+
+              {/* CUBICACIÓN Y GLOSA DE CORTES OPTIMIZADOS EN FICHA IMPRIMIBLE */}
+              {(() => {
+                const cub = computeOtCubicationAndCuts(printOt.items);
+                if (!cub.hasOptimization) return null;
+                return (
+                  <div className="space-y-3 border border-zinc-300 rounded-xl p-4 bg-zinc-50 print-avoid-break">
+                    <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
+                      <strong className="text-xs uppercase tracking-wider text-zinc-900">
+                        Cubicación y Glosa de Cortes Optimizados (Sangría 3 mm)
+                      </strong>
+                      <span className="text-[11px] font-mono text-zinc-600">
+                        {cub.totalPieces} piezas · {cub.totalAreaSqm.toFixed(2)} m² totales
+                      </span>
+                    </div>
+
+                    {cub.rigidResults.map((r, rIdx) => (
+                      <div key={rIdx} className="space-y-2.5 bg-white border border-zinc-200 rounded-lg p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <strong className="text-zinc-900">
+                            {r.label} — Formato {r.sheetW} × {r.sheetH} mm
+                          </strong>
+                          <span className="font-mono text-zinc-700">
+                            Retirar bodega: <strong>{r.sheetCount} {r.sheetCount === 1 ? 'plancha' : 'planchas'}</strong> ·
+                            Aprovechamiento: <strong className="text-emerald-700">{r.efficiency.toFixed(1)}%</strong>
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 text-[11px] text-zinc-700">
+                          {r.patterns.map((pat, pIdx) => (
+                            <div key={pIdx} className="flex flex-wrap items-center justify-between gap-2 py-1 border-b border-zinc-100 last:border-0">
+                              <span>
+                                <strong>
+                                  {pat.sheetIds.length > 1
+                                    ? `Planchas #${pat.sheetIds[0]} a #${pat.sheetIds[pat.sheetIds.length - 1]} (×${pat.sheetIds.length} idénticas)`
+                                    : `Plancha #${pat.sheetIds[0]}`}
+                                  :
+                                </strong>{' '}
+                                {pat.summaryItems
+                                  .map((si) => `${si.qty} cortes de ${si.dims} mm (${si.label})`)
+                                  .join(' + ')}
+                              </span>
+                              <span className="font-mono text-[10px] text-zinc-500">
+                                {pat.efficiency.toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Mini-planos SVG de cada patrón único */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-3 pt-1">
+                          {r.patterns.slice(0, 4).map((pat, pIdx) => (
+                            <div key={pIdx} className="border border-zinc-200 rounded-lg p-2 bg-zinc-50">
+                              <div className="text-[10px] font-mono text-zinc-600 mb-1 flex justify-between">
+                                <span>
+                                  {pat.sheetIds.length > 1
+                                    ? `Patrón ×${pat.sheetIds.length} planchas`
+                                    : `Plancha #${pat.sheetIds[0]}`}
+                                </span>
+                                <span>{pat.efficiency.toFixed(1)}%</span>
+                              </div>
+                              <svg
+                                viewBox={`0 0 ${r.sheetW} ${r.sheetH}`}
+                                className="w-full h-auto max-h-28"
+                                preserveAspectRatio="xMidYMid meet"
+                              >
+                                <rect
+                                  x={0}
+                                  y={0}
+                                  width={r.sheetW}
+                                  height={r.sheetH}
+                                  fill="#ffffff"
+                                  stroke="#52525b"
+                                  strokeWidth={Math.max(8, r.sheetW * 0.004)}
+                                />
+                                {pat.sampleSheet.placed.map((p) => (
+                                  <rect
+                                    key={p.uid}
+                                    x={p.x}
+                                    y={p.y}
+                                    width={p.w}
+                                    height={p.h}
+                                    fill={p.color}
+                                    fillOpacity={0.8}
+                                    stroke="#ffffff"
+                                    strokeWidth={Math.max(6, r.sheetW * 0.003)}
+                                  />
+                                ))}
+                              </svg>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {cub.rollResults.map((roll, idx) => (
+                      <div key={idx} className="bg-white border border-zinc-200 rounded-lg p-3 text-xs space-y-1">
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <strong className="text-zinc-900">
+                            Rollo Flexible: {roll.label} (Ancho {roll.rollWidthM}m)
+                          </strong>
+                          <span className="font-mono text-zinc-700">
+                            Consumo estimado: <strong>{roll.linearMeters.toFixed(2)} metros lineales</strong> ({roll.areaSqm.toFixed(2)} m²)
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-600">
+                          {roll.cuts.map((c, cIdx) => (
+                            <div key={cIdx}>
+                              • {c.qty}× piezas de {c.wM}m × {c.hM}m — {c.orientNote} ({c.linearMeters.toFixed(2)} ml)
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {printOt.notes && (
                 <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs">

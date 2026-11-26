@@ -1,145 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Scissors, Plus, Trash2, Printer, RotateCw, Layers } from 'lucide-react';
 import { uid } from '../../lib/formatters';
+import { PART_COLORS, PRESET_SHEETS, packParts2D } from '../../lib/cutOptimizer';
 
-const PRESET_SHEETS = [
-  { id: 'acm', label: 'ACM / Acrílico / Trovicel (2440 × 1220 mm)', w: 2440, h: 1220 },
-  { id: 'lata', label: 'Lata Galvanizada (3000 × 1000 mm)', w: 3000, h: 1000 },
-  { id: 'custom', label: 'Plancha Personalizada', w: 2000, h: 1000 },
-];
-
-const PART_COLORS = [
-  '#dc2626',
-  '#2563eb',
-  '#059669',
-  '#d97706',
-  '#7c3aed',
-  '#0891b2',
-  '#db2777',
-  '#4f46e5',
-];
-
-function packParts2D(sheetW, sheetH, kerf, allowRotate, partsList) {
-  const expanded = [];
-  partsList.forEach((p, idx) => {
-    const qty = Math.max(1, parseInt(p.qty, 10) || 1);
-    const w = Math.max(1, parseFloat(p.w) || 0);
-    const h = Math.max(1, parseFloat(p.h) || 0);
-    for (let i = 0; i < qty; i++) {
-      expanded.push({
-        uid: `${p.id}-${i}`,
-        label: p.label || `Pieza ${idx + 1}`,
-        w,
-        h,
-        color: PART_COLORS[idx % PART_COLORS.length],
-      });
-    }
-  });
-
-  expanded.sort((a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || b.w * b.h - a.w * a.h);
-
-  const sheets = [];
-  const unplaced = [];
-
-  const createSheet = () => ({
-    id: sheets.length + 1,
-    placed: [],
-    freeRects: [{ x: 0, y: 0, w: sheetW, h: sheetH }],
-  });
-
-  const tryPlaceOnSheet = (sheet, part) => {
-    let bestRectIdx = -1;
-    let bestOrientation = null;
-    let bestScore = Infinity;
-
-    for (let i = 0; i < sheet.freeRects.length; i++) {
-      const r = sheet.freeRects[i];
-      const candidates = [{ w: part.w, h: part.h, rotated: false }];
-      if (allowRotate && part.w !== part.h) {
-        candidates.push({ w: part.h, h: part.w, rotated: true });
-      }
-
-      for (const c of candidates) {
-        if (c.w <= r.w && c.h <= r.h) {
-          const score = Math.min(r.w - c.w, r.h - c.h);
-          if (score < bestScore) {
-            bestScore = score;
-            bestRectIdx = i;
-            bestOrientation = c;
-          }
-        }
-      }
-    }
-
-    if (bestRectIdx === -1) return false;
-
-    const r = sheet.freeRects[bestRectIdx];
-    const placed = {
-      ...part,
-      x: r.x,
-      y: r.y,
-      w: bestOrientation.w,
-      h: bestOrientation.h,
-      rotated: bestOrientation.rotated,
-    };
-    sheet.placed.push(placed);
-
-    sheet.freeRects.splice(bestRectIdx, 1);
-    const rightW = r.w - placed.w - kerf;
-    const bottomH = r.h - placed.h - kerf;
-
-    if (rightW > 0 && bottomH > 0) {
-      if (rightW > bottomH) {
-        sheet.freeRects.push({ x: r.x + placed.w + kerf, y: r.y, w: rightW, h: r.h });
-        sheet.freeRects.push({ x: r.x, y: r.y + placed.h + kerf, w: placed.w, h: bottomH });
-      } else {
-        sheet.freeRects.push({ x: r.x, y: r.y + placed.h + kerf, w: r.w, h: bottomH });
-        sheet.freeRects.push({ x: r.x + placed.w + kerf, y: r.y, w: rightW, h: placed.h });
-      }
-    } else if (rightW > 0) {
-      sheet.freeRects.push({ x: r.x + placed.w + kerf, y: r.y, w: rightW, h: r.h });
-    } else if (bottomH > 0) {
-      sheet.freeRects.push({ x: r.x, y: r.y + placed.h + kerf, w: r.w, h: bottomH });
-    }
-
-    return true;
-  };
-
-  for (const part of expanded) {
-    const fitsAtAll =
-      (part.w <= sheetW && part.h <= sheetH) ||
-      (allowRotate && part.h <= sheetW && part.w <= sheetH);
-    if (!fitsAtAll) {
-      unplaced.push(part);
-      continue;
-    }
-
-    let ok = false;
-    for (const s of sheets) {
-      if (tryPlaceOnSheet(s, part)) {
-        ok = true;
-        break;
-      }
-    }
-    if (!ok) {
-      const nextSheet = createSheet();
-      sheets.push(nextSheet);
-      tryPlaceOnSheet(nextSheet, part);
-    }
-  }
-
-  const sheetArea = sheetW * sheetH;
-  const totalUsedArea = sheets.reduce(
-    (sum, s) => sum + s.placed.reduce((a, p) => a + p.w * p.h, 0),
-    0
-  );
-  const totalAvailable = sheets.length * sheetArea;
-  const efficiency = totalAvailable > 0 ? (totalUsedArea / totalAvailable) * 100 : 0;
-
-  return { sheets, unplaced, efficiency, totalUsedArea };
-}
-
-export default function CutOptimizer2D() {
+export default function CutOptimizer2D({ initialPayload = null }) {
   const [preset, setPreset] = useState('acm');
   const [sheetW, setSheetW] = useState(2440);
   const [sheetH, setSheetH] = useState(1220);
@@ -151,6 +15,21 @@ export default function CutOptimizer2D() {
     { id: 'p2', label: 'Placa Señalética', w: 600, h: 400, qty: 4 },
     { id: 'p3', label: 'Cenefa Lateral', w: 1100, h: 250, qty: 2 },
   ]);
+
+  useEffect(() => {
+    if (!initialPayload) return;
+    if (initialPayload.sheetW && initialPayload.sheetH) {
+      setSheetW(initialPayload.sheetW);
+      setSheetH(initialPayload.sheetH);
+      const match = PRESET_SHEETS.find(
+        (s) => s.w === initialPayload.sheetW && s.h === initialPayload.sheetH
+      );
+      setPreset(match ? match.id : 'custom');
+    }
+    if (Array.isArray(initialPayload.parts) && initialPayload.parts.length > 0) {
+      setParts(initialPayload.parts);
+    }
+  }, [initialPayload]);
 
   const [newPart, setNewPart] = useState({ label: '', w: 500, h: 300, qty: 1 });
 
