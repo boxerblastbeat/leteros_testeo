@@ -264,6 +264,8 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
             const meta = OT_STATUSES[currentIdx];
             const prevMeta = currentIdx > 0 ? OT_STATUSES[currentIdx - 1] : null;
             const nextMeta = currentIdx < OT_STATUSES.length - 1 ? OT_STATUSES[currentIdx + 1] : null;
+            const prioMeta =
+              OT_PRIORITIES.find((p) => p.id === ot.priority) || OT_PRIORITIES[0];
 
             return (
               <div
