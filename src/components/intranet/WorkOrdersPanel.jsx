@@ -365,7 +365,7 @@ export default function WorkOrdersPanel() {
                       <span>Ficha</span>
                     </button>
 
-                    {prevMeta && (
+                    {prevMeta && ot.status !== 'pagada' && (
                       <button
                         onClick={() => revertStatus(ot)}
                         title={`Devolver a ${prevMeta.label}`}
