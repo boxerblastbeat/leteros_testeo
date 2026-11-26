@@ -36,6 +36,7 @@ export default function IntranetApp({ onGoPublic }) {
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
   const [printQuote, setPrintQuote] = useState(null);
   const [showWeeklyModal, setShowWeeklyModal] = useState(false);
+  const [focusedOtId, setFocusedOtId] = useState(null);
 
   useEffect(() => {
     if (!session) return;
@@ -184,7 +185,12 @@ export default function IntranetApp({ onGoPublic }) {
             }}
           />
         )}
-        {activeTab === 'taller' && <WorkOrdersPanel />}
+        {activeTab === 'taller' && (
+          <WorkOrdersPanel
+            focusedOtId={focusedOtId}
+            onClearFocus={() => setFocusedOtId(null)}
+          />
+        )}
         {activeTab === 'calendario' && <CalendarPanel />}
         {activeTab === 'optimizador' && (
           <Suspense
@@ -218,8 +224,11 @@ export default function IntranetApp({ onGoPublic }) {
       {showWeeklyModal && (
         <WeeklyScheduleModal
           onClose={() => setShowWeeklyModal(false)}
-          onGoToWorkshop={() => setActiveTab('taller')}
-          onGoToCalendar={() => setActiveTab('calendario')}
+          onSelectOt={(ot) => {
+            setFocusedOtId(ot.id);
+            setShowWeeklyModal(false);
+            setActiveTab('taller');
+          }}
         />
       )}
     </div>

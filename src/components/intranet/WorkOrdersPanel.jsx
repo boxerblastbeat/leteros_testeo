@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Wrench,
   Printer,
@@ -25,7 +25,7 @@ const normalizeWorkshopStatus = (status) => {
   return OT_STATUSES.some((s) => s.id === status) ? status : 'pendiente';
 };
 
-export default function WorkOrdersPanel() {
+export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
   const {
     workOrders,
     quotes,
@@ -37,6 +37,33 @@ export default function WorkOrdersPanel() {
   } = useErp();
 
   const [filter, setFilter] = useState('activas');
+  const [highlightedId, setHighlightedId] = useState(null);
+
+  useEffect(() => {
+    if (!focusedOtId) return;
+    const target = workOrders.find((w) => w.id === focusedOtId);
+    if (target) {
+      const norm = normalizeWorkshopStatus(target.status);
+      if (norm === 'despachado') {
+        setFilter('todas');
+      } else {
+        setFilter('activas');
+      }
+    }
+    setHighlightedId(focusedOtId);
+    const scrollTimer = setTimeout(() => {
+      const el = document.getElementById(`ot-card-${focusedOtId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
+    const clearTimer = setTimeout(() => {
+      setHighlightedId(null);
+      onClearFocus?.();
+    }, 4500);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(clearTimer);
+    };
+  }, [focusedOtId, workOrders, onClearFocus]);
   const [printOt, setPrintOt] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [rescheduleOt, setRescheduleOt] = useState(null);
@@ -308,7 +335,12 @@ export default function WorkOrdersPanel() {
             return (
               <div
                 key={ot.id}
-                className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-4 ${
+                id={`ot-card-${ot.id}`}
+                className={`p-4 sm:p-5 rounded-2xl bg-white border shadow-xs flex flex-col justify-between gap-4 transition-all ${
+                  highlightedId === ot.id
+                    ? 'border-red-500 ring-4 ring-red-200 bg-red-50/20'
+                    : 'border-slate-200'
+                } ${
                   ot.priority === 'urgente' && !isFinished
                     ? 'border-l-4 border-l-red-500'
                     : isFinished
