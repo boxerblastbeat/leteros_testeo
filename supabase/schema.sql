@@ -170,6 +170,7 @@ create table if not exists public.work_orders (
     check (delivery_method in ('instalacion', 'retiro', 'despacho')),
   delivery_address text not null default '',
   deadline date,
+  deadline_history jsonb not null default '[]'::jsonb,
   priority text not null default 'normal'
     check (priority in ('normal', 'urgente')),
   status text not null default 'pendiente'

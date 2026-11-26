@@ -27,6 +27,7 @@ const normalizeWorkshopStatus = (status) => {
 
 export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
   const {
+    session,
     workOrders,
     quotes,
     calendarEvents,
@@ -69,7 +70,10 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
   const [rescheduleOt, setRescheduleOt] = useState(null);
   const [rescheduleForm, setRescheduleForm] = useState({
     deadline: '',
+    delivery_method: 'retiro',
+    delivery_address: '',
     priority: 'normal',
+    reason: '',
     notes: '',
   });
 
@@ -192,16 +196,38 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
     e.preventDefault();
     if (!rescheduleOt) return;
 
+    const prevDeadline = rescheduleOt.deadline || '';
+    const nextDeadline = rescheduleForm.deadline || '';
+    const prevHistory = Array.isArray(rescheduleOt.deadline_history)
+      ? rescheduleOt.deadline_history
+      : [];
+    const nextHistory =
+      prevDeadline !== nextDeadline
+        ? [
+            ...prevHistory,
+            {
+              from: prevDeadline || 'Sin fecha',
+              to: nextDeadline,
+              reason: rescheduleForm.reason.trim(),
+              by: session?.user?.email || '',
+              at: new Date().toISOString(),
+            },
+          ]
+        : prevHistory;
+
     // Modifica la MISMA OT (sin crear duplicados)
     await saveWorkOrder({
       ...rescheduleOt,
-      deadline: rescheduleForm.deadline,
+      deadline: nextDeadline,
+      deadline_history: nextHistory,
+      delivery_method: rescheduleForm.delivery_method,
+      delivery_address: rescheduleForm.delivery_address.trim(),
       priority: rescheduleForm.priority,
       notes: rescheduleForm.notes.trim(),
     });
 
     // Actualiza el evento vinculado en Agenda si existe (sin duplicar)
-    if (rescheduleForm.deadline) {
+    if (nextDeadline) {
       const linkedEv = calendarEvents.find(
         (ev) =>
           (rescheduleOt.ot_number && ev.ot_number === rescheduleOt.ot_number) ||
@@ -211,14 +237,15 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
       if (linkedEv) {
         await saveCalendarEvent({
           ...linkedEv,
-          event_date: rescheduleForm.deadline,
+          event_date: nextDeadline,
+          address: rescheduleForm.delivery_address.trim() || linkedEv.address,
           notes: rescheduleForm.notes.trim() || linkedEv.notes,
         });
       }
     }
 
     showToast(
-      `Plazo de ${rescheduleOt.ot_number} reprogramado para ${formatDateCL(rescheduleForm.deadline)}`
+      `Entrega y plazo de ${rescheduleOt.ot_number} actualizados (${formatDateCL(nextDeadline)})`
     );
     setRescheduleOt(null);
   };
@@ -408,15 +435,38 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                     </h3>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-red-600" />
+                        <Calendar className="w-3.5 h-3.5 text-red-600 shrink-0" />
                         Plazo:{' '}
                         <strong className="text-slate-800">{formatDateCL(ot.deadline)}</strong>
                       </span>
                       <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        {DELIVERY_LABELS[ot.delivery_method] || ot.delivery_method}
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span>{DELIVERY_LABELS[ot.delivery_method] || ot.delivery_method}</span>
                       </span>
                     </div>
+                    {ot.delivery_address && (
+                      <div className="text-xs text-slate-600 mt-1 bg-slate-50 border border-slate-200/80 rounded-lg px-2.5 py-1.5 break-words">
+                        <span className="font-semibold text-slate-500">Dirección:</span>{' '}
+                        {ot.delivery_address}
+                      </div>
+                    )}
+                    {Array.isArray(ot.deadline_history) && ot.deadline_history.length > 0 && (
+                      <div className="mt-1.5 text-[11px] bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-amber-900 space-y-0.5">
+                        <div className="font-bold text-amber-800 flex items-center gap-1">
+                          <Clock className="w-3 h-3 shrink-0" />
+                          <span>
+                            Modificaciones de fecha ({ot.deadline_history.length}):
+                          </span>
+                        </div>
+                        {ot.deadline_history.slice(-2).map((h, hIdx) => (
+                          <div key={hIdx} className="text-[11px] text-amber-900/90 break-words">
+                            • {h.from === 'Sin fecha' ? 'Sin fecha' : formatDateCL(h.from)} →{' '}
+                            <strong>{formatDateCL(h.to)}</strong>
+                            {h.reason ? ` (${h.reason})` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
@@ -461,16 +511,19 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                         onClick={() => {
                           setRescheduleForm({
                             deadline: ot.deadline || addDaysISO(3),
+                            delivery_method: ot.delivery_method || 'retiro',
+                            delivery_address: ot.delivery_address || '',
                             priority: ot.priority || 'normal',
+                            reason: '',
                             notes: ot.notes || '',
                           });
                           setRescheduleOt(ot);
                         }}
-                        title="Aplazar o reprogramar fecha de entrega manteniendo la misma OT"
+                        title="Modificar fecha, dirección o detalles de entrega manteniendo la misma OT"
                         className="px-2.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-1 transition"
                       >
                         <Clock className="w-3.5 h-3.5" />
-                        <span>Aplazar</span>
+                        <span>Entrega / Plazo</span>
                       </button>
                     )}
 
@@ -545,38 +598,90 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
               </button>
             </div>
             <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Nueva Fecha de Entrega / Plazo
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={rescheduleForm.deadline}
-                  onChange={(e) =>
-                    setRescheduleForm({ ...rescheduleForm, deadline: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-amber-600"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Fecha de Entrega / Plazo
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={rescheduleForm.deadline}
+                    onChange={(e) =>
+                      setRescheduleForm({ ...rescheduleForm, deadline: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-amber-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Prioridad Taller
+                  </label>
+                  <select
+                    value={rescheduleForm.priority}
+                    onChange={(e) =>
+                      setRescheduleForm({ ...rescheduleForm, priority: e.target.value })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="urgente">Urgente</option>
+                  </select>
+                </div>
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Prioridad Taller
+                  Modalidad de Entrega
                 </label>
                 <select
-                  value={rescheduleForm.priority}
+                  value={rescheduleForm.delivery_method}
                   onChange={(e) =>
-                    setRescheduleForm({ ...rescheduleForm, priority: e.target.value })
+                    setRescheduleForm({ ...rescheduleForm, delivery_method: e.target.value })
                   }
                   className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                 >
-                  <option value="normal">Normal</option>
-                  <option value="urgente">Urgente</option>
+                  <option value="retiro">Retiro en Taller (Olivar)</option>
+                  <option value="despacho">Despacho a Domicilio / Obra</option>
+                  <option value="instalacion">Instalación en Terreno / Obra</option>
                 </select>
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Notas / Motivo del cambio de fecha
+                  Dirección de Entrega / Instalación
+                </label>
+                <input
+                  type="text"
+                  value={rescheduleForm.delivery_address}
+                  onChange={(e) =>
+                    setRescheduleForm({ ...rescheduleForm, delivery_address: e.target.value })
+                  }
+                  placeholder="Ej: Ruta H-40 Km 4, Olivar / Faena / Dirección..."
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-amber-600"
+                />
+              </div>
+
+              {rescheduleForm.deadline !== (rescheduleOt.deadline || '') && (
+                <div>
+                  <label className="block text-xs font-semibold text-amber-800 mb-1">
+                    Motivo del cambio de fecha (se guarda en historial)
+                  </label>
+                  <input
+                    type="text"
+                    value={rescheduleForm.reason}
+                    onChange={(e) =>
+                      setRescheduleForm({ ...rescheduleForm, reason: e.target.value })
+                    }
+                    placeholder="Ej: Cliente pidió mover entrega por lluvia / obra..."
+                    className="w-full px-3 py-2 rounded-xl bg-amber-50/50 border border-amber-300 text-sm text-slate-900 focus:outline-none focus:border-amber-600"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Detalles de entrega / Notas técnicas de taller
                 </label>
                 <textarea
                   rows={2}
@@ -584,7 +689,7 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                   onChange={(e) =>
                     setRescheduleForm({ ...rescheduleForm, notes: e.target.value })
                   }
-                  placeholder="Ej: Cliente pidió reprogramar entrega..."
+                  placeholder="Horario de acceso, persona que recibe, instrucciones de instalación..."
                   className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 resize-none"
                 />
               </div>
@@ -671,6 +776,13 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                 <option value="despacho">Despacho a Domicilio / Obra</option>
                 <option value="instalacion">Instalación en Terreno</option>
               </select>
+              <input
+                type="text"
+                placeholder="Dirección de entrega / obra (opcional)"
+                value={newOt.delivery_address}
+                onChange={(e) => setNewOt({ ...newOt, delivery_address: e.target.value })}
+                className="col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+              />
               <input
                 type="date"
                 value={newOt.deadline}
@@ -768,10 +880,27 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                   <strong>{formatDateCL(printOt.deadline)}</strong>
                   <div>{DELIVERY_LABELS[printOt.delivery_method] || printOt.delivery_method}</div>
                   {printOt.delivery_address && (
-                    <div className="break-words">{printOt.delivery_address}</div>
+                    <div className="break-words font-medium text-zinc-800 mt-0.5">
+                      Dirección: {printOt.delivery_address}
+                    </div>
                   )}
                 </div>
               </div>
+
+              {Array.isArray(printOt.deadline_history) && printOt.deadline_history.length > 0 && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs space-y-1">
+                  <strong className="block uppercase text-[10px] text-amber-800">
+                    Historial de Modificaciones de Fecha:
+                  </strong>
+                  {printOt.deadline_history.map((h, idx) => (
+                    <div key={idx} className="text-amber-900">
+                      • {h.from === 'Sin fecha' ? 'Sin fecha' : formatDateCL(h.from)} →{' '}
+                      <strong>{formatDateCL(h.to)}</strong>
+                      {h.reason ? ` — ${h.reason}` : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
                 <table className="w-full min-w-[460px] sm:min-w-0 text-xs border border-zinc-300">

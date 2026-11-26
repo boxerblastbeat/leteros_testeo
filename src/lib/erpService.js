@@ -651,12 +651,17 @@ export const erpService = {
 
   async deleteQuote(id) {
     if (isSupabaseConfigured) {
+      await supabase.from('work_orders').delete().eq('quote_id', id);
       const { error } = await supabase.from('quotes').delete().eq('id', id);
       if (error) throw error;
       return;
     }
     const db = readLocal();
+    const target = db.quotes.find((q) => q.id === id);
     db.quotes = db.quotes.filter((q) => q.id !== id);
+    db.workOrders = db.workOrders.filter(
+      (w) => w.quote_id !== id && !(target?.correlative && w.quote_correlative === target.correlative)
+    );
     writeLocal(db);
   },
 

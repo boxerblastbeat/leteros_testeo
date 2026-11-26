@@ -232,9 +232,25 @@ export default function QuotesManager({
     // Si ya tenía una OT asignada, actualizar la fecha de ESA MISMA OT sin crear una nueva
     const existingOt = findLinkedOt(postponeModal);
     if (existingOt && postponeForm.postponed_until) {
+      const prevHist = Array.isArray(existingOt.deadline_history)
+        ? existingOt.deadline_history
+        : [];
+      const nextHist =
+        (existingOt.deadline || '') !== postponeForm.postponed_until
+          ? [
+              ...prevHist,
+              {
+                from: existingOt.deadline || 'Sin fecha',
+                to: postponeForm.postponed_until,
+                reason: postponeForm.postpone_reason.trim(),
+                at: new Date().toISOString(),
+              },
+            ]
+          : prevHist;
       await saveWorkOrder({
         ...existingOt,
         deadline: postponeForm.postponed_until,
+        deadline_history: nextHist,
         notes: postponeForm.postpone_reason.trim()
           ? `${existingOt.notes ? `${existingOt.notes} | ` : ''}Aplazada: ${postponeForm.postpone_reason.trim()}`
           : existingOt.notes,

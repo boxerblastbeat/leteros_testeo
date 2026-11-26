@@ -380,14 +380,32 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
                               </div>
                             )}
 
-                            {/* Origen y entrega completos */}
+                            {/* Origen, dirección y modificaciones de fecha */}
                             <div className="pt-1.5 border-t border-slate-100 space-y-1 text-[10px] text-slate-500">
-                              <div className="flex items-center gap-1">
-                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span className="break-words">
-                                  {DELIVERY_LABELS[ot.delivery_method] || ot.delivery_method}
-                                </span>
+                              <div className="flex items-start gap-1">
+                                <MapPin className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                                <div className="break-words">
+                                  <div className="font-medium text-slate-700">
+                                    {DELIVERY_LABELS[ot.delivery_method] || ot.delivery_method}
+                                  </div>
+                                  {ot.delivery_address && (
+                                    <div className="text-slate-500">{ot.delivery_address}</div>
+                                  )}
+                                </div>
                               </div>
+                              {Array.isArray(ot.deadline_history) &&
+                                ot.deadline_history.length > 0 && (
+                                  <div className="px-1.5 py-1 rounded bg-amber-50 border border-amber-200 text-amber-800 font-semibold break-words">
+                                    Fecha movida (
+                                    {ot.deadline_history[ot.deadline_history.length - 1].from ===
+                                    'Sin fecha'
+                                      ? 'Sin fecha'
+                                      : formatDateCL(
+                                          ot.deadline_history[ot.deadline_history.length - 1].from
+                                        )}{' '}
+                                    → {formatDateCL(ot.deadline)})
+                                  </div>
+                                )}
                               <div className="flex items-center gap-1">
                                 {ot.hasQuote ? (
                                   <>

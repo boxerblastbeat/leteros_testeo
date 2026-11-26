@@ -294,12 +294,19 @@ export function ErpProvider({ children }) {
     const existing = quotes.find((q) => q.id === id);
     await erpService.deleteQuote(id);
     setQuotes((prev) => prev.filter((q) => q.id !== id));
+    setWorkOrders((prev) =>
+      prev.filter(
+        (w) =>
+          w.quote_id !== id &&
+          !(existing?.correlative && w.quote_correlative === existing.correlative)
+      )
+    );
     await recordAudit({
       action: 'eliminar',
       entity_type: 'cotizacion',
       entity_id: id,
       entity_ref: existing?.correlative || 'Cotización',
-      summary: `Eliminó cotización ${existing?.correlative || ''} (${existing?.client_snapshot?.name || 'Cliente'})`,
+      summary: `Eliminó cotización ${existing?.correlative || ''} y su OT vinculada (${existing?.client_snapshot?.name || 'Cliente'})`,
       details: { total: existing?.total },
     });
     showToast('Cotización eliminada');
