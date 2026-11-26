@@ -129,7 +129,7 @@ export default function QuotePrintModal({ quote, onClose }) {
                 Plazo de fabricación: <strong>{quote.manufacturing_days || '5 a 7 días hábiles'}</strong>
               </div>
               <div>
-                Forma de pago: <strong>{quote.payment_terms || '50% abono / 50% entrega'}</strong>
+                Forma de pago: <strong>{quote.payment_terms || 'Transferencia bancaria'}</strong>
               </div>
               <div>
                 Validez cotización: <strong>{validityDays} días corridos</strong>

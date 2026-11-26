@@ -14,6 +14,23 @@ const MANUFACTURING_OPTIONS = [
 
 const VALIDITY_OPTIONS = [5, 15, 30];
 
+const PAYMENT_OPTIONS = [
+  'Transferencia bancaria',
+  'Efectivo',
+  'Transferencia o Efectivo (contra entrega)',
+  'Factura a 15 días',
+  'Factura a 30 días',
+  'Factura a 45 días',
+  'Factura a 60 días',
+  '50% abono / 50% contra entrega',
+];
+
+const defaultValidityByClientType = (clientType) => {
+  if (clientType === 'Particular') return 5;
+  if (clientType === 'Institución') return 30;
+  return 15; // Empresa por defecto
+};
+
 const isBlank = (val) => val === '' || val === null || val === undefined || (typeof val === 'string' && val.trim() === '');
 
 const highlightInput = (val, base = '') =>
@@ -52,7 +69,7 @@ export default function QuoteEditorModal({
         delivery_method: initialQuote.delivery_method || 'instalacion',
         delivery_address: initialQuote.delivery_address || '',
         manufacturing_days: initialQuote.manufacturing_days || '5 a 7 días hábiles',
-        payment_terms: initialQuote.payment_terms || '50% abono / 50% contra entrega',
+        payment_terms: initialQuote.payment_terms || 'Transferencia bancaria',
         installation_fee: initialQuote.installation_fee || 0,
         freight_fee: initialQuote.freight_fee || 0,
         discount_amount: initialQuote.discount_amount || 0,
@@ -104,7 +121,7 @@ export default function QuoteEditorModal({
         delivery_method: fromRequest.delivery_method || 'instalacion',
         delivery_address: fromRequest.delivery_address || '',
         manufacturing_days: '5 a 7 días hábiles',
-        payment_terms: '50% abono / 50% contra entrega',
+        payment_terms: 'Transferencia bancaria',
         installation_fee: 0,
         freight_fee: 0,
         discount_amount: 0,
@@ -122,7 +139,7 @@ export default function QuoteEditorModal({
       delivery_method: 'instalacion',
       delivery_address: '',
       manufacturing_days: '5 a 7 días hábiles',
-      payment_terms: '50% abono / 50% contra entrega',
+      payment_terms: 'Transferencia bancaria',
       installation_fee: 0,
       freight_fee: 0,
       discount_amount: 0,
@@ -177,6 +194,8 @@ export default function QuoteEditorModal({
         contact_name: found.contact_name || '',
         phone: found.phone || '',
         email: found.email || '',
+        client_type: found.client_type || 'Empresa',
+        validity_days: defaultValidityByClientType(found.client_type),
       },
     }));
   };
@@ -817,14 +836,23 @@ export default function QuoteEditorModal({
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] text-slate-500 mb-1">Condición de Pago</label>
-                <input
-                  type="text"
-                  placeholder="Ej: 50% abono / 50% contra entrega"
+                <label className="block text-[11px] text-slate-500 mb-1">
+                  Medio de Pago / Facturación
+                </label>
+                <select
                   value={form.payment_terms}
                   onChange={(e) => setForm({ ...form, payment_terms: e.target.value })}
-                  className={highlightInput(form.payment_terms, 'w-full px-3 py-2 rounded-xl border text-xs text-slate-900')}
-                />
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600"
+                >
+                  {!PAYMENT_OPTIONS.includes(form.payment_terms) && form.payment_terms && (
+                    <option value={form.payment_terms}>{form.payment_terms}</option>
+                  )}
+                  {PAYMENT_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-[11px] text-slate-500 mb-1">Observaciones</label>
