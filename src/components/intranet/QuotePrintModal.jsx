@@ -124,7 +124,9 @@ export default function QuotePrintModal({ quote, onClose }) {
                 Modalidad:{' '}
                 <strong>{DELIVERY_LABELS[quote.delivery_method] || quote.delivery_method}</strong>
               </div>
-              {quote.delivery_address && <div className="break-words">Dirección: {quote.delivery_address}</div>}
+              {quote.delivery_method !== 'retiro' && quote.delivery_address && (
+                <div className="break-words">Dirección: {quote.delivery_address}</div>
+              )}
               <div>
                 Plazo de fabricación: <strong>{quote.manufacturing_days || '5 a 7 días hábiles'}</strong>
               </div>
