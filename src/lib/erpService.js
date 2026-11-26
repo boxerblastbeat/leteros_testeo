@@ -420,9 +420,52 @@ export const erpService = {
     return readLocal().calendarEvents;
   },
 
+  async loadActivityLogs() {
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(400);
+      if (error) return [];
+      return data || [];
+    }
+    return readLocal().activityLogs || [];
+  },
+
+  async createActivityLog(entry) {
+    const clean = {
+      user_id: toNullable(entry.user_id),
+      user_email: entry.user_email || 'sistema',
+      module: entry.module || 'sistema',
+      action: entry.action || 'accion',
+      entity_ref: entry.entity_ref || '',
+      summary: entry.summary || '',
+      details: entry.details || {},
+    };
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('activity_logs')
+          .insert([clean])
+          .select()
+          .single();
+        if (error) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    }
+    const db = readLocal();
+    const created = { ...clean, id: uid(), created_at: new Date().toISOString() };
+    db.activityLogs = [created, ...(db.activityLogs || [])].slice(0, 400);
+    writeLocal(db);
+    return created;
+  },
+
   async loadAllErpData() {
     if (isSupabaseConfigured) {
-      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes] =
+      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes, logsRes] =
         await Promise.all([
           supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(500),
           supabase.from('materials').select('*').order('category', { ascending: true }).limit(300),
@@ -431,6 +474,7 @@ export const erpService = {
           supabase.from('quotes').select('*').order('created_at', { ascending: false }).limit(300),
           supabase.from('work_orders').select('*').order('created_at', { ascending: false }).limit(250),
           supabase.from('calendar_events').select('*').order('event_date', { ascending: true }).limit(300),
+          supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(400),
         ]);
 
       return {
@@ -455,6 +499,7 @@ export const erpService = {
         quotes: quotesRes.data || [],
         workOrders: otRes.data || [],
         calendarEvents: calRes.data || [],
+        activityLogs: logsRes.error ? [] : logsRes.data || [],
       };
     }
 
@@ -467,6 +512,7 @@ export const erpService = {
       quotes: local.quotes,
       workOrders: local.workOrders,
       calendarEvents: local.calendarEvents,
+      activityLogs: local.activityLogs || [],
     };
   },
 

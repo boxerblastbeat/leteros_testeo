@@ -11,6 +11,8 @@ import {
   LogOut,
   Database,
   Plus,
+  History,
+  User,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { COMPANY_INFO } from '../../data/company';
@@ -20,13 +22,14 @@ import WorkOrdersPanel from './WorkOrdersPanel';
 import CalendarPanel from './CalendarPanel';
 import ClientsPanel from './ClientsPanel';
 import MaterialsPanel from './MaterialsPanel';
+import ActivityLogPanel from './ActivityLogPanel';
 import QuoteEditorModal from './QuoteEditorModal';
 import QuotePrintModal from './QuotePrintModal';
 
 const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
 
 export default function IntranetApp({ onGoPublic }) {
-  const { quotes, quoteRequests, workOrders, isCloud, signOut } = useErp();
+  const { session, quotes, quoteRequests, workOrders, isCloud, signOut } = useErp();
 
   const [activeTab, setActiveTab] = useState('cotizaciones');
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
@@ -45,6 +48,7 @@ export default function IntranetApp({ onGoPublic }) {
     { id: 'optimizador', label: 'Cortes 2D', icon: Scissors },
     { id: 'clientes', label: 'Clientes', icon: Users },
     { id: 'tarifario', label: 'Tarifario', icon: Package },
+    { id: 'bitacora', label: 'Bitácora', icon: History },
   ];
 
   return (
@@ -76,6 +80,15 @@ export default function IntranetApp({ onGoPublic }) {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {session?.user?.email && (
+              <span
+                className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-600 max-w-[210px] truncate"
+                title={`Sesión activa: ${session.user.email}`}
+              >
+                <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">{session.user.email}</span>
+              </span>
+            )}
             <button
               onClick={() => setEditorState({ open: true, quote: null, request: null })}
               className="px-3 sm:px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-red-600/20"
@@ -174,6 +187,7 @@ export default function IntranetApp({ onGoPublic }) {
         )}
         {activeTab === 'clientes' && <ClientsPanel />}
         {activeTab === 'tarifario' && <MaterialsPanel />}
+        {activeTab === 'bitacora' && <ActivityLogPanel />}
       </main>
 
       {/* MODALS */}

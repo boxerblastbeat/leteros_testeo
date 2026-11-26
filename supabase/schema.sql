@@ -200,6 +200,19 @@ create table if not exists public.calendar_events (
   updated_at timestamptz not null default now()
 );
 
+-- 8. BITÁCORA DE AUDITORÍA (REGISTRO INMUTABLE DE ACTIVIDAD POR USUARIO)
+create table if not exists public.activity_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  user_email text not null default '',
+  module text not null,
+  action text not null,
+  entity_ref text not null default '',
+  summary text not null,
+  details jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
 -- TRIGGERS DE UPDATED_AT
 create trigger trg_clients_updated_at before update on public.clients
   for each row execute function public.set_updated_at();
@@ -231,6 +244,9 @@ create index if not exists idx_ot_quote_id on public.work_orders(quote_id);
 create index if not exists idx_ot_created on public.work_orders(created_at desc);
 create index if not exists idx_cal_date on public.calendar_events(event_date);
 create index if not exists idx_materials_active_category on public.materials(category) where active = true;
+create index if not exists idx_activity_logs_created on public.activity_logs(created_at desc);
+create index if not exists idx_activity_logs_user on public.activity_logs(user_email);
+create index if not exists idx_activity_logs_module on public.activity_logs(module);
 
 -- ROW LEVEL SECURITY (RLS)
 alter table public.clients enable row level security;
@@ -240,6 +256,7 @@ alter table public.quote_requests enable row level security;
 alter table public.quotes enable row level security;
 alter table public.work_orders enable row level security;
 alter table public.calendar_events enable row level security;
+alter table public.activity_logs enable row level security;
 
 -- Políticas públicas (rol anon): solo lectura de materiales activos y envío de solicitudes nuevas
 create policy "Public read active materials"
@@ -300,8 +317,20 @@ create policy "Auth all calendar_events"
   using ((select auth.uid()) is not null)
   with check ((select auth.uid()) is not null);
 
+-- Bitácora inmutable: cualquier cuenta autenticada puede leer e insertar, nadie puede editar ni borrar
+create policy "Auth select activity_logs"
+  on public.activity_logs for select
+  to authenticated
+  using ((select auth.uid()) is not null);
+
+create policy "Auth insert activity_logs"
+  on public.activity_logs for insert
+  to authenticated
+  with check ((select auth.uid()) is not null);
+
 -- REALTIME
 alter publication supabase_realtime add table public.quote_requests;
 alter publication supabase_realtime add table public.quotes;
 alter publication supabase_realtime add table public.work_orders;
 alter publication supabase_realtime add table public.calendar_events;
+alter publication supabase_realtime add table public.activity_logs;
