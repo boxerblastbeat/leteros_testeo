@@ -180,6 +180,12 @@ export function ErpProvider({ children }) {
     return saved;
   };
 
+  const deleteWorkOrder = async (id) => {
+    await erpService.deleteWorkOrder(id);
+    setWorkOrders((prev) => prev.filter((w) => w.id !== id));
+    showToast('Orden de Trabajo eliminada');
+  };
+
   const saveCalendarEvent = async (ev) => {
     const saved = await erpService.saveCalendarEvent(ev);
     setCalendarEvents((prev) => {
@@ -248,6 +254,7 @@ export function ErpProvider({ children }) {
         changeQuoteStatus,
         deleteQuote,
         saveWorkOrder,
+        deleteWorkOrder,
         saveCalendarEvent,
         deleteCalendarEvent,
         saveClient,

@@ -14,10 +14,12 @@ import {
   RotateCcw,
   Truck,
   BadgeDollarSign,
+  X,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { QUOTE_STATUSES, OT_PRIORITIES, OT_STATUSES } from '../../data/company';
 import { formatCLP, formatDateCL, addDaysISO, todayISO } from '../../lib/formatters';
+import ModalBackdrop from '../common/ModalBackdrop';
 
 export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, onGoWorkshop }) {
   const { quotes, workOrders, changeQuoteStatus, saveWorkOrder, saveCalendarEvent, deleteQuote, showToast } =
@@ -614,16 +616,30 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
 
       {/* MODAL ACEPTAR -> OT */}
       {approveModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <ModalBackdrop
+          onClose={() => setApproveModal(null)}
+          confirmOnOutsideClick
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <form
             onSubmit={handleConfirmApprove}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center gap-2.5 text-emerald-600">
-              <Wrench className="w-5 h-5" />
-              <h3 className="font-heading font-bold text-slate-900 text-lg">
-                Aceptar {approveModal.correlative} y Crear OT
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 text-emerald-600">
+                <Wrench className="w-5 h-5" />
+                <h3 className="font-heading font-bold text-slate-900 text-lg">
+                  Aceptar {approveModal.correlative} y Crear OT
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApproveModal(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <p className="text-xs text-slate-500">
               Se generará automáticamente una Orden de Trabajo en Taller y un evento en el
@@ -708,21 +724,35 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
               </button>
             </div>
           </form>
-        </div>
+        </ModalBackdrop>
       )}
 
       {/* MODAL APLAZAR */}
       {postponeModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <ModalBackdrop
+          onClose={() => setPostponeModal(null)}
+          confirmOnOutsideClick
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <form
             onSubmit={handleConfirmPostpone}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center gap-2.5 text-amber-600">
-              <Clock className="w-5 h-5" />
-              <h3 className="font-heading font-bold text-slate-900 text-lg">
-                Aplazar {postponeModal.correlative}
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 text-amber-600">
+                <Clock className="w-5 h-5" />
+                <h3 className="font-heading font-bold text-slate-900 text-lg">
+                  Aplazar {postponeModal.correlative}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPostponeModal(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <div className="space-y-3">
               <div>
@@ -771,21 +801,35 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
               </button>
             </div>
           </form>
-        </div>
+        </ModalBackdrop>
       )}
 
       {/* MODAL FACTURAR */}
       {invoiceModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <ModalBackdrop
+          onClose={() => setInvoiceModal(null)}
+          confirmOnOutsideClick
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <form
             onSubmit={handleConfirmInvoice}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center gap-2.5 text-cyan-600">
-              <Receipt className="w-5 h-5" />
-              <h3 className="font-heading font-bold text-slate-900 text-lg">
-                Registrar Factura · {invoiceModal.correlative}
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 text-cyan-600">
+                <Receipt className="w-5 h-5" />
+                <h3 className="font-heading font-bold text-slate-900 text-lg">
+                  Registrar Factura · {invoiceModal.correlative}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInvoiceModal(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <div className="space-y-3">
               <div>
@@ -832,7 +876,7 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
               </button>
             </div>
           </form>
-        </div>
+        </ModalBackdrop>
       )}
     </div>
   );

@@ -25,6 +25,7 @@ import { COMPANY_INFO, PUBLIC_SERVICES } from '../../data/company';
 import { PORTFOLIO_PROJECTS } from '../../data/portfolioData';
 import { useErp } from '../../context/ErpContext';
 import { DELIVERY_LABELS, DESIGN_LABELS } from '../../lib/formatters';
+import ModalBackdrop from '../common/ModalBackdrop';
 
 function WhatsAppIcon({ className = 'w-4 h-4' }) {
   return (
@@ -1267,14 +1268,11 @@ export default function PublicSite({ onOpenIntranet }) {
 
       {/* MODAL DETALLE PORTAFOLIO */}
       {selectedProject && (
-        <div
+        <ModalBackdrop
+          onClose={() => setSelectedProject(null)}
           className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
-          onClick={() => setSelectedProject(null)}
         >
-          <div
-            className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto shadow-2xl">
             <div className="relative h-48 sm:h-60 shrink-0">
               <img
                 src={selectedProject.image}
@@ -1352,7 +1350,7 @@ export default function PublicSite({ onOpenIntranet }) {
               </div>
             </div>
           </div>
-        </div>
+        </ModalBackdrop>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Users, Plus, Search, Edit3, Trash2, Phone, Mail, MapPin, X } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
+import ModalBackdrop from '../common/ModalBackdrop';
 
 export default function ClientsPanel() {
   const { clients, saveClient, deleteClient, showToast } = useErp();
@@ -167,7 +168,7 @@ export default function ClientsPanel() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <ModalBackdrop onClose={() => setModalOpen(false)} confirmOnOutsideClick>
           <form
             onSubmit={handleSave}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -261,7 +262,7 @@ export default function ClientsPanel() {
               </button>
             </div>
           </form>
-        </div>
+        </ModalBackdrop>
       )}
     </div>
   );

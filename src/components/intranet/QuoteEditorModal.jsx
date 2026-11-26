@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { X, Plus, Trash2, Save, Calculator, UserPlus } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatCLP, calculateQuoteTotals, uid } from '../../lib/formatters';
+import ModalBackdrop from '../common/ModalBackdrop';
 
 const MANUFACTURING_OPTIONS = [
   'Inmediato',
@@ -336,7 +337,11 @@ export default function QuoteEditorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-3 sm:p-6">
+    <ModalBackdrop
+      onClose={onClose}
+      confirmOnOutsideClick
+      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-3 sm:p-6"
+    >
       <div className="max-w-5xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden my-4 text-slate-900">
         {/* Header */}
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-slate-50">
@@ -1040,6 +1045,6 @@ export default function QuoteEditorModal({
           </div>
         </div>
       </div>
-    </div>
+    </ModalBackdrop>
   );
 }

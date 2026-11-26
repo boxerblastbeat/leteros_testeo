@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, X, ShieldCheck, Database } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
+import ModalBackdrop from './ModalBackdrop';
 
 export default function LoginModal({ open, onClose, onSuccess }) {
   const { signIn, isCloud } = useErp();
@@ -27,7 +28,11 @@ export default function LoginModal({ open, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <ModalBackdrop
+      onClose={onClose}
+      confirmOnOutsideClick
+      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+    >
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-900">
         <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-3">
@@ -106,6 +111,6 @@ export default function LoginModal({ open, onClose, onSuccess }) {
           </button>
         </form>
       </div>
-    </div>
+    </ModalBackdrop>
   );
 }

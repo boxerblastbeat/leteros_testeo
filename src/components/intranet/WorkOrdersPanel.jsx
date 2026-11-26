@@ -13,11 +13,13 @@ import {
   Receipt,
   BadgeDollarSign,
   Scissors,
+  Trash2,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
 import { formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
 import { computeOtCubicationAndCuts } from '../../lib/cutOptimizer';
+import ModalBackdrop from '../common/ModalBackdrop';
 
 const OT_TO_QUOTE_STATUS = {
   pendiente: 'en_taller',
@@ -31,7 +33,7 @@ const OT_TO_QUOTE_STATUS = {
 };
 
 export default function WorkOrdersPanel({ onOpenInOptimizer }) {
-  const { workOrders, quotes, saveWorkOrder, changeQuoteStatus, showToast } = useErp();
+  const { workOrders, quotes, saveWorkOrder, deleteWorkOrder, changeQuoteStatus, showToast } = useErp();
 
   const [filter, setFilter] = useState('activas');
   const [printOt, setPrintOt] = useState(null);
@@ -443,6 +445,19 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                         <span>Devolver</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`¿Eliminar definitivamente la orden ${ot.ot_number}?`)) {
+                          deleteWorkOrder(ot.id);
+                        }
+                      }}
+                      title="Eliminar OT"
+                      aria-label={`Eliminar ${ot.ot_number}`}
+                      className="p-2 sm:p-1.5 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-400 hover:text-red-600 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
                   {nextMeta ? (
@@ -482,7 +497,7 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
 
       {/* MODAL FACTURAR OT */}
       {invoiceOt && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <ModalBackdrop onClose={() => setInvoiceOt(null)} confirmOnOutsideClick>
           <form
             onSubmit={handleConfirmInvoiceOt}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -551,11 +566,11 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
               </button>
             </div>
           </form>
-        </div>
+        </ModalBackdrop>
       )}
 
       {showNewModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <ModalBackdrop onClose={() => setShowNewModal(false)} confirmOnOutsideClick>
           <form
             onSubmit={handleCreateManualOt}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -644,11 +659,14 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
               </button>
             </div>
           </form>
-        </div>
+        </ModalBackdrop>
       )}
 
       {printOt && (
-        <div className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4">
+        <ModalBackdrop
+          onClose={() => setPrintOt(null)}
+          className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4"
+        >
           <div className="print-modal-container max-w-3xl mx-auto">
             <div className="no-print flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 shadow-lg">
               <span className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
@@ -863,7 +881,7 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
               )}
             </div>
           </div>
-        </div>
+        </ModalBackdrop>
       )}
     </div>
   );

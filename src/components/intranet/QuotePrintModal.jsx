@@ -2,6 +2,7 @@ import React from 'react';
 import { Printer, X, MessageCircle } from 'lucide-react';
 import { COMPANY_INFO } from '../../data/company';
 import { formatCLP, formatDateCL, DELIVERY_LABELS } from '../../lib/formatters';
+import ModalBackdrop from '../common/ModalBackdrop';
 
 export default function QuotePrintModal({ quote, onClose }) {
   if (!quote) return null;
@@ -27,7 +28,10 @@ export default function QuotePrintModal({ quote, onClose }) {
     : `https://wa.me/?text=${whatsappText}`;
 
   return (
-    <div className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-6">
+    <ModalBackdrop
+      onClose={onClose}
+      className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-6"
+    >
       <div className="print-modal-container max-w-4xl mx-auto">
         {/* Action Bar (hidden on print) */}
         <div className="no-print flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 sm:p-3.5 shadow-lg">
@@ -261,6 +265,6 @@ export default function QuotePrintModal({ quote, onClose }) {
           </div>
         </div>
       </div>
-    </div>
+    </ModalBackdrop>
   );
 }
