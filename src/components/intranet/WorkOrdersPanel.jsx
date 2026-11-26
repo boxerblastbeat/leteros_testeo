@@ -636,7 +636,7 @@ export default function WorkOrdersPanel() {
                   <span className="text-zinc-500 block">Entrega / Instalación:</span>
                   <strong>{formatDateCL(printOt.deadline)}</strong>
                   <div>{DELIVERY_LABELS[printOt.delivery_method] || printOt.delivery_method}</div>
-                  {printOt.delivery_address && <div className="break-words">{printOt.delivery_address}</div>}
+                  {printOt.delivery_method !== 'retiro' && printOt.delivery_address && <div className="break-words">{printOt.delivery_address}</div>}
                 </div>
               </div>
 
