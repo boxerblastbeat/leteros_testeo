@@ -98,17 +98,20 @@ export default function QuotesManager({
   const kpis = useMemo(() => {
     const emitidas = quotes.filter((q) => q.status === 'emitida');
     const aplazadas = quotes.filter((q) => q.status === 'aplazada');
-    const aprobadas = quotes.filter((q) =>
-      ['aceptada', 'en_taller', 'facturada', 'despacho', 'pagada'].includes(q.status)
-    );
-    const totalPipeline = emitidas.reduce((s, q) => s + (Number(q.total) || 0), 0);
-    const totalAprobado = aprobadas.reduce((s, q) => s + (Number(q.total) || 0), 0);
+    const enTaller = quotes.filter((q) => ['aceptada', 'en_taller'].includes(q.status));
+    const porCobrar = quotes.filter((q) => ['facturada', 'despacho'].includes(q.status));
+    const pagadas = quotes.filter((q) => q.status === 'pagada');
+
     return {
       emitidasCount: emitidas.length,
+      totalPipeline: emitidas.reduce((s, q) => s + (Number(q.total) || 0), 0),
       aplazadasCount: aplazadas.length,
-      aprobadasCount: aprobadas.length,
-      totalPipeline,
-      totalAprobado,
+      enTallerCount: enTaller.length,
+      totalEnTaller: enTaller.reduce((s, q) => s + (Number(q.total) || 0), 0),
+      porCobrarCount: porCobrar.length,
+      totalPorCobrar: porCobrar.reduce((s, q) => s + (Number(q.total) || 0), 0),
+      pagadasCount: pagadas.length,
+      totalPagado: pagadas.reduce((s, q) => s + (Number(q.total) || 0), 0),
     };
   }, [quotes]);
 
@@ -355,40 +358,74 @@ export default function QuotesManager({
 
   return (
     <div className="space-y-6">
-      {/* KPI CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs min-w-0">
+      {/* KPI CARDS — Separación financiera real */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <button
+          type="button"
+          onClick={() => setStatusFilter('emitida')}
+          className="text-left p-3.5 sm:p-4 rounded-2xl bg-white hover:border-sky-300 border border-slate-200 shadow-xs transition min-w-0"
+        >
           <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">
             En Seguimiento (Emitidas)
           </div>
-          <div className="font-heading text-lg sm:text-2xl font-bold text-slate-900 mt-1 truncate">
+          <div className="font-heading text-lg sm:text-xl font-bold text-slate-900 mt-1 truncate">
             {formatCLP(kpis.totalPipeline)}
           </div>
           <div className="text-[11px] text-sky-600 font-semibold mt-1">
             {kpis.emitidasCount} {kpis.emitidasCount === 1 ? 'cotización' : 'cotizaciones'}
+            {kpis.aplazadasCount > 0 ? ` · ${kpis.aplazadasCount} aplaz.` : ''}
           </div>
-        </div>
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs min-w-0">
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusFilter('en_taller')}
+          className="text-left p-3.5 sm:p-4 rounded-2xl bg-white hover:border-violet-300 border border-slate-200 shadow-xs transition min-w-0"
+        >
           <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">
-            Aplazadas (Por Retomar)
+            Aceptado / En Taller
           </div>
-          <div className="font-heading text-lg sm:text-2xl font-bold text-amber-600 mt-1">
-            {kpis.aplazadasCount}
+          <div className="font-heading text-lg sm:text-xl font-bold text-violet-700 mt-1 truncate">
+            {formatCLP(kpis.totalEnTaller)}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Con recordatorio de fecha</div>
-        </div>
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs min-w-0">
+          <div className="text-[11px] text-violet-600 font-semibold mt-1">
+            {kpis.enTallerCount} en producción (sin facturar)
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusFilter('facturada')}
+          className="text-left p-3.5 sm:p-4 rounded-2xl bg-white hover:border-cyan-300 border border-slate-200 shadow-xs transition min-w-0"
+        >
           <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">
-            Ventas Cerradas / Taller
+            Facturado por Cobrar
           </div>
-          <div className="font-heading text-lg sm:text-2xl font-bold text-emerald-700 mt-1 truncate">
-            {formatCLP(kpis.totalAprobado)}
+          <div className="font-heading text-lg sm:text-xl font-bold text-amber-700 mt-1 truncate">
+            {formatCLP(kpis.totalPorCobrar)}
+          </div>
+          <div className="text-[11px] text-amber-700 font-semibold mt-1">
+            {kpis.porCobrarCount} {kpis.porCobrarCount === 1 ? 'pendiente' : 'pendientes'} de pago
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setStatusFilter('pagada')}
+          className="text-left p-3.5 sm:p-4 rounded-2xl bg-white hover:border-emerald-300 border border-slate-200 shadow-xs transition min-w-0"
+        >
+          <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">
+            Realmente Pagado
+          </div>
+          <div className="font-heading text-lg sm:text-xl font-bold text-emerald-700 mt-1 truncate">
+            {formatCLP(kpis.totalPagado)}
           </div>
           <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-            {kpis.aprobadasCount} {kpis.aprobadasCount === 1 ? 'aprobada' : 'aprobadas'}
+            {kpis.pagadasCount} {kpis.pagadasCount === 1 ? 'pagada' : 'pagadas'} (caja real)
           </div>
-        </div>
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between min-w-0">
+        </button>
+
+        <div className="col-span-2 md:col-span-1 p-3.5 sm:p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between min-w-0">
           <div className="text-[11px] sm:text-xs text-slate-500 font-medium">Acción Rápida</div>
           <button
             onClick={onNewQuote}
