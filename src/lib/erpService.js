@@ -324,39 +324,29 @@ export const erpService = {
 
   // --- AUTH ---
   async getSession() {
-    if (isSupabaseConfigured) {
-      const { data } = await supabase.auth.getSession();
-      return data?.session || null;
-    }
-    const localSession = sessionStorage.getItem('olivar_demo_auth');
-    return localSession ? JSON.parse(localSession) : null;
+    if (!isSupabaseConfigured) return null;
+    const { data } = await supabase.auth.getSession();
+    return data?.session || null;
   },
 
-  async signIn(emailOrUser, password) {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailOrUser,
-        password,
-      });
-      if (error) throw error;
-      return data.session;
+  async signIn(email, password) {
+    if (!isSupabaseConfigured) {
+      throw new Error(
+        'Supabase no está configurado en este entorno. Define VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.'
+      );
     }
-    // Demo local login
-    const validPasswords = ['olivar2026', 'admin', '1234'];
-    if (!validPasswords.includes(password.trim())) {
-      throw new Error('Contraseña incorrecta. Verifica tus credenciales.');
-    }
-    const session = { user: { email: emailOrUser || 'admin@letrerosolivar.com', role: 'admin' } };
-    sessionStorage.setItem('olivar_demo_auth', JSON.stringify(session));
-    return session;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data.session;
   },
 
   async signOut() {
     if (isSupabaseConfigured) {
       await supabase.auth.signOut();
-      return;
     }
-    sessionStorage.removeItem('olivar_demo_auth');
   },
 
   // --- LOAD ALL ---
@@ -416,6 +406,18 @@ export const erpService = {
       return data || [];
     }
     return readLocal().workOrders;
+  },
+
+  async loadCalendarEvents() {
+    if (isSupabaseConfigured) {
+      const { data } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .order('event_date', { ascending: true })
+        .limit(300);
+      return data || [];
+    }
+    return readLocal().calendarEvents;
   },
 
   async loadAllErpData() {

@@ -74,6 +74,9 @@ export function ErpProvider({ children }) {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, async () => {
           setWorkOrders(await erpService.loadWorkOrders());
         })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, async () => {
+          setCalendarEvents(await erpService.loadCalendarEvents());
+        })
         .subscribe();
 
       return () => {

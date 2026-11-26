@@ -59,25 +59,23 @@ export default function LoginModal({ open, onClose, onSuccess }) {
             <span>
               {isCloud
                 ? 'Conectado a Supabase Auth (PostgreSQL en la nube).'
-                : 'Acceso restringido a personal autorizado de Letreros Olivar.'}
+                : 'Faltan variables de Supabase (.env) en este entorno.'}
             </span>
           </div>
 
-          {isCloud && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Correo corporativo
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
-                placeholder="contacto@letrerosolivar.com"
-              />
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+              Correo corporativo
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+              placeholder="contacto@letrerosolivar.com"
+            />
+          </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1.5">Contraseña</label>
