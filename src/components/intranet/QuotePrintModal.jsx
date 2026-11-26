@@ -27,8 +27,8 @@ export default function QuotePrintModal({ quote, onClose }) {
     : `https://wa.me/?text=${whatsappText}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-6">
+      <div className="print-modal-container max-w-4xl mx-auto">
         {/* Action Bar (hidden on print) */}
         <div className="no-print flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 sm:p-3.5 shadow-lg">
           <div className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2 min-w-0">

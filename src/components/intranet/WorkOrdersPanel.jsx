@@ -549,8 +549,8 @@ export default function WorkOrdersPanel() {
       )}
 
       {printOt && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4">
-          <div className="max-w-3xl mx-auto">
+        <div className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4">
+          <div className="print-modal-container max-w-3xl mx-auto">
             <div className="no-print flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 shadow-lg">
               <span className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
                 Ficha de Producción · {printOt.ot_number}
