@@ -69,11 +69,14 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
   }, [workOrders]);
 
   const filtered = useMemo(() => {
-    return workOrders.filter((ot) => {
-      if (filter === 'activas') return ot.status !== 'pagada';
-      if (filter === 'todas') return true;
-      return ot.status === filter;
-    });
+    const rankOf = (prio) => OT_PRIORITIES.find((p) => p.id === prio)?.rank ?? 3;
+    return workOrders
+      .filter((ot) => {
+        if (filter === 'activas') return ot.status !== 'pagada';
+        if (filter === 'todas') return true;
+        return ot.status === filter;
+      })
+      .sort((a, b) => rankOf(a.priority) - rankOf(b.priority));
   }, [workOrders, filter]);
 
   const syncLinkedQuote = async (ot, targetOtStatus, extraQuoteFields = {}, note = '') => {
@@ -290,13 +293,13 @@ export default function WorkOrdersPanel({ onOpenInOptimizer }) {
                           FAC: {ot.invoice_number}
                         </span>
                       )}
-                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${prioMeta.badge}`}>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 ${prioMeta.badge}`}>
                         {ot.priority === 'urgente' ? (
                           <AlertTriangle className="w-3 h-3" />
                         ) : (
                           <span className={`w-1.5 h-1.5 rounded-full ${prioMeta.dot}`} />
                         )}
-                        {prioMeta.label}
+                        Prioridad {prioMeta.label}
                       </span>
                     </div>
                     <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${meta.color}`}>

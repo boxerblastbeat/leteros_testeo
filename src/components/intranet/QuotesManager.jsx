@@ -343,10 +343,15 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
             const linkedOtMeta = linkedOt
               ? OT_STATUSES.find((s) => s.id === linkedOt.status) || OT_STATUSES[0]
               : null;
+            const linkedOtPrio = linkedOt
+              ? OT_PRIORITIES.find((p) => p.id === linkedOt.priority) || OT_PRIORITIES[0]
+              : null;
             return (
               <div
                 key={q.id}
-                className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 shadow-xs transition space-y-3"
+                className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 ${
+                  linkedOtPrio ? linkedOtPrio.cardBorder : ''
+                } shadow-xs transition space-y-3`}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="space-y-1">
@@ -361,16 +366,30 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                         {meta.label}
                       </span>
                       {linkedOt && (
-                        <button
-                          type="button"
-                          onClick={() => onGoWorkshop?.()}
-                          title="Ver esta orden en Taller & OTs"
-                          className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition"
-                        >
-                          <Wrench className="w-3 h-3" />
-                          <span className="font-mono">{linkedOt.ot_number}</span>
-                          <span className="font-normal text-violet-600">· {linkedOtMeta?.label}</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => onGoWorkshop?.()}
+                            title="Ver esta orden en Taller & OTs"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 transition"
+                          >
+                            <Wrench className="w-3 h-3" />
+                            <span className="font-mono">{linkedOt.ot_number}</span>
+                            <span className="font-normal text-violet-600">· {linkedOtMeta?.label}</span>
+                          </button>
+                          {linkedOtPrio && (
+                            <span
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${linkedOtPrio.badge}`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  linkedOtPrio.id === 'urgente' ? 'bg-white' : linkedOtPrio.dot
+                                }`}
+                              />
+                              Prioridad {linkedOtPrio.label}
+                            </span>
+                          )}
+                        </>
                       )}
                       <span className="text-xs text-slate-500">{formatDateCL(q.created_at)}</span>
                       {q.oc_number && (
@@ -568,13 +587,17 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                 {linkedOt && (() => {
                   const otIdx = OT_STATUSES.findIndex((s) => s.id === linkedOt.status);
                   const stepIdx = otIdx >= 0 ? otIdx : 0;
-                  const prioMeta =
-                    OT_PRIORITIES.find((p) => p.id === linkedOt.priority) || OT_PRIORITIES[0];
                   return (
                     <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <span className={`w-2 h-2 rounded-full ${prioMeta.dot}`} />
+                        <div className="flex flex-wrap items-center gap-2 text-slate-600">
+                          {linkedOtPrio && (
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md border ${linkedOtPrio.badge}`}
+                            >
+                              {linkedOtPrio.label}
+                            </span>
+                          )}
                           <span>
                             Avance en Taller (<strong className="font-mono text-slate-800">{linkedOt.ot_number}</strong>):{' '}
                             <strong className="text-slate-900">
@@ -648,51 +671,51 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-600 font-medium mb-1">
-                  N° Orden de Compra (Opcional)
+                  N° Orden de Compra del Cliente (Opcional)
                 </label>
                 <input
                   type="text"
                   value={approveForm.oc_number}
                   onChange={(e) => setApproveForm({ ...approveForm, oc_number: e.target.value })}
-                  placeholder="Ej: OC-2026-884"
+                  placeholder="Ej: OC-45001234 (solo si el cliente emite OC)"
                   className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-600 font-medium mb-1">
-                    Fecha Entrega / Obra
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={approveForm.deadline}
-                    onChange={(e) => setApproveForm({ ...approveForm, deadline: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-600 font-medium mb-1">
-                    Prioridad Taller
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {OT_PRIORITIES.map((p) => {
-                      const active = approveForm.priority === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setApproveForm({ ...approveForm, priority: p.id })}
-                          className={`py-2 px-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                            active ? p.activeBtn : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span className={`w-2 h-2 rounded-full ${active ? 'bg-white' : p.dot}`} />
-                          {p.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+              <div>
+                <label className="block text-xs text-slate-600 font-medium mb-1">
+                  Fecha Entrega / Obra
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={approveForm.deadline}
+                  onChange={(e) => setApproveForm({ ...approveForm, deadline: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 font-medium mb-1.5">
+                  Prioridad Taller
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {OT_PRIORITIES.map((p) => {
+                    const active = approveForm.priority === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setApproveForm({ ...approveForm, priority: p.id })}
+                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                          active ? p.activeBtn : p.idleBtn
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-white' : p.dot}`}
+                        />
+                        <span>{p.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div>
