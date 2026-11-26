@@ -16,10 +16,12 @@ import {
   BadgeDollarSign,
   ArrowRight,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { QUOTE_STATUSES, OT_STATUSES } from '../../data/company';
 import { formatCLP, formatDateCL, addDaysISO, todayISO, DELIVERY_LABELS } from '../../lib/formatters';
+import { useModalClose } from '../../lib/useModalClose';
 
 const normalizeOtStatus = (status) => {
   if (['entregado', 'despachado', 'pagada'].includes(status)) return 'despachado';
@@ -36,6 +38,7 @@ export default function QuotesManager({
   const {
     quotes,
     workOrders,
+    calendarEvents,
     changeQuoteStatus,
     saveWorkOrder,
     saveCalendarEvent,
@@ -64,6 +67,19 @@ export default function QuotesManager({
   const [invoiceForm, setInvoiceForm] = useState({
     invoice_number: '',
     invoice_date: todayISO(),
+  });
+
+  const approveClose = useModalClose(Boolean(approveModal), () => setApproveModal(null), {
+    confirm: true,
+    message: '¿Cerrar aprobación de OT? Los datos ingresados se perderán.',
+  });
+  const postponeClose = useModalClose(Boolean(postponeModal), () => setPostponeModal(null), {
+    confirm: true,
+    message: '¿Cerrar aplazamiento? Los datos ingresados se perderán.',
+  });
+  const invoiceClose = useModalClose(Boolean(invoiceModal), () => setInvoiceModal(null), {
+    confirm: true,
+    message: '¿Cerrar registro de factura? Los datos ingresados se perderán.',
   });
 
   const otByQuote = useMemo(() => {
@@ -155,37 +171,49 @@ export default function QuotesManager({
       `Aceptada${approveForm.oc_number ? ` (${approveForm.oc_number})` : ''} y enviada a Taller`
     );
 
+    const existingOt = findLinkedOt(q);
     const ot = await saveWorkOrder({
+      ...(existingOt || {}),
       quote_id: q.id,
       quote_correlative: q.correlative,
-      client_name: q.client_snapshot?.name || 'Cliente',
-      client_phone: q.client_snapshot?.phone || '',
-      items: q.items || [],
+      client_name: q.client_snapshot?.name || existingOt?.client_name || 'Cliente',
+      client_phone: q.client_snapshot?.phone || existingOt?.client_phone || '',
+      items: q.items || existingOt?.items || [],
       delivery_method: q.delivery_method,
       delivery_address: q.delivery_address,
       deadline: approveForm.deadline,
       priority: approveForm.priority,
-      status: 'pendiente',
+      status: existingOt?.status || 'pendiente',
       notes: approveForm.notes || q.notes || '',
     });
 
     if (approveForm.deadline) {
+      const existingEv = calendarEvents.find(
+        (ev) =>
+          (ot.ot_number && ev.ot_number === ot.ot_number) ||
+          (q.correlative && ev.quote_correlative === q.correlative)
+      );
       await saveCalendarEvent({
+        ...(existingEv || {}),
         title: `${q.delivery_method === 'instalacion' ? 'Instalación' : 'Entrega'} ${q.correlative} · ${q.client_snapshot?.name}`,
         event_type: q.delivery_method === 'instalacion' ? 'instalacion' : 'entrega',
         event_date: approveForm.deadline,
-        event_time: '10:00',
+        event_time: existingEv?.event_time || '10:00',
         client_name: q.client_snapshot?.name || '',
         address: q.delivery_address || '',
         quote_correlative: q.correlative,
         ot_number: ot.ot_number,
-        status: 'programado',
+        status: existingEv?.status || 'programado',
         notes: approveForm.notes || '',
       });
     }
 
     setApproveModal(null);
-    showToast(`${q.correlative} aceptada · OT ${ot.ot_number} creada en Taller`);
+    showToast(
+      existingOt
+        ? `${q.correlative} actualizada · Se mantuvo ${ot.ot_number} con nueva fecha`
+        : `${q.correlative} aceptada · OT ${ot.ot_number} creada en Taller`
+    );
   };
 
   const handleConfirmPostpone = async (e) => {
@@ -200,8 +228,25 @@ export default function QuotesManager({
       },
       `Aplazada hasta ${postponeForm.postponed_until}: ${postponeForm.postpone_reason.trim()}`
     );
+
+    // Si ya tenía una OT asignada, actualizar la fecha de ESA MISMA OT sin crear una nueva
+    const existingOt = findLinkedOt(postponeModal);
+    if (existingOt && postponeForm.postponed_until) {
+      await saveWorkOrder({
+        ...existingOt,
+        deadline: postponeForm.postponed_until,
+        notes: postponeForm.postpone_reason.trim()
+          ? `${existingOt.notes ? `${existingOt.notes} | ` : ''}Aplazada: ${postponeForm.postpone_reason.trim()}`
+          : existingOt.notes,
+      });
+    }
+
     setPostponeModal(null);
-    showToast(`${postponeModal.correlative} aplazada · Seguimiento agendado en Calendario`);
+    showToast(
+      existingOt
+        ? `${postponeModal.correlative} aplazada · Plazo actualizado en ${existingOt.ot_number}`
+        : `${postponeModal.correlative} aplazada · Seguimiento agendado en Calendario`
+    );
   };
 
   const handleConfirmInvoice = async (e) => {
@@ -733,16 +778,29 @@ export default function QuotesManager({
 
       {/* MODAL ACEPTAR -> OT */}
       {approveModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+          onClick={approveClose.handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <form
             onSubmit={handleConfirmApprove}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center gap-2.5 text-emerald-600">
-              <Wrench className="w-5 h-5" />
-              <h3 className="font-heading font-bold text-slate-900 text-lg">
-                Aceptar {approveModal.correlative} y Crear OT
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 text-emerald-600">
+                <Wrench className="w-5 h-5" />
+                <h3 className="font-heading font-bold text-slate-900 text-lg">
+                  Aceptar {approveModal.correlative} y Crear OT
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={approveClose.handleClose}
+                className="p-1.5 text-slate-400 hover:text-slate-700"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <p className="text-xs text-slate-500">
               Se generará automáticamente una Orden de Trabajo en Taller y un evento en el
@@ -804,7 +862,7 @@ export default function QuotesManager({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setApproveModal(null)}
+                onClick={approveClose.handleClose}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 Cancelar
@@ -822,16 +880,29 @@ export default function QuotesManager({
 
       {/* MODAL APLAZAR */}
       {postponeModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+          onClick={postponeClose.handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <form
             onSubmit={handleConfirmPostpone}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center gap-2.5 text-amber-600">
-              <Clock className="w-5 h-5" />
-              <h3 className="font-heading font-bold text-slate-900 text-lg">
-                Aplazar {postponeModal.correlative}
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 text-amber-600">
+                <Clock className="w-5 h-5" />
+                <h3 className="font-heading font-bold text-slate-900 text-lg">
+                  Aplazar {postponeModal.correlative}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={postponeClose.handleClose}
+                className="p-1.5 text-slate-400 hover:text-slate-700"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <div className="space-y-3">
               <div>
@@ -867,7 +938,7 @@ export default function QuotesManager({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setPostponeModal(null)}
+                onClick={postponeClose.handleClose}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 Cancelar
@@ -885,16 +956,29 @@ export default function QuotesManager({
 
       {/* MODAL FACTURAR */}
       {invoiceModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+          onClick={invoiceClose.handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <form
             onSubmit={handleConfirmInvoice}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900"
           >
-            <div className="flex items-center gap-2.5 text-cyan-600">
-              <Receipt className="w-5 h-5" />
-              <h3 className="font-heading font-bold text-slate-900 text-lg">
-                Registrar Factura · {invoiceModal.correlative}
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 text-cyan-600">
+                <Receipt className="w-5 h-5" />
+                <h3 className="font-heading font-bold text-slate-900 text-lg">
+                  Registrar Factura · {invoiceModal.correlative}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={invoiceClose.handleClose}
+                className="p-1.5 text-slate-400 hover:text-slate-700"
+                aria-label="Cerrar"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
             <div className="space-y-3">
               <div>
@@ -929,7 +1013,7 @@ export default function QuotesManager({
             <div className="flex justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setInvoiceModal(null)}
+                onClick={invoiceClose.handleClose}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 Cancelar

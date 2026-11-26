@@ -265,18 +265,22 @@ export function ErpProvider({ children }) {
       },
     });
 
-    // Si se aplaza con fecha de seguimiento, crear evento automático en el calendario
+    // Si se aplaza con fecha de seguimiento, actualizar evento existente o crear uno en el calendario
     if (newStatus === 'aplazada' && extra.postponed_until) {
+      const existingEv = calendarEvents.find(
+        (ev) => saved.correlative && ev.quote_correlative === saved.correlative
+      );
       await saveCalendarEvent(
         {
+          ...(existingEv || {}),
           title: `Seguimiento ${saved.correlative} · ${saved.client_snapshot?.name || 'Cliente'}`,
           event_type: 'seguimiento',
           event_date: extra.postponed_until,
-          event_time: '10:30',
+          event_time: existingEv?.event_time || '10:30',
           client_name: saved.client_snapshot?.name || '',
           address: saved.delivery_address || '',
           quote_correlative: saved.correlative,
-          status: 'programado',
+          status: existingEv?.status || 'programado',
           notes: extra.postpone_reason || 'Seguimiento de cotización aplazada',
         },
         { skipAudit: true }

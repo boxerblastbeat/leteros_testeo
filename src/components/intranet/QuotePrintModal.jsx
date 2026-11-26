@@ -2,8 +2,13 @@ import React from 'react';
 import { Printer, X, MessageCircle } from 'lucide-react';
 import { COMPANY_INFO } from '../../data/company';
 import { formatCLP, formatDateCL, DELIVERY_LABELS } from '../../lib/formatters';
+import { useModalClose } from '../../lib/useModalClose';
 
 export default function QuotePrintModal({ quote, onClose }) {
+  const { handleClose, handleBackdropClick } = useModalClose(Boolean(quote), onClose, {
+    confirm: false,
+  });
+
   if (!quote) return null;
 
   const client = quote.client_snapshot || {};
@@ -22,7 +27,10 @@ export default function QuotePrintModal({ quote, onClose }) {
     : `https://wa.me/?text=${whatsappText}`;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-6">
+    <div
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-6"
+    >
       <div className="max-w-4xl mx-auto">
         {/* Action Bar (hidden on print) */}
         <div className="no-print flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 sm:p-3.5 shadow-lg">
@@ -49,7 +57,7 @@ export default function QuotePrintModal({ quote, onClose }) {
               <span>Imprimir / PDF</span>
             </button>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 transition shrink-0"
               aria-label="Cerrar vista previa"
             >

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { X, Plus, Trash2, Save, Calculator, UserPlus, Layers, Sparkles } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatCLP, calculateQuoteTotals, uid } from '../../lib/formatters';
+import { useModalClose } from '../../lib/useModalClose';
 import {
   DEFAULT_COMPOSITION_LAYERS,
   DEFAULT_FINISHES,
@@ -27,6 +28,11 @@ export default function QuoteEditorModal({
   onSaved,
 }) {
   const { materials, clients, saveQuote, saveClient, updateRequestStatus, showToast } = useErp();
+
+  const { handleClose: requestClose, handleBackdropClick } = useModalClose(open, onClose, {
+    confirm: true,
+    message: '¿Seguro que deseas cerrar la cotización? Los datos no guardados se perderán.',
+  });
 
   const buildInitialState = () => {
     if (initialQuote) {
@@ -375,7 +381,10 @@ export default function QuoteEditorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-3 sm:p-6">
+    <div
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-3 sm:p-6"
+    >
       <div className="max-w-5xl mx-auto bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden my-4 text-slate-900">
         {/* Header */}
         <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 flex items-center justify-between gap-3 bg-slate-50">
@@ -397,7 +406,8 @@ export default function QuoteEditorModal({
             </div>
           </div>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={requestClose}
             className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition shrink-0"
           >
             <X className="w-5 h-5" />

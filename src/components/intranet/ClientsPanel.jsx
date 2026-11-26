@@ -1,11 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { Users, Plus, Search, Edit3, Trash2, Phone, Mail, MapPin, X } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
+import { useModalClose } from '../../lib/useModalClose';
 
 export default function ClientsPanel() {
   const { clients, saveClient, deleteClient, showToast } = useErp();
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const { handleClose: requestCloseModal, handleBackdropClick } = useModalClose(
+    modalOpen,
+    () => setModalOpen(false),
+    { confirm: true, message: '¿Cerrar ficha de cliente? Los cambios no guardados se perderán.' }
+  );
   const [form, setForm] = useState({
     id: '',
     name: '',
@@ -167,7 +173,10 @@ export default function ClientsPanel() {
       </div>
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <div
+          onClick={handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+        >
           <form
             onSubmit={handleSave}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -178,7 +187,7 @@ export default function ClientsPanel() {
               </h3>
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
+                onClick={requestCloseModal}
                 className="p-1.5 text-slate-400 hover:text-slate-700"
               >
                 <X className="w-4 h-4" />
@@ -248,7 +257,7 @@ export default function ClientsPanel() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setModalOpen(false)}
+                onClick={requestCloseModal}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 Cancelar

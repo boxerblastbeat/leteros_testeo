@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import {
-  X,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -213,15 +212,6 @@ export default function WeeklyScheduleModal({ onClose, onGoToWorkshop, onGoToCal
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-900 transition"
-              title="Cerrar"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
 
@@ -402,36 +392,7 @@ export default function WeeklyScheduleModal({ onClose, onGoToWorkshop, onGoToCal
         </div>
 
         {/* FOOTER */}
-        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {onGoToWorkshop && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onGoToWorkshop();
-                }}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
-              >
-                <Wrench className="w-3.5 h-3.5 text-red-600" />
-                <span>Ir a Taller &amp; OTs</span>
-              </button>
-            )}
-            {onGoToCalendar && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onGoToCalendar();
-                }}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
-              >
-                <Calendar className="w-3.5 h-3.5 text-sky-600" />
-                <span>Ver Agenda Completa</span>
-              </button>
-            )}
-          </div>
-
+        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
           <button
             type="button"
             onClick={onClose}

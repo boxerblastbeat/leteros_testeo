@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar as CalendarIcon, Plus, CheckCircle2, Trash2, MapPin, Clock, X } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatDateCL, todayISO } from '../../lib/formatters';
+import { useModalClose } from '../../lib/useModalClose';
 
 const TYPE_STYLES = {
   instalacion: 'bg-orange-50 text-orange-700 border-orange-200',
@@ -14,6 +15,11 @@ export default function CalendarPanel() {
   const { calendarEvents, saveCalendarEvent, deleteCalendarEvent, showToast } = useErp();
   const [filterType, setFilterType] = useState('todos');
   const [showAdd, setShowAdd] = useState(false);
+  const { handleClose: requestCloseAdd, handleBackdropClick } = useModalClose(
+    showAdd,
+    () => setShowAdd(false),
+    { confirm: true, message: '¿Cerrar formulario de evento? Los datos ingresados se perderán.' }
+  );
   const [form, setForm] = useState({
     title: '',
     event_type: 'instalacion',
@@ -182,7 +188,10 @@ export default function CalendarPanel() {
       )}
 
       {showAdd && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <div
+          onClick={handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+        >
           <form
             onSubmit={handleAdd}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -191,7 +200,7 @@ export default function CalendarPanel() {
               <h3 className="font-heading font-bold text-slate-900 text-lg">Agendar Evento</h3>
               <button
                 type="button"
-                onClick={() => setShowAdd(false)}
+                onClick={requestCloseAdd}
                 className="p-1.5 text-slate-400 hover:text-slate-700"
               >
                 <X className="w-4 h-4" />
@@ -249,7 +258,7 @@ export default function CalendarPanel() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowAdd(false)}
+                onClick={requestCloseAdd}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 Cancelar

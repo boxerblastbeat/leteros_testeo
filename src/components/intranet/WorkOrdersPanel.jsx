@@ -11,10 +11,12 @@ import {
   ArrowRight,
   ArrowLeft,
   Truck,
+  Clock,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, COMPANY_INFO } from '../../data/company';
 import { formatDateCL, DELIVERY_LABELS, addDaysISO, uid } from '../../lib/formatters';
+import { useModalClose } from '../../lib/useModalClose';
 
 // En Taller solo existen los 5 pasos productivos/despacho (facturación y cobro son exclusivos de Cotizaciones ERP)
 const normalizeWorkshopStatus = (status) => {
@@ -24,11 +26,37 @@ const normalizeWorkshopStatus = (status) => {
 };
 
 export default function WorkOrdersPanel() {
-  const { workOrders, quotes, saveWorkOrder, changeQuoteStatus, showToast } = useErp();
+  const {
+    workOrders,
+    quotes,
+    calendarEvents,
+    saveWorkOrder,
+    saveCalendarEvent,
+    changeQuoteStatus,
+    showToast,
+  } = useErp();
 
   const [filter, setFilter] = useState('activas');
   const [printOt, setPrintOt] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [rescheduleOt, setRescheduleOt] = useState(null);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    deadline: '',
+    priority: 'normal',
+    notes: '',
+  });
+
+  const rescheduleClose = useModalClose(Boolean(rescheduleOt), () => setRescheduleOt(null), {
+    confirm: true,
+    message: '¿Cerrar reprogramación de OT? Los cambios no guardados se perderán.',
+  });
+  const newOtClose = useModalClose(showNewModal, () => setShowNewModal(false), {
+    confirm: true,
+    message: '¿Cerrar formulario de Nueva OT? Los datos ingresados se perderán.',
+  });
+  const printOtClose = useModalClose(Boolean(printOt), () => setPrintOt(null), {
+    confirm: false,
+  });
   const [newOt, setNewOt] = useState({
     client_name: '',
     client_phone: '',
@@ -131,6 +159,41 @@ export default function WorkOrdersPanel() {
     const idx = order.indexOf(current);
     if (idx <= 0) return;
     await applyOtStatus(ot, order[idx - 1], 'retroceso');
+  };
+
+  const handleConfirmReschedule = async (e) => {
+    e.preventDefault();
+    if (!rescheduleOt) return;
+
+    // Modifica la MISMA OT (sin crear duplicados)
+    await saveWorkOrder({
+      ...rescheduleOt,
+      deadline: rescheduleForm.deadline,
+      priority: rescheduleForm.priority,
+      notes: rescheduleForm.notes.trim(),
+    });
+
+    // Actualiza el evento vinculado en Agenda si existe (sin duplicar)
+    if (rescheduleForm.deadline) {
+      const linkedEv = calendarEvents.find(
+        (ev) =>
+          (rescheduleOt.ot_number && ev.ot_number === rescheduleOt.ot_number) ||
+          (rescheduleOt.quote_correlative &&
+            ev.quote_correlative === rescheduleOt.quote_correlative)
+      );
+      if (linkedEv) {
+        await saveCalendarEvent({
+          ...linkedEv,
+          event_date: rescheduleForm.deadline,
+          notes: rescheduleForm.notes.trim() || linkedEv.notes,
+        });
+      }
+    }
+
+    showToast(
+      `Plazo de ${rescheduleOt.ot_number} reprogramado para ${formatDateCL(rescheduleForm.deadline)}`
+    );
+    setRescheduleOt(null);
   };
 
   const handleCreateManualOt = async (e) => {
@@ -361,6 +424,24 @@ export default function WorkOrdersPanel() {
                       <span>Ficha</span>
                     </button>
 
+                    {!isFinished && (
+                      <button
+                        onClick={() => {
+                          setRescheduleForm({
+                            deadline: ot.deadline || addDaysISO(3),
+                            priority: ot.priority || 'normal',
+                            notes: ot.notes || '',
+                          });
+                          setRescheduleOt(ot);
+                        }}
+                        title="Aplazar o reprogramar fecha de entrega manteniendo la misma OT"
+                        className="px-2.5 py-2 sm:py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-1 transition"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Aplazar</span>
+                      </button>
+                    )}
+
                     {prevMeta && (
                       <button
                         onClick={() => revertStatus(ot)}
@@ -403,8 +484,103 @@ export default function WorkOrdersPanel() {
         </div>
       )}
 
+      {/* MODAL APLAZAR / REPROGRAMAR MISMA OT */}
+      {rescheduleOt && (
+        <div
+          onClick={rescheduleClose.handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+        >
+          <form
+            onSubmit={handleConfirmReschedule}
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-heading font-bold text-slate-900 text-lg flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                  <span>Reprogramar {rescheduleOt.ot_number}</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {rescheduleOt.client_name} · Se mantiene la misma OT sin duplicar.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={rescheduleClose.handleClose}
+                className="p-1.5 text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Nueva Fecha de Entrega / Plazo
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={rescheduleForm.deadline}
+                  onChange={(e) =>
+                    setRescheduleForm({ ...rescheduleForm, deadline: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-amber-600"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Prioridad Taller
+                </label>
+                <select
+                  value={rescheduleForm.priority}
+                  onChange={(e) =>
+                    setRescheduleForm({ ...rescheduleForm, priority: e.target.value })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="urgente">Urgente</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Notas / Motivo del cambio de fecha
+                </label>
+                <textarea
+                  rows={2}
+                  value={rescheduleForm.notes}
+                  onChange={(e) =>
+                    setRescheduleForm({ ...rescheduleForm, notes: e.target.value })
+                  }
+                  placeholder="Ej: Cliente pidió reprogramar entrega..."
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={rescheduleClose.handleClose}
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold"
+              >
+                Guardar Nuevo Plazo
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {showNewModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <div
+          onClick={newOtClose.handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+        >
           <form
             onSubmit={handleCreateManualOt}
             className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
@@ -415,7 +591,7 @@ export default function WorkOrdersPanel() {
               </h3>
               <button
                 type="button"
-                onClick={() => setShowNewModal(false)}
+                onClick={newOtClose.handleClose}
                 className="p-1.5 text-slate-400 hover:text-slate-700"
               >
                 <X className="w-4 h-4" />
@@ -488,7 +664,7 @@ export default function WorkOrdersPanel() {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowNewModal(false)}
+                onClick={newOtClose.handleClose}
                 className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
               >
                 Cancelar
@@ -505,7 +681,10 @@ export default function WorkOrdersPanel() {
       )}
 
       {printOt && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4">
+        <div
+          onClick={printOtClose.handleBackdropClick}
+          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4"
+        >
           <div className="max-w-3xl mx-auto">
             <div className="no-print flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 shadow-lg">
               <span className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
@@ -520,7 +699,7 @@ export default function WorkOrdersPanel() {
                   Imprimir Ficha
                 </button>
                 <button
-                  onClick={() => setPrintOt(null)}
+                  onClick={printOtClose.handleClose}
                   className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700"
                 >
                   <X className="w-4 h-4" />
