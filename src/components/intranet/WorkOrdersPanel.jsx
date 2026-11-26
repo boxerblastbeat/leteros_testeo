@@ -14,7 +14,7 @@ import {
   BadgeDollarSign,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { OT_STATUSES, COMPANY_INFO } from '../../data/company';
+import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
 import { formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
 
 const OT_TO_QUOTE_STATUS = {
@@ -235,7 +235,7 @@ export default function WorkOrdersPanel() {
             return (
               <div
                 key={ot.id}
-                className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-4"
+                className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 ${prioMeta.cardBorder} shadow-xs flex flex-col justify-between gap-4`}
               >
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -253,12 +253,14 @@ export default function WorkOrdersPanel() {
                           FAC: {ot.invoice_number}
                         </span>
                       )}
-                      {ot.priority === 'urgente' && (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
+                      <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${prioMeta.badge}`}>
+                        {ot.priority === 'urgente' ? (
                           <AlertTriangle className="w-3 h-3" />
-                          Urgente
-                        </span>
-                      )}
+                        ) : (
+                          <span className={`w-1.5 h-1.5 rounded-full ${prioMeta.dot}`} />
+                        )}
+                        {prioMeta.label}
+                      </span>
                     </div>
                     <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${meta.color}`}>
                       {meta.label}
@@ -515,8 +517,9 @@ export default function WorkOrdersPanel() {
                 onChange={(e) => setNewOt({ ...newOt, priority: e.target.value })}
                 className="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
               >
-                <option value="normal">Prioridad Normal</option>
-                <option value="urgente">Prioridad Urgente</option>
+                <option value="normal">Prioridad Normal (Verde)</option>
+                <option value="alta">Prioridad Alta (Ámbar)</option>
+                <option value="urgente">Prioridad Urgente (Rojo)</option>
               </select>
               <textarea
                 rows={2}

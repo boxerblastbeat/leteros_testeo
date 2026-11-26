@@ -16,7 +16,7 @@ import {
   BadgeDollarSign,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { QUOTE_STATUSES } from '../../data/company';
+import { QUOTE_STATUSES, OT_PRIORITIES } from '../../data/company';
 import { formatCLP, formatDateCL, addDaysISO, todayISO } from '../../lib/formatters';
 
 export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote }) {
@@ -545,14 +545,24 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
                   <label className="block text-xs text-slate-600 font-medium mb-1">
                     Prioridad Taller
                   </label>
-                  <select
-                    value={approveForm.priority}
-                    onChange={(e) => setApproveForm({ ...approveForm, priority: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="urgente">Urgente</option>
-                  </select>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {OT_PRIORITIES.map((p) => {
+                      const active = approveForm.priority === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setApproveForm({ ...approveForm, priority: p.id })}
+                          className={`py-2 px-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                            active ? p.activeBtn : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${active ? 'bg-white' : p.dot}`} />
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
               <div>

@@ -78,6 +78,33 @@ export const QUOTE_STATUSES = [
   { id: 'rechazada', label: 'Rechazada', color: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
 ];
 
+export const OT_PRIORITIES = [
+  {
+    id: 'normal',
+    label: 'Normal',
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    activeBtn: 'bg-emerald-600 border-emerald-600 text-white shadow-xs',
+    dot: 'bg-emerald-500',
+    cardBorder: 'border-l-4 border-l-emerald-500',
+  },
+  {
+    id: 'alta',
+    label: 'Alta',
+    badge: 'bg-amber-50 text-amber-800 border-amber-300',
+    activeBtn: 'bg-amber-500 border-amber-500 text-white shadow-xs',
+    dot: 'bg-amber-500',
+    cardBorder: 'border-l-4 border-l-amber-500',
+  },
+  {
+    id: 'urgente',
+    label: 'Urgente',
+    badge: 'bg-red-50 text-red-700 border-red-300',
+    activeBtn: 'bg-red-600 border-red-600 text-white shadow-xs',
+    dot: 'bg-red-600',
+    cardBorder: 'border-l-4 border-l-red-600',
+  },
+];
+
 export const OT_STATUSES = [
   { id: 'pendiente', label: 'Pendiente', color: 'bg-slate-100 text-slate-700 border-slate-200' },
   { id: 'diseno', label: 'Diseño / Preprensa', color: 'bg-sky-50 text-sky-700 border-sky-200' },
