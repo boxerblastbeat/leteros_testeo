@@ -174,32 +174,38 @@ export default function PublicSite({ onOpenIntranet }) {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">
-      {/* BARRA SUPERIOR CORPORATIVA (Visible completa en móvil y escritorio) */}
-      <div className="bg-zinc-950 border-b border-zinc-900 text-[11px] sm:text-xs py-2.5 px-3 sm:px-6 lg:px-10 no-print">
-        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4 text-zinc-400">
-          {/* Ubicación y Dirección */}
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <span className="text-zinc-200 font-medium">
-              Taller Matriz: Olivar, Región de O&apos;Higgins
-            </span>
-            <span className="text-zinc-700">|</span>
+      {/* BARRA SUPERIOR CORPORATIVA (Una sola línea limpia en escritorio, ordenada en móvil) */}
+      <div className="bg-zinc-950 border-b border-zinc-900 text-[11px] sm:text-xs py-2 px-3 sm:px-6 lg:px-8 no-print">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4 text-zinc-400">
+          {/* Ubicación */}
+          <div className="flex items-center gap-2 min-w-0">
             <a
               href={COMPANY_INFO.mapsUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-zinc-300 hover:text-red-400 transition underline underline-offset-4 decoration-red-600/70"
+              className="inline-flex items-center gap-1.5 text-zinc-200 hover:text-red-400 font-medium transition whitespace-nowrap truncate"
+              title={COMPANY_INFO.address}
             >
               <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
-              <span>{COMPANY_INFO.address}</span>
+              <span>Taller Matriz: Olivar, O&apos;Higgins</span>
+            </a>
+            <span className="hidden 2xl:inline text-zinc-700">|</span>
+            <a
+              href={COMPANY_INFO.mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden 2xl:inline text-zinc-400 hover:text-zinc-200 transition underline underline-offset-4 decoration-red-600/60 whitespace-nowrap"
+            >
+              {COMPANY_INFO.address}
             </a>
           </div>
 
           {/* Contacto, Redes y Acceso Intranet */}
-          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-x-3.5 sm:gap-x-4 lg:gap-x-5 gap-y-2 pt-1.5 lg:pt-0 border-t border-zinc-900 lg:border-t-0">
-            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5">
+          <div className="flex flex-wrap lg:flex-nowrap items-center justify-between lg:justify-end gap-x-3.5 xl:gap-x-4 gap-y-1.5 pt-1.5 lg:pt-0 border-t border-zinc-900 lg:border-t-0">
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 xl:gap-x-4 gap-y-1 whitespace-nowrap">
               <a
                 href={`mailto:${COMPANY_INFO.email}`}
-                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
+                className="text-zinc-300 hover:text-white transition font-mono hidden xl:flex items-center gap-1.5"
                 title={`Enviar correo a ${COMPANY_INFO.email}`}
               >
                 <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
@@ -207,7 +213,7 @@ export default function PublicSite({ onOpenIntranet }) {
               </a>
               <a
                 href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
-                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
+                className="text-zinc-200 hover:text-white transition font-mono flex items-center gap-1.5"
               >
                 <Phone className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 <span>{COMPANY_INFO.phone}</span>
@@ -243,10 +249,10 @@ export default function PublicSite({ onOpenIntranet }) {
               </a>
             </div>
 
-            <div className="lg:border-l lg:border-zinc-800 lg:pl-4">
+            <div className="lg:border-l lg:border-zinc-800 lg:pl-3.5 shrink-0">
               <button
                 onClick={onOpenIntranet}
-                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/35 text-[11px] sm:text-xs transition whitespace-nowrap"
+                className="text-red-400 hover:text-red-300 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/35 text-[11px] sm:text-xs transition whitespace-nowrap"
                 title="Acceso directo a la Intranet de Taller y Cotizaciones"
               >
                 <Lock className="w-3.5 h-3.5" />
@@ -258,8 +264,8 @@ export default function PublicSite({ onOpenIntranet }) {
       </div>
 
       {/* NAVBAR PRINCIPAL STICKY */}
-      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4 no-print">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
+      <header className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-zinc-800/80 px-3 sm:px-6 lg:px-8 py-3 sm:py-3.5 no-print">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
           <a href="#inicio" className="flex items-center gap-2.5 group min-w-0 shrink-0">
             <img
               src="/logo-white.svg"
@@ -357,14 +363,14 @@ export default function PublicSite({ onOpenIntranet }) {
         )}
       </header>
 
-      {/* HERO SECTION (Estilo oficial letrerosolivar.com) */}
+      {/* HERO SECTION (Encuadre limpio above-the-fold en notebooks y escritorios) */}
       <section
         id="inicio"
-        className="relative overflow-hidden py-16 sm:py-24 px-4 sm:px-8 border-b border-zinc-900"
+        className="relative overflow-hidden py-10 sm:py-14 lg:py-16 px-4 sm:px-6 lg:px-8 border-b border-zinc-900"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-red-950/35 via-black to-black pointer-events-none" />
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative">
-          <div className="lg:col-span-7 space-y-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center relative">
+          <div className="lg:col-span-7 space-y-5">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-600/10 border border-red-600/30 text-red-500 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-red-500" />
               Fabricación Propia • Instalación en Terreno o Retiro en Taller
