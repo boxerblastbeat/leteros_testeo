@@ -154,11 +154,13 @@ export default function QuoteEditorModal({
   const [draftItem, setDraftItem] = useState({
     name: materials[0]?.name || '',
     detail: '',
+    dimUnit: 'm', // 'm' | 'cm'
     width: '1.00',
     height: '1.00',
     quantity: 1,
     priceMode: materials[0]?.unit === 'unidad' ? 'unit' : 'sqm',
     baseRate: materials[0]?.pricePerSqm || 25000,
+    customPriceScope: 'unit', // 'unit' | 'total'
     customUnitPrice: '',
   });
   const [saving, setSaving] = useState(false);
@@ -213,31 +215,44 @@ export default function QuoteEditorModal({
     }));
   };
 
+  const getDraftDimensionsMeters = () => {
+    const rawW = parseFloat(draftItem.width) || 0;
+    const rawH = parseFloat(draftItem.height) || 0;
+    const factor = draftItem.dimUnit === 'cm' ? 0.01 : 1;
+    return {
+      wM: Number((rawW * factor).toFixed(4)),
+      hM: Number((rawH * factor).toFixed(4)),
+    };
+  };
+
   const computedDraftUnitPrice = () => {
+    const qty = Math.max(1, parseInt(draftItem.quantity, 10) || 1);
     if (draftItem.customUnitPrice !== '' && !Number.isNaN(Number(draftItem.customUnitPrice))) {
-      return Math.max(0, Math.round(Number(draftItem.customUnitPrice)));
+      const entered = Math.max(0, Number(draftItem.customUnitPrice));
+      if (draftItem.customPriceScope === 'total') {
+        return Math.round(entered / qty);
+      }
+      return Math.round(entered);
     }
     const rate = Number(draftItem.baseRate) || 0;
     if (draftItem.priceMode === 'unit') return Math.round(rate);
-    const w = parseFloat(draftItem.width) || 0;
-    const h = parseFloat(draftItem.height) || 0;
-    return Math.round(w * h * rate);
+    const { wM, hM } = getDraftDimensionsMeters();
+    return Math.round(wM * hM * rate);
   };
 
   const handleAddItem = () => {
     if (!draftItem.name.trim()) return;
     const qty = Math.max(1, parseInt(draftItem.quantity, 10) || 1);
     const unitPrice = computedDraftUnitPrice();
-    const w = parseFloat(draftItem.width) || 0;
-    const h = parseFloat(draftItem.height) || 0;
+    const { wM, hM } = getDraftDimensionsMeters();
     const newItem = {
       id: uid(),
       materialId: selectedMatId,
       name: draftItem.name.trim(),
       detail: draftItem.detail.trim(),
-      width: draftItem.priceMode === 'sqm' ? w : '',
-      height: draftItem.priceMode === 'sqm' ? h : '',
-      area: draftItem.priceMode === 'sqm' ? Number((w * h).toFixed(2)) : 0,
+      width: draftItem.priceMode === 'sqm' ? Number(wM.toFixed(2)) : '',
+      height: draftItem.priceMode === 'sqm' ? Number(hM.toFixed(2)) : '',
+      area: draftItem.priceMode === 'sqm' ? Number((wM * hM).toFixed(3)) : 0,
       quantity: qty,
       priceMode: draftItem.priceMode,
       baseRate: Number(draftItem.baseRate) || 0,
