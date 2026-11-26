@@ -525,11 +525,24 @@ export default function QuoteEditorModal({
 
               {draftItem.priceMode === 'sqm' && (
                 <>
+                  <div className="col-span-2 sm:col-span-2">
+                    <label className="block text-[11px] text-slate-500 mb-1">Unidad Medida</label>
+                    <select
+                      value={draftItem.dimUnit}
+                      onChange={(e) => setDraftItem({ ...draftItem, dimUnit: e.target.value })}
+                      className="w-full px-2.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-semibold text-slate-900"
+                    >
+                      <option value="m">Metros (m)</option>
+                      <option value="cm">Centímetros (cm)</option>
+                    </select>
+                  </div>
                   <div className="col-span-1 sm:col-span-2">
-                    <label className="block text-[11px] text-slate-500 mb-1">Ancho (m)</label>
+                    <label className="block text-[11px] text-slate-500 mb-1">
+                      Ancho ({draftItem.dimUnit})
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step={draftItem.dimUnit === 'cm' ? '1' : '0.01'}
                       value={draftItem.width}
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => setDraftItem({ ...draftItem, width: e.target.value })}
@@ -537,10 +550,12 @@ export default function QuoteEditorModal({
                     />
                   </div>
                   <div className="col-span-1 sm:col-span-2">
-                    <label className="block text-[11px] text-slate-500 mb-1">Alto (m)</label>
+                    <label className="block text-[11px] text-slate-500 mb-1">
+                      Alto ({draftItem.dimUnit})
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step={draftItem.dimUnit === 'cm' ? '1' : '0.01'}
                       value={draftItem.height}
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => setDraftItem({ ...draftItem, height: e.target.value })}
@@ -550,7 +565,7 @@ export default function QuoteEditorModal({
                 </>
               )}
 
-              <div className={draftItem.priceMode === 'sqm' ? 'col-span-2 sm:col-span-3' : 'col-span-2 sm:col-span-5'}>
+              <div className={draftItem.priceMode === 'sqm' ? 'col-span-2 sm:col-span-6' : 'col-span-2 sm:col-span-5'}>
                 <label className="block text-[11px] text-slate-500 mb-1">
                   Detalle técnico (terminaciones, LED, ojetillos)
                 </label>
@@ -563,13 +578,31 @@ export default function QuoteEditorModal({
                 />
               </div>
 
-              <div className="col-span-2 sm:col-span-3">
-                <label className="block text-[11px] text-slate-500 mb-1">
-                  Precio Unitario Libre (Auto: {formatCLP(computedDraftUnitPrice())})
-                </label>
+              <div className="col-span-2 sm:col-span-4">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <label className="text-[11px] text-slate-500 truncate">
+                    Precio Libre ({draftItem.customPriceScope === 'total' ? 'Total lote' : 'Unitario'})
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDraftItem((prev) => ({
+                        ...prev,
+                        customPriceScope: prev.customPriceScope === 'unit' ? 'total' : 'unit',
+                      }))
+                    }
+                    className="text-[10px] font-bold text-red-600 hover:text-red-700 underline shrink-0"
+                  >
+                    {draftItem.customPriceScope === 'unit' ? 'Cambiar a Total lote' : 'Cambiar a Unitario'}
+                  </button>
+                </div>
                 <input
                   type="number"
-                  placeholder={String(computedDraftUnitPrice())}
+                  placeholder={
+                    draftItem.customPriceScope === 'total'
+                      ? String(computedDraftUnitPrice() * Math.max(1, parseInt(draftItem.quantity, 10) || 1))
+                      : String(computedDraftUnitPrice())
+                  }
                   value={draftItem.customUnitPrice}
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => setDraftItem({ ...draftItem, customUnitPrice: e.target.value })}
@@ -588,6 +621,54 @@ export default function QuoteEditorModal({
                 </button>
               </div>
             </div>
+
+            {/* Vista previa en vivo del cálculo + alerta anti-error si medidas parecen estar en centímetros */}
+            {(() => {
+              const qty = Math.max(1, parseInt(draftItem.quantity, 10) || 1);
+              const { wM, hM } = getDraftDimensionsMeters();
+              const unitP = computedDraftUnitPrice();
+              const sub = Math.round(qty * unitP);
+              const looksLikeCm =
+                draftItem.priceMode === 'sqm' &&
+                draftItem.dimUnit === 'm' &&
+                ((parseFloat(draftItem.width) || 0) > 15 || (parseFloat(draftItem.height) || 0) > 15);
+
+              return (
+                <div className="space-y-2 pt-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-[11px] text-slate-600">
+                    <span>
+                      Cálculo ítem:{' '}
+                      {draftItem.priceMode === 'sqm' && (
+                        <strong className="font-mono text-slate-800">
+                          {wM.toFixed(2)}m × {hM.toFixed(2)}m ({(wM * hM).toFixed(2)} m²) ·{' '}
+                        </strong>
+                      )}
+                      <strong className="font-mono text-slate-900">
+                        {qty} unid. × {formatCLP(unitP)}
+                      </strong>
+                    </span>
+                    <span className="font-mono font-bold text-slate-900">
+                      Subtotal ítem: <span className="text-red-600">{formatCLP(sub)}</span>
+                    </span>
+                  </div>
+
+                  {looksLikeCm && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900">
+                      <span>
+                        Ingresaste <strong>{draftItem.width} × {draftItem.height} metros</strong> ({(wM * hM).toFixed(1)} m²). ¿Quisiste ingresar <strong>centímetros</strong>?
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDraftItem((prev) => ({ ...prev, dimUnit: 'cm' }))}
+                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold"
+                      >
+                        Cambiar a cm
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* LISTA DE ÍTEMS (Tarjetas en móvil + Tabla en tablet/desktop) */}
