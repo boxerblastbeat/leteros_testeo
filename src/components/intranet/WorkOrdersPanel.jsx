@@ -300,7 +300,7 @@ export default function WorkOrdersPanel() {
 
                   {/* Barra visual de avance paso a paso */}
                   <div className="space-y-1">
-                    <div className="grid grid-cols-8 gap-1">
+                    <div className="grid grid-cols-7 gap-1">
                       {OT_STATUSES.map((step, sIdx) => (
                         <div
                           key={step.id}
