@@ -174,6 +174,19 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
       },
       `Facturada N° ${invoiceForm.invoice_number.trim()}`
     );
+    const linkedOt = workOrders.find(
+      (ot) =>
+        ot.quote_id === invoiceModal.id ||
+        (ot.quote_correlative && ot.quote_correlative === invoiceModal.correlative)
+    );
+    if (linkedOt) {
+      await saveWorkOrder({
+        ...linkedOt,
+        status: 'facturada',
+        invoice_number: invoiceForm.invoice_number.trim(),
+        invoice_date: invoiceForm.invoice_date,
+      });
+    }
     setInvoiceModal(null);
     showToast(`${invoiceModal.correlative} marcada como Facturada`);
   };
@@ -464,6 +477,9 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                               {},
                               'Lista para despacho / instalación'
                             );
+                            if (linkedOt && !['despachado', 'entregado', 'facturada', 'pagada'].includes(linkedOt.status)) {
+                              await saveWorkOrder({ ...linkedOt, status: 'despachado' });
+                            }
                             showToast(`${q.correlative} pasada a Despacho`);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 text-xs font-bold flex items-center gap-1"
@@ -493,6 +509,9 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                         <button
                           onClick={async () => {
                             await changeQuoteStatus(q, 'pagada', {}, 'Pago confirmado');
+                            if (linkedOt && linkedOt.status !== 'pagada') {
+                              await saveWorkOrder({ ...linkedOt, status: 'pagada' });
+                            }
                             showToast(`${q.correlative} marcada como Pagada`);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-bold flex items-center gap-1"
@@ -542,6 +561,51 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote, o
                     </div>
                   </div>
                 </div>
+
+                {/* Seguimiento en vivo del avance en Taller sin perder visibilidad en Cotizaciones */}
+                {linkedOt && (() => {
+                  const otIdx = OT_STATUSES.findIndex((s) => s.id === linkedOt.status);
+                  const stepIdx = otIdx >= 0 ? otIdx : 0;
+                  const prioMeta =
+                    OT_PRIORITIES.find((p) => p.id === linkedOt.priority) || OT_PRIORITIES[0];
+                  return (
+                    <div className="pt-2.5 border-t border-slate-100 space-y-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <span className={`w-2 h-2 rounded-full ${prioMeta.dot}`} />
+                          <span>
+                            Avance en Taller (<strong className="font-mono text-slate-800">{linkedOt.ot_number}</strong>):{' '}
+                            <strong className="text-slate-900">
+                              Paso {stepIdx + 1} de {OT_STATUSES.length} · {linkedOtMeta?.label}
+                            </strong>
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onGoWorkshop?.()}
+                          className="text-[11px] font-bold text-violet-700 hover:text-violet-900 underline underline-offset-2"
+                        >
+                          Gestionar en Taller & OTs →
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {OT_STATUSES.map((step, idx) => (
+                          <div
+                            key={step.id}
+                            title={step.label}
+                            className={`h-1.5 rounded-full transition ${
+                              idx <= stepIdx
+                                ? linkedOt.status === 'pagada'
+                                  ? 'bg-green-600'
+                                  : 'bg-violet-600'
+                                : 'bg-slate-200'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })
