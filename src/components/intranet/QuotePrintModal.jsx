@@ -7,12 +7,17 @@ export default function QuotePrintModal({ quote, onClose }) {
   if (!quote) return null;
 
   const client = quote.client_snapshot || {};
+  const taxRate = Number(quote.tax_rate ?? 19);
+  const hasTax = taxRate > 0;
+  const validityDays = Number(quote.validity_days ?? client.validity_days) || 15;
+
   const whatsappText = encodeURIComponent(
     `Hola ${client.name || ''}, te enviamos el resumen de tu cotización *${quote.correlative}* de *${COMPANY_INFO.name}*:\n` +
-      `• Total Neto: ${formatCLP(quote.subtotal)}\n` +
-      `• IVA (${quote.tax_rate ?? 19}%): ${formatCLP(quote.tax_amount)}\n` +
-      `• *TOTAL: ${formatCLP(quote.total)}*\n` +
-      `• Plazo estimado: ${quote.manufacturing_days || '5 a 7 días hábiles'}\n\n` +
+      (hasTax
+        ? `• Total Neto: ${formatCLP(quote.subtotal)}\n• IVA (${taxRate}%): ${formatCLP(quote.tax_amount)}\n• *TOTAL c/IVA: ${formatCLP(quote.total)}*\n`
+        : `• *TOTAL NETO (Sin IVA): ${formatCLP(quote.total)}*\n`) +
+      `• Plazo estimado: ${quote.manufacturing_days || '5 a 7 días hábiles'}\n` +
+      `• Validez: ${validityDays} días corridos\n\n` +
       `Quedamos atentos a tu confirmación.`
   );
 
@@ -126,6 +131,9 @@ export default function QuotePrintModal({ quote, onClose }) {
               <div>
                 Forma de pago: <strong>{quote.payment_terms || '50% abono / 50% entrega'}</strong>
               </div>
+              <div>
+                Validez cotización: <strong>{validityDays} días corridos</strong>
+              </div>
             </div>
           </div>
 
@@ -217,12 +225,19 @@ export default function QuotePrintModal({ quote, onClose }) {
                 <span>Subtotal Neto</span>
                 <span className="font-mono">{formatCLP(quote.subtotal)}</span>
               </div>
-              <div className="flex justify-between text-zinc-600">
-                <span>IVA ({quote.tax_rate ?? 19}%)</span>
-                <span className="font-mono">{formatCLP(quote.tax_amount)}</span>
-              </div>
+              {hasTax ? (
+                <div className="flex justify-between text-zinc-600">
+                  <span>IVA ({taxRate}%)</span>
+                  <span className="font-mono">{formatCLP(quote.tax_amount)}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-zinc-500 italic">
+                  <span>IVA</span>
+                  <span>Valores sin IVA (Neto)</span>
+                </div>
+              )}
               <div className="flex justify-between pt-2 border-t-2 border-zinc-900 text-base font-extrabold text-zinc-950">
-                <span>TOTAL CLP</span>
+                <span>{hasTax ? 'TOTAL CLP' : 'TOTAL NETO'}</span>
                 <span className="font-mono">{formatCLP(quote.total)}</span>
               </div>
             </div>
@@ -232,7 +247,7 @@ export default function QuotePrintModal({ quote, onClose }) {
           <div className="pt-4 border-t border-zinc-200 grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-6 text-[10px] text-zinc-600 print-avoid-break">
             <div className="space-y-0.5">
               <strong className="text-zinc-900 block">Términos y Validez:</strong>
-              <p>• Cotización válida por 15 días corridos desde su fecha de emisión.</p>
+              <p>• Cotización válida por {validityDays} días corridos desde su fecha de emisión.</p>
               <p>• Archivos aportados por el cliente deben venir vectorizados (.AI, .PDF o .EPS).</p>
               <p>• Trabajos garantizados con respaldo directo en Taller Matriz Olivar.</p>
             </div>

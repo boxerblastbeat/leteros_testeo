@@ -3,6 +3,17 @@ import { X, Plus, Trash2, Save, Calculator, UserPlus } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatCLP, calculateQuoteTotals, uid } from '../../lib/formatters';
 
+const MANUFACTURING_OPTIONS = [
+  'Inmediato',
+  '24 a 48 horas',
+  '3 a 5 días hábiles',
+  '5 a 7 días hábiles',
+  '7 a 10 días hábiles',
+  'Según coordinación',
+];
+
+const VALIDITY_OPTIONS = [5, 15, 30];
+
 export default function QuoteEditorModal({
   open,
   initialQuote = null,
@@ -18,12 +29,14 @@ export default function QuoteEditorModal({
         id: initialQuote.id,
         correlative: initialQuote.correlative,
         client_id: initialQuote.client_id || '',
-        client_snapshot: initialQuote.client_snapshot || {
+        client_snapshot: {
           name: '',
           rut: '',
           contact_name: '',
           phone: '',
           email: '',
+          validity_days: 15,
+          ...(initialQuote.client_snapshot || {}),
         },
         items: initialQuote.items || [],
         status: initialQuote.status || 'emitida',
@@ -60,6 +73,7 @@ export default function QuoteEditorModal({
           contact_name: fromRequest.client_name || '',
           phone: fromRequest.client_phone || '',
           email: fromRequest.client_email || '',
+          validity_days: 15,
         },
         items: [
           {
@@ -93,7 +107,7 @@ export default function QuoteEditorModal({
 
     return {
       client_id: '',
-      client_snapshot: { name: '', rut: '', contact_name: '', phone: '', email: '' },
+      client_snapshot: { name: '', rut: '', contact_name: '', phone: '', email: '', validity_days: 15 },
       items: [],
       status: 'emitida',
       delivery_method: 'instalacion',
@@ -148,6 +162,7 @@ export default function QuoteEditorModal({
       client_id: found.id,
       delivery_address: prev.delivery_address || found.address || '',
       client_snapshot: {
+        ...prev.client_snapshot,
         name: found.name,
         rut: found.rut || '',
         contact_name: found.contact_name || '',
@@ -718,14 +733,44 @@ export default function QuoteEditorModal({
               </div>
               <div>
                 <label className="block text-[11px] text-slate-500 mb-1">Plazo Fabricación</label>
-                <input
-                  type="text"
+                <select
                   value={form.manufacturing_days}
                   onChange={(e) => setForm({ ...form, manufacturing_days: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
-                />
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600"
+                >
+                  {!MANUFACTURING_OPTIONS.includes(form.manufacturing_days) && form.manufacturing_days && (
+                    <option value={form.manufacturing_days}>{form.manufacturing_days}</option>
+                  )}
+                  {MANUFACTURING_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="sm:col-span-2">
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Validez Cotización</label>
+                <select
+                  value={Number(form.client_snapshot?.validity_days) || 15}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      client_snapshot: {
+                        ...form.client_snapshot,
+                        validity_days: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600"
+                >
+                  {VALIDITY_OPTIONS.map((days) => (
+                    <option key={days} value={days}>
+                      {days} días corridos
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-[11px] text-slate-500 mb-1">Condición de Pago</label>
                 <input
                   type="text"
@@ -746,7 +791,33 @@ export default function QuoteEditorModal({
             </div>
 
             <div className="md:col-span-5 p-5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-4">
-              <div className="space-y-2 text-xs">
+              <div className="space-y-2.5 text-xs">
+                {/* Selector Con IVA / Sin IVA */}
+                <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-200/70 border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, tax_rate: 19 })}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition ${
+                      Number(form.tax_rate) > 0
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Con IVA (19%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, tax_rate: 0 })}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition ${
+                      Number(form.tax_rate) === 0
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Sin IVA (Neto)
+                  </button>
+                </div>
+
                 <div className="flex justify-between text-slate-500">
                   <span>Ítems ({form.items.length})</span>
                   <span className="font-mono">{formatCLP(totals.itemsSubtotal)}</span>
@@ -755,12 +826,19 @@ export default function QuoteEditorModal({
                   <span>Subtotal Neto</span>
                   <span className="font-mono">{formatCLP(totals.netSubtotal)}</span>
                 </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>IVA ({form.tax_rate}%)</span>
-                  <span className="font-mono">{formatCLP(totals.taxAmount)}</span>
-                </div>
+                {Number(form.tax_rate) > 0 ? (
+                  <div className="flex justify-between text-slate-500">
+                    <span>IVA ({form.tax_rate}%)</span>
+                    <span className="font-mono">{formatCLP(totals.taxAmount)}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between text-slate-500 italic">
+                    <span>IVA</span>
+                    <span>Valores sin IVA (Neto)</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-lg font-extrabold text-slate-900 pt-3 border-t border-slate-300">
-                  <span>TOTAL CLP</span>
+                  <span>{Number(form.tax_rate) > 0 ? 'TOTAL CLP' : 'TOTAL NETO'}</span>
                   <span className="font-mono text-red-600">{formatCLP(totals.total)}</span>
                 </div>
               </div>

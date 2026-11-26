@@ -349,7 +349,7 @@ export default function QuotesManager({ onNewQuote, onEditQuote, onPrintQuote })
                   <div className="flex flex-wrap items-center justify-between lg:justify-end gap-4">
                     <div className="text-left lg:text-right">
                       <div className="text-[10px] uppercase text-slate-400 font-bold">
-                        Total c/IVA
+                        {Number(q.tax_rate ?? 19) > 0 ? 'Total c/IVA' : 'Total Neto (Sin IVA)'}
                       </div>
                       <div className="font-mono text-lg font-extrabold text-slate-900">
                         {formatCLP(q.total)}
