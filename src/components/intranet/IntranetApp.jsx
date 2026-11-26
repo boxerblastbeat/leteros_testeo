@@ -11,6 +11,8 @@ import {
   LogOut,
   Database,
   Plus,
+  History,
+  User,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { COMPANY_INFO } from '../../data/company';
@@ -20,29 +22,32 @@ import WorkOrdersPanel from './WorkOrdersPanel';
 import CalendarPanel from './CalendarPanel';
 import ClientsPanel from './ClientsPanel';
 import MaterialsPanel from './MaterialsPanel';
+import ActivityLogPanel from './ActivityLogPanel';
 import QuoteEditorModal from './QuoteEditorModal';
 import QuotePrintModal from './QuotePrintModal';
 
 const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
 
 export default function IntranetApp({ onGoPublic }) {
-  const { quoteRequests, workOrders, isCloud, signOut } = useErp();
+  const { session, quotes, quoteRequests, workOrders, isCloud, signOut } = useErp();
 
   const [activeTab, setActiveTab] = useState('cotizaciones');
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
   const [printQuote, setPrintQuote] = useState(null);
 
+  const activeQuotesCount = quotes.filter((q) => !['pagada', 'rechazada'].includes(q.status)).length;
   const pendingRequestsCount = quoteRequests.filter((r) => r.status === 'nueva').length;
   const activeOtsCount = workOrders.filter((w) => w.status !== 'pagada').length;
 
   const navItems = [
-    { id: 'cotizaciones', label: 'Cotizaciones ERP', icon: FileText },
+    { id: 'cotizaciones', label: 'Cotizaciones ERP', icon: FileText, badge: activeQuotesCount },
     { id: 'solicitudes', label: 'Solicitudes Web', icon: Inbox, badge: pendingRequestsCount },
     { id: 'taller', label: 'Taller & OTs', icon: Wrench, badge: activeOtsCount },
     { id: 'calendario', label: 'Agenda & Despachos', icon: Calendar },
     { id: 'optimizador', label: 'Cortes 2D', icon: Scissors },
     { id: 'clientes', label: 'Clientes', icon: Users },
     { id: 'tarifario', label: 'Tarifario', icon: Package },
+    { id: 'bitacora', label: 'Bitácora', icon: History },
   ];
 
   return (
@@ -74,9 +79,15 @@ export default function IntranetApp({ onGoPublic }) {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {session?.user?.email && (
+              <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-600 font-medium">
+                <User className="w-3.5 h-3.5 text-slate-400" />
+                <span>{session.user.email}</span>
+              </div>
+            )}
             <button
               onClick={() => setEditorState({ open: true, quote: null, request: null })}
-              className="px-3 sm:px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-red-600/20"
+              className="px-3 sm:px-3.5 py-2 rounded-full sm:rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-red-600/20"
               title="Nueva Cotización"
             >
               <Plus className="w-4 h-4" />
@@ -84,7 +95,7 @@ export default function IntranetApp({ onGoPublic }) {
             </button>
             <button
               onClick={onGoPublic}
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+              className="p-2 sm:px-3 sm:py-2 rounded-full sm:rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
               title="Ver Web Pública"
             >
               <Globe className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-slate-500" />
@@ -95,7 +106,7 @@ export default function IntranetApp({ onGoPublic }) {
                 await signOut();
                 onGoPublic();
               }}
-              className="p-2 rounded-xl bg-white hover:bg-red-50 border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 transition"
+              className="p-2 rounded-full sm:rounded-xl bg-white hover:bg-red-50 border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 transition"
               title="Cerrar sesión"
             >
               <LogOut className="w-4 h-4" />
@@ -140,6 +151,7 @@ export default function IntranetApp({ onGoPublic }) {
             onNewQuote={() => setEditorState({ open: true, quote: null, request: null })}
             onEditQuote={(q) => setEditorState({ open: true, quote: q, request: null })}
             onPrintQuote={(q) => setPrintQuote(q)}
+            onGoToWorkshop={() => setActiveTab('taller')}
           />
         )}
         {activeTab === 'solicitudes' && (
@@ -164,6 +176,7 @@ export default function IntranetApp({ onGoPublic }) {
         )}
         {activeTab === 'clientes' && <ClientsPanel />}
         {activeTab === 'tarifario' && <MaterialsPanel />}
+        {activeTab === 'bitacora' && <ActivityLogPanel />}
       </main>
 
       {/* MODALS */}

@@ -12,19 +12,23 @@ import {
   ArrowLeft,
   Receipt,
   BadgeDollarSign,
+  Truck,
+  AlertCircle,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, COMPANY_INFO } from '../../data/company';
 import { formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
+
+const normalizeOtStatus = (status) => (status === 'entregado' ? 'despachado' : status);
 
 const OT_TO_QUOTE_STATUS = {
   pendiente: 'en_taller',
   diseno: 'en_taller',
   produccion: 'en_taller',
   terminado: 'en_taller',
+  facturada: 'facturada',
   despachado: 'despacho',
   entregado: 'despacho',
-  facturada: 'facturada',
   pagada: 'pagada',
 };
 
@@ -53,17 +57,35 @@ export default function WorkOrdersPanel() {
     notes: '',
   });
 
+  const filterCounts = useMemo(() => {
+    const counts = {
+      activas: 0,
+      todas: workOrders.length,
+    };
+    OT_STATUSES.forEach((s) => {
+      counts[s.id] = 0;
+    });
+    workOrders.forEach((ot) => {
+      const norm = normalizeOtStatus(ot.status);
+      if (norm !== 'pagada') counts.activas += 1;
+      if (counts[norm] !== undefined) counts[norm] += 1;
+    });
+    return counts;
+  }, [workOrders]);
+
   const filtered = useMemo(() => {
     return workOrders.filter((ot) => {
-      if (filter === 'activas') return ot.status !== 'pagada';
+      const norm = normalizeOtStatus(ot.status);
+      if (filter === 'activas') return norm !== 'pagada';
       if (filter === 'todas') return true;
-      return ot.status === filter;
+      return norm === filter;
     });
   }, [workOrders, filter]);
 
   const syncLinkedQuote = async (ot, targetOtStatus, extraQuoteFields = {}, note = '') => {
-    if (!ot.quote_id) return;
-    const linked = quotes.find((q) => q.id === ot.quote_id);
+    const linked =
+      (ot.quote_id && quotes.find((q) => q.id === ot.quote_id)) ||
+      (ot.quote_correlative && quotes.find((q) => q.correlative === ot.quote_correlative));
     if (!linked) return;
     const mappedQuoteStatus = OT_TO_QUOTE_STATUS[targetOtStatus];
     if (!mappedQuoteStatus) return;
@@ -100,7 +122,8 @@ export default function WorkOrdersPanel() {
 
   const advanceStatus = async (ot) => {
     const order = OT_STATUSES.map((s) => s.id);
-    const idx = order.indexOf(ot.status);
+    const current = normalizeOtStatus(ot.status);
+    const idx = order.indexOf(current);
     if (idx === -1 || idx >= order.length - 1) return;
     const nextStatus = order[idx + 1];
 
@@ -118,7 +141,8 @@ export default function WorkOrdersPanel() {
 
   const revertStatus = async (ot) => {
     const order = OT_STATUSES.map((s) => s.id);
-    const idx = order.indexOf(ot.status);
+    const current = normalizeOtStatus(ot.status);
+    const idx = order.indexOf(current);
     if (idx <= 0) return;
     const prevStatus = order[idx - 1];
     await applyOtStatus(ot, prevStatus, {}, 'retroceso');
@@ -183,11 +207,11 @@ export default function WorkOrdersPanel() {
         <div>
           <h2 className="font-heading text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
             <Wrench className="w-5 h-5 text-red-600 shrink-0" />
-            <span>Producción, Órdenes de Trabajo (OT), Facturación y Pago</span>
+            <span>Taller, Órdenes de Producción (OT), Facturación, Despacho y Cobro</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Control paso a paso (con avance y retroceso) desde taller hasta facturación y pago
-            confirmado.
+            Flujo en 7 pasos con avance y retroceso: Taller → Facturada → Despacho / Entrega →
+            Estado de Cobro (Pagada / No Pagada).
           </p>
         </div>
         <button
@@ -204,19 +228,32 @@ export default function WorkOrdersPanel() {
           { id: 'activas', label: 'Activas (Sin Pagar)' },
           ...OT_STATUSES,
           { id: 'todas', label: 'Todas' },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setFilter(tab.id)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap shrink-0 ${
-              filter === tab.id
-                ? 'bg-red-600 border-red-600 text-white shadow-xs'
-                : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        ].map((tab) => {
+          const count = filterCounts[tab.id] || 0;
+          const active = filter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+                active
+                  ? 'bg-red-600 border-red-600 text-white shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span
+                  className={`px-1.5 rounded-full text-[10px] font-bold leading-4 ${
+                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {filtered.length === 0 ? (
@@ -226,16 +263,26 @@ export default function WorkOrdersPanel() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
           {filtered.map((ot) => {
-            const idx = OT_STATUSES.findIndex((s) => s.id === ot.status);
+            const normStatus = normalizeOtStatus(ot.status);
+            const idx = OT_STATUSES.findIndex((s) => s.id === normStatus);
             const currentIdx = idx >= 0 ? idx : 0;
             const meta = OT_STATUSES[currentIdx];
             const prevMeta = currentIdx > 0 ? OT_STATUSES[currentIdx - 1] : null;
-            const nextMeta = currentIdx < OT_STATUSES.length - 1 ? OT_STATUSES[currentIdx + 1] : null;
+            const nextMeta =
+              currentIdx < OT_STATUSES.length - 1 ? OT_STATUSES[currentIdx + 1] : null;
+            const isUnpaid = ['facturada', 'despachado'].includes(normStatus);
+            const isPaid = normStatus === 'pagada';
 
             return (
               <div
                 key={ot.id}
-                className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-4"
+                className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-4 ${
+                  ot.priority === 'urgente' && !isPaid
+                    ? 'border-l-4 border-l-red-500'
+                    : isPaid
+                      ? 'border-l-4 border-l-green-600'
+                      : 'border-l-4 border-l-emerald-500'
+                }`}
               >
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -259,24 +306,38 @@ export default function WorkOrdersPanel() {
                           Urgente
                         </span>
                       )}
+                      {isUnpaid && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          No Pagada
+                        </span>
+                      )}
+                      {isPaid && (
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-300 flex items-center gap-1">
+                          <BadgeDollarSign className="w-3 h-3 text-green-700" />
+                          Pagada
+                        </span>
+                      )}
                     </div>
-                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${meta.color}`}>
+                    <span
+                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${meta.color}`}
+                    >
                       {meta.label}
                     </span>
                   </div>
 
-                  {/* Barra visual de avance paso a paso */}
+                  {/* Barra visual de avance paso a paso (7 pasos) */}
                   <div className="space-y-1">
-                    <div className="grid grid-cols-8 gap-1">
+                    <div className="grid grid-cols-7 gap-1">
                       {OT_STATUSES.map((step, sIdx) => (
                         <div
                           key={step.id}
-                          title={step.label}
+                          title={`Paso ${sIdx + 1}: ${step.label}`}
                           className={`h-1.5 rounded-full transition ${
                             sIdx <= currentIdx
-                              ? ot.status === 'pagada'
+                              ? isPaid
                                 ? 'bg-green-600'
-                                : 'bg-red-600'
+                                : 'bg-violet-600'
                               : 'bg-slate-200'
                           }`}
                         />
@@ -291,11 +352,14 @@ export default function WorkOrdersPanel() {
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-slate-900 text-base break-words">{ot.client_name}</h3>
+                    <h3 className="font-bold text-slate-900 text-base break-words">
+                      {ot.client_name}
+                    </h3>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-red-600" />
-                        Entrega: <strong className="text-slate-800">{formatDateCL(ot.deadline)}</strong>
+                        Entrega:{' '}
+                        <strong className="text-slate-800">{formatDateCL(ot.deadline)}</strong>
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -326,7 +390,9 @@ export default function WorkOrdersPanel() {
                     ))}
                   </div>
 
-                  {ot.notes && <p className="text-xs text-slate-500 italic break-words">“{ot.notes}”</p>}
+                  {ot.notes && (
+                    <p className="text-xs text-slate-500 italic break-words">“{ot.notes}”</p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
@@ -357,19 +423,24 @@ export default function WorkOrdersPanel() {
                       className={`px-3.5 py-2 sm:py-1.5 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition ${
                         nextMeta.id === 'facturada'
                           ? 'bg-cyan-600 hover:bg-cyan-700'
-                          : nextMeta.id === 'pagada'
-                            ? 'bg-green-600 hover:bg-green-700'
-                            : 'bg-red-600 hover:bg-red-700'
+                          : nextMeta.id === 'despachado'
+                            ? 'bg-orange-600 hover:bg-orange-700'
+                            : nextMeta.id === 'pagada'
+                              ? 'bg-green-600 hover:bg-green-700'
+                              : 'bg-red-600 hover:bg-red-700'
                       }`}
                     >
                       {nextMeta.id === 'facturada' && <Receipt className="w-3.5 h-3.5" />}
+                      {nextMeta.id === 'despachado' && <Truck className="w-3.5 h-3.5" />}
                       {nextMeta.id === 'pagada' && <BadgeDollarSign className="w-3.5 h-3.5" />}
                       <span>
                         {nextMeta.id === 'facturada'
                           ? 'Facturar OT'
-                          : nextMeta.id === 'pagada'
-                            ? 'Marcar Pagada'
-                            : `Avanzar a ${nextMeta.label}`}
+                          : nextMeta.id === 'despachado'
+                            ? `Despachar (${DELIVERY_LABELS[ot.delivery_method] || 'Entrega'})`
+                            : nextMeta.id === 'pagada'
+                              ? 'Marcar Pagada'
+                              : `Avanzar a ${nextMeta.label}`}
                       </span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
@@ -511,6 +582,15 @@ export default function WorkOrdersPanel() {
                 onChange={(e) => setNewOt({ ...newOt, height: e.target.value })}
                 className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
               />
+              <select
+                value={newOt.delivery_method}
+                onChange={(e) => setNewOt({ ...newOt, delivery_method: e.target.value })}
+                className="col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+              >
+                <option value="retiro">Retiro en Taller</option>
+                <option value="despacho">Despacho a Domicilio / Obra</option>
+                <option value="instalacion">Instalación en Terreno</option>
+              </select>
               <input
                 type="date"
                 value={newOt.deadline}
@@ -609,7 +689,9 @@ export default function WorkOrdersPanel() {
                   <span className="text-zinc-500 block">Entrega / Instalación:</span>
                   <strong>{formatDateCL(printOt.deadline)}</strong>
                   <div>{DELIVERY_LABELS[printOt.delivery_method] || printOt.delivery_method}</div>
-                  {printOt.delivery_address && <div className="break-words">{printOt.delivery_address}</div>}
+                  {printOt.delivery_address && (
+                    <div className="break-words">{printOt.delivery_address}</div>
+                  )}
                 </div>
               </div>
 
