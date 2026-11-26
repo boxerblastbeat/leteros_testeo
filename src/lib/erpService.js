@@ -295,6 +295,7 @@ const buildInitialLocalState = () => {
         notes: 'Confirmar término de obra para activar fabricación.',
       },
     ],
+    auditLogs: [],
   };
 };
 
@@ -418,9 +419,55 @@ export const erpService = {
     return readLocal().workOrders;
   },
 
+  async loadAuditLogs() {
+    if (isSupabaseConfigured) {
+      const { data } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      return data || [];
+    }
+    return readLocal().auditLogs || [];
+  },
+
+  async createAuditLog(entry) {
+    const clean = {
+      user_id: toNullable(entry.user_id),
+      user_email: (entry.user_email || 'sistema').trim(),
+      action: entry.action || 'accion',
+      entity_type: entry.entity_type || 'sistema',
+      entity_id: String(entry.entity_id || ''),
+      entity_ref: String(entry.entity_ref || ''),
+      summary: String(entry.summary || '').trim(),
+      details: entry.details && typeof entry.details === 'object' ? entry.details : {},
+    };
+    if (!clean.summary) return null;
+
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .insert([clean])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    }
+
+    const db = readLocal();
+    const created = {
+      ...clean,
+      id: uid(),
+      created_at: new Date().toISOString(),
+    };
+    db.auditLogs = [created, ...(db.auditLogs || [])].slice(0, 500);
+    writeLocal(db);
+    return created;
+  },
+
   async loadAllErpData() {
     if (isSupabaseConfigured) {
-      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes] =
+      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes, auditRes] =
         await Promise.all([
           supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(500),
           supabase.from('materials').select('*').order('category', { ascending: true }).limit(300),
@@ -429,6 +476,7 @@ export const erpService = {
           supabase.from('quotes').select('*').order('created_at', { ascending: false }).limit(300),
           supabase.from('work_orders').select('*').order('created_at', { ascending: false }).limit(250),
           supabase.from('calendar_events').select('*').order('event_date', { ascending: true }).limit(300),
+          supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500),
         ]);
 
       return {
@@ -453,6 +501,7 @@ export const erpService = {
         quotes: quotesRes.data || [],
         workOrders: otRes.data || [],
         calendarEvents: calRes.data || [],
+        auditLogs: auditRes.data || [],
       };
     }
 
@@ -465,6 +514,7 @@ export const erpService = {
       quotes: local.quotes,
       workOrders: local.workOrders,
       calendarEvents: local.calendarEvents,
+      auditLogs: local.auditLogs || [],
     };
   },
 
