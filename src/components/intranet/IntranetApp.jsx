@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   FileText,
   Inbox,
@@ -25,6 +25,7 @@ import MaterialsPanel from './MaterialsPanel';
 import ActivityLogPanel from './ActivityLogPanel';
 import QuoteEditorModal from './QuoteEditorModal';
 import QuotePrintModal from './QuotePrintModal';
+import WeeklyScheduleModal from './WeeklyScheduleModal';
 
 const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
 
@@ -34,10 +35,22 @@ export default function IntranetApp({ onGoPublic }) {
   const [activeTab, setActiveTab] = useState('cotizaciones');
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
   const [printQuote, setPrintQuote] = useState(null);
+  const [showWeeklyModal, setShowWeeklyModal] = useState(false);
+
+  useEffect(() => {
+    if (!session) return;
+    const key = `olivar_weekly_seen_${session.user?.email || 'local'}`;
+    if (!sessionStorage.getItem(key)) {
+      setShowWeeklyModal(true);
+      sessionStorage.setItem(key, '1');
+    }
+  }, [session]);
 
   const activeQuotesCount = quotes.filter((q) => !['pagada', 'rechazada'].includes(q.status)).length;
   const pendingRequestsCount = quoteRequests.filter((r) => r.status === 'nueva').length;
-  const activeOtsCount = workOrders.filter((w) => w.status !== 'pagada').length;
+  const activeOtsCount = workOrders.filter(
+    (w) => !['despachado', 'entregado', 'pagada'].includes(w.status)
+  ).length;
 
   const navItems = [
     { id: 'cotizaciones', label: 'Cotizaciones ERP', icon: FileText, badge: activeQuotesCount },
@@ -86,6 +99,14 @@ export default function IntranetApp({ onGoPublic }) {
               </div>
             )}
             <button
+              onClick={() => setShowWeeklyModal(true)}
+              className="p-2 sm:px-3 sm:py-2 rounded-full sm:rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
+              title="Ver Cronograma Semanal de Pedidos"
+            >
+              <Calendar className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-red-600" />
+              <span className="hidden md:inline">Cronograma</span>
+            </button>
+            <button
               onClick={() => setEditorState({ open: true, quote: null, request: null })}
               className="px-3 sm:px-3.5 py-2 rounded-full sm:rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-red-600/20"
               title="Nueva Cotización"
@@ -103,6 +124,8 @@ export default function IntranetApp({ onGoPublic }) {
             </button>
             <button
               onClick={async () => {
+                const key = `olivar_weekly_seen_${session?.user?.email || 'local'}`;
+                sessionStorage.removeItem(key);
                 await signOut();
                 onGoPublic();
               }}
@@ -191,6 +214,14 @@ export default function IntranetApp({ onGoPublic }) {
       )}
 
       {printQuote && <QuotePrintModal quote={printQuote} onClose={() => setPrintQuote(null)} />}
+
+      {showWeeklyModal && (
+        <WeeklyScheduleModal
+          onClose={() => setShowWeeklyModal(false)}
+          onGoToWorkshop={() => setActiveTab('taller')}
+          onGoToCalendar={() => setActiveTab('calendario')}
+        />
+      )}
     </div>
   );
 }

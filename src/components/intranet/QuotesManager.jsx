@@ -21,7 +21,11 @@ import { useErp } from '../../context/ErpContext';
 import { QUOTE_STATUSES, OT_STATUSES } from '../../data/company';
 import { formatCLP, formatDateCL, addDaysISO, todayISO, DELIVERY_LABELS } from '../../lib/formatters';
 
-const normalizeOtStatus = (status) => (status === 'entregado' ? 'despachado' : status);
+const normalizeOtStatus = (status) => {
+  if (['entregado', 'despachado', 'pagada'].includes(status)) return 'despachado';
+  if (status === 'facturada') return 'terminado';
+  return OT_STATUSES.some((s) => s.id === status) ? status : 'pendiente';
+};
 
 export default function QuotesManager({
   onNewQuote,
@@ -215,16 +219,6 @@ export default function QuotesManager({
       `Facturada N° ${invNumber}`
     );
 
-    const linkedOt = findLinkedOt(invoiceModal);
-    if (linkedOt) {
-      await saveWorkOrder({
-        ...linkedOt,
-        status: 'facturada',
-        invoice_number: invNumber,
-        invoice_date: invDate,
-      });
-    }
-
     setInvoiceModal(null);
     showToast(`${invoiceModal.correlative} facturada · Lista para Despacho / Cobro`);
   };
@@ -233,7 +227,7 @@ export default function QuotesManager({
     const methodLabel = DELIVERY_LABELS[q.delivery_method] || 'Despacho / Entrega';
     await changeQuoteStatus(q, 'despacho', {}, `Despachada (${methodLabel})`);
     const linkedOt = findLinkedOt(q);
-    if (linkedOt) {
+    if (linkedOt && normalizeOtStatus(linkedOt.status) !== 'despachado') {
       await saveWorkOrder({ ...linkedOt, status: 'despachado' });
     }
     showToast(`${q.correlative} pasada a Despacho (${methodLabel})`);
@@ -241,10 +235,6 @@ export default function QuotesManager({
 
   const handleMarkPaid = async (q) => {
     await changeQuoteStatus(q, 'pagada', {}, 'Pago confirmado (Cobro cerrado)');
-    const linkedOt = findLinkedOt(q);
-    if (linkedOt) {
-      await saveWorkOrder({ ...linkedOt, status: 'pagada' });
-    }
     showToast(`${q.correlative} marcada como Pagada`);
   };
 
@@ -718,15 +708,15 @@ export default function QuotesManager({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-7 gap-1.5">
+                    <div className="grid grid-cols-5 gap-1.5">
                       {OT_STATUSES.map((step, sIdx) => (
                         <div
                           key={step.id}
-                          title={`Paso ${sIdx + 1}: ${step.label}`}
+                          title={`Etapa ${sIdx + 1}: ${step.label}`}
                           className={`h-1.5 rounded-full transition ${
                             sIdx <= otStepIdx
-                              ? normalizedOtStatus === 'pagada'
-                                ? 'bg-green-600'
+                              ? normalizedOtStatus === 'despachado'
+                                ? 'bg-orange-500'
                                 : 'bg-violet-600'
                               : 'bg-slate-200'
                           }`}

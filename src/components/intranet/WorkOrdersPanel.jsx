@@ -10,26 +10,17 @@ import {
   X,
   ArrowRight,
   ArrowLeft,
-  Receipt,
-  BadgeDollarSign,
   Truck,
-  AlertCircle,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, COMPANY_INFO } from '../../data/company';
-import { formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
+import { formatDateCL, DELIVERY_LABELS, addDaysISO, uid } from '../../lib/formatters';
 
-const normalizeOtStatus = (status) => (status === 'entregado' ? 'despachado' : status);
-
-const OT_TO_QUOTE_STATUS = {
-  pendiente: 'en_taller',
-  diseno: 'en_taller',
-  produccion: 'en_taller',
-  terminado: 'en_taller',
-  facturada: 'facturada',
-  despachado: 'despacho',
-  entregado: 'despacho',
-  pagada: 'pagada',
+// En Taller solo existen los 5 pasos productivos/despacho (facturación y cobro son exclusivos de Cotizaciones ERP)
+const normalizeWorkshopStatus = (status) => {
+  if (['entregado', 'despachado', 'pagada'].includes(status)) return 'despachado';
+  if (status === 'facturada') return 'terminado';
+  return OT_STATUSES.some((s) => s.id === status) ? status : 'pendiente';
 };
 
 export default function WorkOrdersPanel() {
@@ -38,11 +29,6 @@ export default function WorkOrdersPanel() {
   const [filter, setFilter] = useState('activas');
   const [printOt, setPrintOt] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
-  const [invoiceOt, setInvoiceOt] = useState(null);
-  const [invoiceForm, setInvoiceForm] = useState({
-    invoice_number: '',
-    invoice_date: todayISO(),
-  });
   const [newOt, setNewOt] = useState({
     client_name: '',
     client_phone: '',
@@ -66,55 +52,66 @@ export default function WorkOrdersPanel() {
       counts[s.id] = 0;
     });
     workOrders.forEach((ot) => {
-      const norm = normalizeOtStatus(ot.status);
-      if (norm !== 'pagada') counts.activas += 1;
+      const norm = normalizeWorkshopStatus(ot.status);
+      if (norm !== 'despachado') counts.activas += 1;
       if (counts[norm] !== undefined) counts[norm] += 1;
     });
     return counts;
   }, [workOrders]);
 
   const filtered = useMemo(() => {
-    return workOrders.filter((ot) => {
-      const norm = normalizeOtStatus(ot.status);
-      if (filter === 'activas') return norm !== 'pagada';
+    const list = workOrders.filter((ot) => {
+      const norm = normalizeWorkshopStatus(ot.status);
+      if (filter === 'activas') return norm !== 'despachado';
       if (filter === 'todas') return true;
       return norm === filter;
     });
+
+    // Ordenar: urgentes primero, luego por fecha de entrega más próxima
+    return [...list].sort((a, b) => {
+      if (a.priority === 'urgente' && b.priority !== 'urgente') return -1;
+      if (b.priority === 'urgente' && a.priority !== 'urgente') return 1;
+      const da = a.deadline || '9999-12-31';
+      const db = b.deadline || '9999-12-31';
+      return da.localeCompare(db);
+    });
   }, [workOrders, filter]);
 
-  const syncLinkedQuote = async (ot, targetOtStatus, extraQuoteFields = {}, note = '') => {
+  const syncLinkedQuoteFromWorkshop = async (ot, targetStatus, direction) => {
     const linked =
       (ot.quote_id && quotes.find((q) => q.id === ot.quote_id)) ||
       (ot.quote_correlative && quotes.find((q) => q.correlative === ot.quote_correlative));
     if (!linked) return;
-    const mappedQuoteStatus = OT_TO_QUOTE_STATUS[targetOtStatus];
-    if (!mappedQuoteStatus) return;
 
-    const needsUpdate =
-      linked.status !== mappedQuoteStatus || Object.keys(extraQuoteFields).length > 0;
-    if (needsUpdate) {
+    // Nunca sobreescribir un estado financiero ya cerrado en Cotizaciones ERP
+    if (['pagada', 'rechazada'].includes(linked.status)) return;
+
+    const meta = OT_STATUSES.find((s) => s.id === targetStatus);
+    if (targetStatus === 'despachado' && linked.status !== 'despacho') {
       await changeQuoteStatus(
         linked,
-        mappedQuoteStatus,
-        extraQuoteFields,
-        note || `Sincronizado desde OT ${ot.ot_number} (${targetOtStatus})`
+        'despacho',
+        {},
+        `Despachado desde Taller (${ot.ot_number} · ${DELIVERY_LABELS[ot.delivery_method] || 'Entrega'})`
+      );
+    } else if (
+      targetStatus !== 'despachado' &&
+      direction === 'retroceso' &&
+      linked.status === 'despacho'
+    ) {
+      await changeQuoteStatus(
+        linked,
+        'en_taller',
+        {},
+        `OT ${ot.ot_number} devuelta a ${meta?.label || targetStatus}`
       );
     }
   };
 
-  const applyOtStatus = async (ot, targetStatus, extra = {}, direction = 'avance') => {
+  const applyOtStatus = async (ot, targetStatus, direction = 'avance') => {
     const meta = OT_STATUSES.find((s) => s.id === targetStatus);
-    await saveWorkOrder({ ...ot, ...extra, status: targetStatus });
-    const quoteExtra = {};
-    if (extra.invoice_number !== undefined) quoteExtra.invoice_number = extra.invoice_number;
-    if (extra.invoice_date !== undefined) quoteExtra.invoice_date = extra.invoice_date;
-
-    await syncLinkedQuote(
-      ot,
-      targetStatus,
-      quoteExtra,
-      `OT ${ot.ot_number} ${direction === 'retroceso' ? 'devuelta' : 'actualizada'} a ${meta?.label || targetStatus}`
-    );
+    await saveWorkOrder({ ...ot, status: targetStatus });
+    await syncLinkedQuoteFromWorkshop(ot, targetStatus, direction);
     showToast(
       `${ot.ot_number} ${direction === 'retroceso' ? 'devuelta' : 'actualizada'} a ${meta?.label || targetStatus}`
     );
@@ -122,45 +119,18 @@ export default function WorkOrdersPanel() {
 
   const advanceStatus = async (ot) => {
     const order = OT_STATUSES.map((s) => s.id);
-    const current = normalizeOtStatus(ot.status);
+    const current = normalizeWorkshopStatus(ot.status);
     const idx = order.indexOf(current);
     if (idx === -1 || idx >= order.length - 1) return;
-    const nextStatus = order[idx + 1];
-
-    if (nextStatus === 'facturada') {
-      setInvoiceForm({
-        invoice_number: ot.invoice_number || '',
-        invoice_date: ot.invoice_date || todayISO(),
-      });
-      setInvoiceOt(ot);
-      return;
-    }
-
-    await applyOtStatus(ot, nextStatus, {}, 'avance');
+    await applyOtStatus(ot, order[idx + 1], 'avance');
   };
 
   const revertStatus = async (ot) => {
     const order = OT_STATUSES.map((s) => s.id);
-    const current = normalizeOtStatus(ot.status);
+    const current = normalizeWorkshopStatus(ot.status);
     const idx = order.indexOf(current);
     if (idx <= 0) return;
-    const prevStatus = order[idx - 1];
-    await applyOtStatus(ot, prevStatus, {}, 'retroceso');
-  };
-
-  const handleConfirmInvoiceOt = async (e) => {
-    e.preventDefault();
-    if (!invoiceOt) return;
-    await applyOtStatus(
-      invoiceOt,
-      'facturada',
-      {
-        invoice_number: invoiceForm.invoice_number.trim(),
-        invoice_date: invoiceForm.invoice_date,
-      },
-      'avance'
-    );
-    setInvoiceOt(null);
+    await applyOtStatus(ot, order[idx - 1], 'retroceso');
   };
 
   const handleCreateManualOt = async (e) => {
@@ -207,11 +177,11 @@ export default function WorkOrdersPanel() {
         <div>
           <h2 className="font-heading text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
             <Wrench className="w-5 h-5 text-red-600 shrink-0" />
-            <span>Taller, Órdenes de Producción (OT), Facturación, Despacho y Cobro</span>
+            <span>Taller &amp; Órdenes de Producción (OT)</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Flujo en 7 pasos con avance y retroceso: Taller → Facturada → Despacho / Entrega →
-            Estado de Cobro (Pagada / No Pagada).
+            Solo ejecución productiva y despacho físico (5 etapas). Facturación y cobros se
+            gestionan exclusivamente en Cotizaciones ERP.
           </p>
         </div>
         <button
@@ -225,7 +195,7 @@ export default function WorkOrdersPanel() {
 
       <div className="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap scrollbar-none">
         {[
-          { id: 'activas', label: 'Activas (Sin Pagar)' },
+          { id: 'activas', label: 'Activas en Taller' },
           ...OT_STATUSES,
           { id: 'todas', label: 'Todas' },
         ].map((tab) => {
@@ -258,29 +228,28 @@ export default function WorkOrdersPanel() {
 
       {filtered.length === 0 ? (
         <div className="p-10 sm:p-12 rounded-2xl bg-white border border-slate-200 text-center text-slate-500 text-sm shadow-xs">
-          No hay Órdenes de Trabajo en este estado.
+          No hay Órdenes de Trabajo en esta etapa.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
           {filtered.map((ot) => {
-            const normStatus = normalizeOtStatus(ot.status);
+            const normStatus = normalizeWorkshopStatus(ot.status);
             const idx = OT_STATUSES.findIndex((s) => s.id === normStatus);
             const currentIdx = idx >= 0 ? idx : 0;
             const meta = OT_STATUSES[currentIdx];
             const prevMeta = currentIdx > 0 ? OT_STATUSES[currentIdx - 1] : null;
             const nextMeta =
               currentIdx < OT_STATUSES.length - 1 ? OT_STATUSES[currentIdx + 1] : null;
-            const isUnpaid = ['facturada', 'despachado'].includes(normStatus);
-            const isPaid = normStatus === 'pagada';
+            const isFinished = normStatus === 'despachado';
 
             return (
               <div
                 key={ot.id}
                 className={`p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-4 ${
-                  ot.priority === 'urgente' && !isPaid
+                  ot.priority === 'urgente' && !isFinished
                     ? 'border-l-4 border-l-red-500'
-                    : isPaid
-                      ? 'border-l-4 border-l-green-600'
+                    : isFinished
+                      ? 'border-l-4 border-l-orange-500'
                       : 'border-l-4 border-l-emerald-500'
                 }`}
               >
@@ -295,27 +264,14 @@ export default function WorkOrdersPanel() {
                           {ot.quote_correlative}
                         </span>
                       )}
-                      {ot.invoice_number && (
-                        <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200">
-                          FAC: {ot.invoice_number}
-                        </span>
-                      )}
-                      {ot.priority === 'urgente' && (
+                      {ot.priority === 'urgente' ? (
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           Urgente
                         </span>
-                      )}
-                      {isUnpaid && (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3 text-amber-600" />
-                          No Pagada
-                        </span>
-                      )}
-                      {isPaid && (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-800 border border-green-300 flex items-center gap-1">
-                          <BadgeDollarSign className="w-3 h-3 text-green-700" />
-                          Pagada
+                      ) : (
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Normal
                         </span>
                       )}
                     </div>
@@ -326,17 +282,17 @@ export default function WorkOrdersPanel() {
                     </span>
                   </div>
 
-                  {/* Barra visual de avance paso a paso (7 pasos) */}
+                  {/* Barra visual de avance de Taller (5 pasos) */}
                   <div className="space-y-1">
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className="grid grid-cols-5 gap-1.5">
                       {OT_STATUSES.map((step, sIdx) => (
                         <div
                           key={step.id}
                           title={`Paso ${sIdx + 1}: ${step.label}`}
                           className={`h-1.5 rounded-full transition ${
                             sIdx <= currentIdx
-                              ? isPaid
-                                ? 'bg-green-600'
+                              ? isFinished
+                                ? 'bg-orange-500'
                                 : 'bg-violet-600'
                               : 'bg-slate-200'
                           }`}
@@ -345,7 +301,7 @@ export default function WorkOrdersPanel() {
                     </div>
                     <div className="flex justify-between text-[10px] text-slate-400 font-medium">
                       <span>
-                        Paso {currentIdx + 1} de {OT_STATUSES.length}
+                        Etapa {currentIdx + 1} de {OT_STATUSES.length}
                       </span>
                       <span>{meta.label}</span>
                     </div>
@@ -358,7 +314,7 @@ export default function WorkOrdersPanel() {
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mt-1">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-red-600" />
-                        Entrega:{' '}
+                        Plazo:{' '}
                         <strong className="text-slate-800">{formatDateCL(ot.deadline)}</strong>
                       </span>
                       <span className="flex items-center gap-1">
@@ -421,113 +377,29 @@ export default function WorkOrdersPanel() {
                     <button
                       onClick={() => advanceStatus(ot)}
                       className={`px-3.5 py-2 sm:py-1.5 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition ${
-                        nextMeta.id === 'facturada'
-                          ? 'bg-cyan-600 hover:bg-cyan-700'
-                          : nextMeta.id === 'despachado'
-                            ? 'bg-orange-600 hover:bg-orange-700'
-                            : nextMeta.id === 'pagada'
-                              ? 'bg-green-600 hover:bg-green-700'
-                              : 'bg-red-600 hover:bg-red-700'
+                        nextMeta.id === 'despachado'
+                          ? 'bg-orange-600 hover:bg-orange-700'
+                          : 'bg-red-600 hover:bg-red-700'
                       }`}
                     >
-                      {nextMeta.id === 'facturada' && <Receipt className="w-3.5 h-3.5" />}
                       {nextMeta.id === 'despachado' && <Truck className="w-3.5 h-3.5" />}
-                      {nextMeta.id === 'pagada' && <BadgeDollarSign className="w-3.5 h-3.5" />}
                       <span>
-                        {nextMeta.id === 'facturada'
-                          ? 'Facturar OT'
-                          : nextMeta.id === 'despachado'
-                            ? `Despachar (${DELIVERY_LABELS[ot.delivery_method] || 'Entrega'})`
-                            : nextMeta.id === 'pagada'
-                              ? 'Marcar Pagada'
-                              : `Avanzar a ${nextMeta.label}`}
+                        {nextMeta.id === 'despachado'
+                          ? `Despachar (${DELIVERY_LABELS[ot.delivery_method] || 'Entrega'})`
+                          : `Avanzar a ${nextMeta.label}`}
                       </span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   ) : (
-                    <span className="text-xs text-green-700 font-bold flex items-center gap-1">
+                    <span className="text-xs text-orange-700 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-4 h-4" />
-                      Pagada y Cerrada
+                      Despachado / Entregado
                     </span>
                   )}
                 </div>
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* MODAL FACTURAR OT */}
-      {invoiceOt && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-          <form
-            onSubmit={handleConfirmInvoiceOt}
-            className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-heading font-bold text-slate-900 text-lg">
-                  Facturar {invoiceOt.ot_number}
-                </h3>
-                <p className="text-xs text-slate-500">{invoiceOt.client_name}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setInvoiceOt(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  N° Factura / Boleta SII
-                </label>
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  placeholder="Ej: 1452"
-                  value={invoiceForm.invoice_number}
-                  onChange={(e) =>
-                    setInvoiceForm({ ...invoiceForm, invoice_number: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm font-mono text-slate-900 focus:outline-none focus:border-cyan-600"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Fecha de Facturación
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={invoiceForm.invoice_date}
-                  onChange={(e) =>
-                    setInvoiceForm({ ...invoiceForm, invoice_date: e.target.value })
-                  }
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-cyan-600"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setInvoiceOt(null)}
-                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold flex items-center gap-1.5"
-              >
-                <Receipt className="w-3.5 h-3.5" />
-                Confirmar Factura
-              </button>
-            </div>
-          </form>
         </div>
       )}
 
@@ -669,11 +541,6 @@ export default function WorkOrdersPanel() {
                   {printOt.quote_correlative && (
                     <div className="text-xs font-mono text-zinc-600">
                       Ref: {printOt.quote_correlative}
-                    </div>
-                  )}
-                  {printOt.invoice_number && (
-                    <div className="text-xs font-mono text-cyan-700 font-semibold">
-                      Factura: {printOt.invoice_number}
                     </div>
                   )}
                 </div>
