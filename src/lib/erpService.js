@@ -737,6 +737,39 @@ export const erpService = {
     writeLocal(db);
   },
 
+  async loadPublicOrderTracking(code) {
+    const clean = String(code || '').trim().toUpperCase();
+    if (!clean) return null;
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.rpc('get_public_ot_status', {
+        p_ot_number: clean,
+      });
+      if (error) throw error;
+      return data || null;
+    }
+    const db = readLocal();
+    const found = (db.workOrders || []).find(
+      (w) =>
+        String(w.ot_number || '').toUpperCase() === clean ||
+        String(w.quote_correlative || '').toUpperCase() === clean
+    );
+    if (!found) return null;
+    return {
+      ot_number: found.ot_number,
+      quote_correlative: found.quote_correlative,
+      status: found.status,
+      deadline: found.deadline,
+      delivery_method: found.delivery_method,
+      updated_at: found.updated_at,
+      items: (found.items || []).map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        width: i.width,
+        height: i.height,
+      })),
+    };
+  },
+
   // --- CALENDAR ---
   async saveCalendarEvent(ev) {
     if (isSupabaseConfigured) {

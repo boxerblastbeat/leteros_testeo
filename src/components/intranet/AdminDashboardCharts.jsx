@@ -115,9 +115,12 @@ export default function AdminDashboardCharts({
 
     let netSales = 0;
     let estMaterialCost = 0;
+    let extraWorkshopCosts = 0;
 
     operational.forEach((q) => {
       netSales += Number(q.subtotal) || 0;
+      const otCosts = Array.isArray(q.client_snapshot?.ot_costs) ? q.client_snapshot.ot_costs : [];
+      extraWorkshopCosts += otCosts.reduce((s, c) => s + (Number(c.amount) || 0), 0);
       (q.items || []).forEach((item) => {
         const mat =
           (item.materialId && matById.get(item.materialId)) ||
@@ -137,13 +140,15 @@ export default function AdminDashboardCharts({
       });
     });
 
-    const grossMargin = Math.max(0, netSales - estMaterialCost);
+    const totalEstCost = Math.round(estMaterialCost + extraWorkshopCosts);
+    const grossMargin = Math.max(0, netSales - totalEstCost);
     const marginPct = netSales > 0 ? (grossMargin / netSales) * 100 : 0;
 
     return {
       docs: operational.length,
       netSales,
-      estMaterialCost: Math.round(estMaterialCost),
+      estMaterialCost: totalEstCost,
+      extraWorkshopCosts: Math.round(extraWorkshopCosts),
       grossMargin: Math.round(grossMargin),
       marginPct,
     };
@@ -422,8 +427,10 @@ export default function AdminDashboardCharts({
               />
             </div>
             <p className="text-[10px] text-slate-400">
-              Calculado automáticamente con el costo base del Tarifario (no descuenta mano de obra
-              ni gastos fijos).
+              Incluye costo base del Tarifario
+              {marginStats.extraWorkshopCosts > 0
+                ? ` + ${formatCLP(marginStats.extraWorkshopCosts)} en gastos extra registrados en Taller.`
+                : ' (registra gastos extra en Taller & OTs para afinar la utilidad real).'}
             </p>
           </div>
         </div>

@@ -5,6 +5,7 @@ import LoginModal from './components/common/LoginModal';
 import Toast from './components/common/Toast';
 
 const IntranetApp = lazy(() => import('./components/intranet/IntranetApp'));
+const OrderTrackingView = lazy(() => import('./components/public/OrderTrackingView'));
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -42,9 +43,16 @@ class ErrorBoundary extends Component {
 
 function MainRouter() {
   const { session, loading } = useErp();
-  const [view, setView] = useState(() =>
-    window.location.pathname.startsWith('/intranet') ? 'intranet' : 'public'
-  );
+  const [view, setView] = useState(() => {
+    const p = window.location.pathname;
+    if (p.startsWith('/intranet')) return 'intranet';
+    if (p.startsWith('/seguimiento')) return 'tracking';
+    return 'public';
+  });
+  const [trackingCode] = useState(() => {
+    const match = window.location.pathname.match(/^\/seguimiento\/([^/]+)/i);
+    return match ? decodeURIComponent(match[1]) : '';
+  });
   const [loginOpen, setLoginOpen] = useState(false);
 
   const handleOpenIntranet = () => {
@@ -71,7 +79,17 @@ function MainRouter() {
 
   return (
     <>
-      {view === 'intranet' && session ? (
+      {view === 'tracking' ? (
+        <Suspense
+          fallback={
+            <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400 text-sm">
+              Cargando seguimiento...
+            </div>
+          }
+        >
+          <OrderTrackingView initialCode={trackingCode} onGoHome={handleGoPublic} />
+        </Suspense>
+      ) : view === 'intranet' && session ? (
         <Suspense
           fallback={
             <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 text-sm font-medium">

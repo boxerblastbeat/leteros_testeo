@@ -15,10 +15,12 @@ import {
   Scissors,
   Trash2,
   MessageCircle,
+  Link2,
+  DollarSign,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
-import { formatDateCL, DELIVERY_LABELS, addDaysISO, uid } from '../../lib/formatters';
+import { formatCLP, formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
 import { useModalClose } from '../../lib/useModalClose';
 import { computeOtCubicationAndCuts } from '../../lib/cutOptimizer';
 
@@ -45,12 +47,31 @@ const buildOtWhatsAppUrl = (ot) => {
   return `https://wa.me/${digits.startsWith('56') ? digits : `56${digits}`}?text=${text}`;
 };
 
+const OT_COSTS_LOCAL_KEY = 'olivar_ot_extra_costs_v1';
+const COST_CATEGORIES = [
+  'Herrería / Estructura',
+  'LED / Eléctrico',
+  'Flete / Combustible',
+  'Instalación / Mano de obra',
+  'Planchas / Insumos extra',
+  'Otro gasto',
+];
+
+const readLocalOtCosts = () => {
+  try {
+    return JSON.parse(localStorage.getItem(OT_COSTS_LOCAL_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+
 export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOpenInOptimizer }) {
   const {
     session,
     workOrders,
     quotes,
     calendarEvents,
+    saveQuote,
     saveWorkOrder,
     deleteWorkOrder,
     saveCalendarEvent,
@@ -89,6 +110,104 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
   const [printOt, setPrintOt] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const [rescheduleOt, setRescheduleOt] = useState(null);
+  const [costsOt, setCostsOt] = useState(null);
+  const [localCostsMap, setLocalCostsMap] = useState(() => readLocalOtCosts());
+  const [costForm, setCostForm] = useState({
+    category: COST_CATEGORIES[0],
+    description: '',
+    amount: '',
+    date: todayISO(),
+  });
+  const costsClose = useModalClose(Boolean(costsOt), () => setCostsOt(null), {
+    confirm: false,
+  });
+
+  const findLinkedQuoteForOt = (ot) =>
+    (ot?.quote_id && quotes.find((q) => q.id === ot.quote_id)) ||
+    (ot?.quote_correlative && quotes.find((q) => q.correlative === ot.quote_correlative)) ||
+    null;
+
+  const getOtExtraCosts = (ot) => {
+    const linked = findLinkedQuoteForOt(ot);
+    const fromQuote = linked?.client_snapshot?.ot_costs;
+    if (Array.isArray(fromQuote)) return fromQuote;
+    return Array.isArray(localCostsMap[ot?.id]) ? localCostsMap[ot.id] : [];
+  };
+
+  const handleSaveOtExtraCost = async (e) => {
+    e.preventDefault();
+    if (!costsOt) return;
+    const amt = Math.round(Number(costForm.amount) || 0);
+    if (amt <= 0) return;
+
+    const entry = {
+      id: uid(),
+      category: costForm.category,
+      description: costForm.description.trim() || costForm.category,
+      amount: amt,
+      date: costForm.date || todayISO(),
+      by: session?.user?.email || '',
+    };
+    const nextList = [...getOtExtraCosts(costsOt), entry];
+    const linked = findLinkedQuoteForOt(costsOt);
+    if (linked) {
+      await saveQuote({
+        ...linked,
+        client_snapshot: {
+          ...(linked.client_snapshot || {}),
+          ot_costs: nextList,
+        },
+      });
+    } else {
+      const updated = { ...localCostsMap, [costsOt.id]: nextList };
+      setLocalCostsMap(updated);
+      try {
+        localStorage.setItem(OT_COSTS_LOCAL_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore storage quota
+      }
+    }
+    setCostForm({
+      category: COST_CATEGORIES[0],
+      description: '',
+      amount: '',
+      date: todayISO(),
+    });
+    showToast(`Gasto de ${formatCLP(amt)} registrado en ${costsOt.ot_number}`);
+  };
+
+  const handleRemoveOtExtraCost = async (ot, costId) => {
+    const nextList = getOtExtraCosts(ot).filter((c) => c.id !== costId);
+    const linked = findLinkedQuoteForOt(ot);
+    if (linked) {
+      await saveQuote({
+        ...linked,
+        client_snapshot: {
+          ...(linked.client_snapshot || {}),
+          ot_costs: nextList,
+        },
+      });
+    } else {
+      const updated = { ...localCostsMap, [ot.id]: nextList };
+      setLocalCostsMap(updated);
+      try {
+        localStorage.setItem(OT_COSTS_LOCAL_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+    }
+    showToast('Gasto eliminado');
+  };
+
+  const handleCopyTrackingLink = (ot) => {
+    const url = `${window.location.origin}/seguimiento/${encodeURIComponent(ot.ot_number)}`;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url);
+      showToast(`Link de seguimiento copiado: /seguimiento/${ot.ot_number}`);
+    } else {
+      window.prompt('Copia el link de seguimiento para tu cliente:', url);
+    }
+  };
   const [rescheduleForm, setRescheduleForm] = useState({
     deadline: '',
     delivery_method: 'retiro',
@@ -586,6 +705,31 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
                     >
                       <Printer className="w-3.5 h-3.5" />
                       <span>Ficha</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTrackingLink(ot)}
+                      title="Copiar link público de seguimiento para el cliente"
+                      className="px-2.5 py-2 sm:py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Tracking</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCostsOt(ot)}
+                      title="Registrar gastos reales de taller (herrería, LED, flete, instalación)"
+                      className="px-2.5 py-2 sm:py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      <DollarSign className="w-3.5 h-3.5" />
+                      <span>
+                        Gastos
+                        {getOtExtraCosts(ot).length > 0
+                          ? ` (${formatCLP(getOtExtraCosts(ot).reduce((s, c) => s + (Number(c.amount) || 0), 0))})`
+                          : ''}
+                      </span>
                     </button>
 
                     {['terminado', 'despachado'].includes(normStatus) && (
@@ -1168,6 +1312,131 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
           </div>
         </div>
       )}
+
+      {/* MODAL COSTEO REAL / GASTOS EXTRA DE OT */}
+      {costsOt && (() => {
+        const list = getOtExtraCosts(costsOt);
+        const totalExtra = list.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+        return (
+          <div
+            onClick={costsClose.handleBackdropClick}
+            className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+          >
+            <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-heading font-bold text-slate-900 text-lg flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-rose-600" />
+                    <span>Gastos Reales · {costsOt.ot_number}</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {costsOt.client_name} · Se descuentan en el Margen del Dashboard.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={costsClose.handleClose}
+                  className="p-1.5 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between text-xs">
+                <span className="font-semibold text-rose-800">Total gastos extra registrados:</span>
+                <strong className="font-mono text-base text-rose-700">{formatCLP(totalExtra)}</strong>
+              </div>
+
+              {list.length > 0 && (
+                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-xs">
+                  {list.map((c) => (
+                    <div key={c.id} className="px-3 py-2.5 flex items-center justify-between gap-2 bg-white">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-800 truncate">{c.description}</div>
+                        <div className="text-[10px] text-slate-500">
+                          {c.category} · {formatDateCL(c.date)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono font-bold text-rose-700">{formatCLP(c.amount)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOtExtraCost(costsOt, c.id)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                          title="Quitar gasto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <form onSubmit={handleSaveOtExtraCost} className="space-y-3 pt-2 border-t border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Categoría</label>
+                    <select
+                      value={costForm.category}
+                      onChange={(e) => setCostForm({ ...costForm, category: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                    >
+                      {COST_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Monto (CLP) *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={costForm.amount}
+                      onChange={(e) => setCostForm({ ...costForm, amount: e.target.value })}
+                      placeholder="Ej: 35000"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs font-mono text-slate-900"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <input
+                    type="text"
+                    value={costForm.description}
+                    onChange={(e) => setCostForm({ ...costForm, description: e.target.value })}
+                    placeholder="Detalle (ej: 4 barras perfil 20×20 + LED)"
+                    className="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                  />
+                  <input
+                    type="date"
+                    value={costForm.date}
+                    onChange={(e) => setCostForm({ ...costForm, date: e.target.value })}
+                    className="px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={costsClose.handleClose}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
+                  >
+                    + Agregar Gasto
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

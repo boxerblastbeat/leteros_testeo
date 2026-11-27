@@ -348,3 +348,49 @@ create policy "audit_logs_authenticated_insert"
   );
 
 alter publication supabase_realtime add table public.audit_logs;
+
+-- =====================================================================
+-- 9. TRACKING PÚBLICO SEGURO DE PEDIDOS (SIN EXPONER DATOS SENSIBLES)
+-- =====================================================================
+create or replace function public.get_public_ot_status(p_ot_number text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row public.work_orders%rowtype;
+begin
+  select *
+    into v_row
+    from public.work_orders
+   where upper(trim(ot_number)) = upper(trim(p_ot_number))
+      or upper(trim(quote_correlative)) = upper(trim(p_ot_number))
+   order by created_at desc
+   limit 1;
+
+  if not found then
+    return null;
+  end if;
+
+  return jsonb_build_object(
+    'ot_number', v_row.ot_number,
+    'quote_correlative', v_row.quote_correlative,
+    'status', v_row.status,
+    'deadline', v_row.deadline,
+    'delivery_method', v_row.delivery_method,
+    'updated_at', v_row.updated_at,
+    'items', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+        'name', elem->>'name',
+        'quantity', elem->>'quantity',
+        'width', elem->>'width',
+        'height', elem->>'height'
+      )), '[]'::jsonb)
+      from jsonb_array_elements(coalesce(v_row.items, '[]'::jsonb)) as elem
+    )
+  );
+end;
+$$;
+
+grant execute on function public.get_public_ot_status(text) to anon, authenticated;

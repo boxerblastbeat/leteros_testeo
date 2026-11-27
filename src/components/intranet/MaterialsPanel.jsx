@@ -1,14 +1,50 @@
 import React, { useState, useMemo } from 'react';
-import { Package, Plus, Search, Edit3, Trash2, X } from 'lucide-react';
+import { Package, Plus, Search, Edit3, Trash2, X, AlertTriangle, Minus } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { formatCLP } from '../../lib/formatters';
 import { useModalClose } from '../../lib/useModalClose';
+
+const STOCK_STORAGE_KEY = 'olivar_bodega_stock_v1';
+const readStockMap = () => {
+  try {
+    return JSON.parse(localStorage.getItem(STOCK_STORAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
 
 export default function MaterialsPanel() {
   const { materials, saveMaterial, deleteMaterial, showToast } = useErp();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Todos');
+  const [stockMap, setStockMap] = useState(() => readStockMap());
   const [modalOpen, setModalOpen] = useState(false);
+
+  const updateStock = (matId, nextStock, nextMinStock = undefined) => {
+    setStockMap((prev) => {
+      const current = prev[matId] || { stock: 0, minStock: 3 };
+      const updated = {
+        ...prev,
+        [matId]: {
+          stock: Math.max(0, Number(nextStock) || 0),
+          minStock: nextMinStock !== undefined ? Math.max(0, Number(nextMinStock) || 0) : current.minStock,
+        },
+      };
+      try {
+        localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore storage quota
+      }
+      return updated;
+    });
+  };
+
+  const lowStockItems = useMemo(() => {
+    return materials.filter((m) => {
+      const s = stockMap[m.id];
+      return s && s.minStock > 0 && s.stock <= s.minStock;
+    });
+  }, [materials, stockMap]);
   const { handleClose: requestCloseModal, handleBackdropClick } = useModalClose(
     modalOpen,
     () => setModalOpen(false),
@@ -107,6 +143,19 @@ export default function MaterialsPanel() {
         </div>
       </div>
 
+      {lowStockItems.length > 0 && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Alerta de Bodega:</strong> {lowStockItems.length}{' '}
+              {lowStockItems.length === 1 ? 'material está' : 'materiales están'} en stock mínimo o
+              agotado ({lowStockItems.map((m) => `${m.name}: ${stockMap[m.id]?.stock ?? 0}`).join(' · ')}).
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Vista Tarjetas en Móvil */}
       <div className="md:hidden space-y-2.5">
         {filtered.map((m) => (
@@ -171,11 +220,17 @@ export default function MaterialsPanel() {
               <th className="py-3 px-4 text-right">Costo Ref.</th>
               <th className="py-3 px-4 text-right">Precio Venta</th>
               <th className="py-3 px-4 text-center">Unidad</th>
+              <th className="py-3 px-4 text-center">Bodega / Stock</th>
               <th className="py-3 px-4 text-right">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((m) => (
+            {filtered.map((m) => {
+              const st = stockMap[m.id];
+              const hasStock = st !== undefined;
+              const isOut = hasStock && st.stock === 0;
+              const isLow = hasStock && st.stock > 0 && st.stock <= st.minStock;
+              return (
               <tr key={m.id} className="hover:bg-slate-50 transition">
                 <td className="py-3 px-4 font-semibold text-slate-900">{m.name}</td>
                 <td className="py-3 px-4 text-slate-600">{m.category}</td>
@@ -187,6 +242,40 @@ export default function MaterialsPanel() {
                   {formatCLP(m.pricePerSqm)}
                 </td>
                 <td className="py-3 px-4 text-center text-slate-700">{m.unit}</td>
+                <td className="py-3 px-4 text-center">
+                  <div className="inline-flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => updateStock(m.id, (st?.stock ?? 0) - 1)}
+                      className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 inline-flex items-center justify-center"
+                      title="Restar 1"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span
+                      className={`min-w-[54px] px-2 py-0.5 rounded-full text-[11px] font-mono font-bold border ${
+                        isOut
+                          ? 'bg-red-100 text-red-700 border-red-300'
+                          : isLow
+                            ? 'bg-amber-100 text-amber-900 border-amber-300'
+                            : hasStock
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-50 text-slate-400 border-slate-200'
+                      }`}
+                      title={hasStock ? `Mínimo alerta: ${st.minStock}` : 'Haz clic en + para activar control de stock'}
+                    >
+                      {hasStock ? st.stock : '—'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateStock(m.id, (st?.stock ?? 0) + 1)}
+                      className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 inline-flex items-center justify-center"
+                      title="Sumar 1"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+                </td>
                 <td className="py-3 px-4 text-right">
                   <div className="inline-flex gap-1">
                     <button
@@ -211,7 +300,8 @@ export default function MaterialsPanel() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
