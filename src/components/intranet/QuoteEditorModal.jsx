@@ -174,6 +174,153 @@ export default function QuoteEditorModal({
 
   if (!open) return null;
 
+  const QUICK_KITS = [
+    {
+      id: 'kit-acm',
+      label: 'Letrero ACM 2×1m + Inst.',
+      delivery_method: 'instalacion',
+      installation_fee: 45000,
+      items: [
+        {
+          match: ['aluminio compuesto', 'acm'],
+          fallbackName: 'Aluminio Compuesto 3mm (ACM)',
+          fallbackRate: 32000,
+          detail: 'Base rígida ACM 3mm + gráfica impresa en vinilo laminado UV',
+          width: 2.0,
+          height: 1.0,
+          quantity: 1,
+        },
+        {
+          match: ['vinilo alta adherencia', 'vinilo'],
+          fallbackName: 'Vinilo Alta Adherencia 1.27m',
+          fallbackRate: 14000,
+          detail: 'Impresión ecosolvente alta resolución montada sobre ACM',
+          width: 2.0,
+          height: 1.0,
+          quantity: 1,
+        },
+      ],
+    },
+    {
+      id: 'kit-paloma',
+      label: 'Paloma Doble Cara',
+      delivery_method: 'retiro',
+      items: [
+        {
+          match: ['lata galvanizada', 'lata'],
+          fallbackName: 'Lata Galvanizada 0.8mm',
+          fallbackRate: 18000,
+          detail: 'Estructura metálica plegable doble cara 0.60 × 1.00m',
+          width: 0.6,
+          height: 1.0,
+          quantity: 2,
+        },
+        {
+          match: ['vinilo alta adherencia', 'vinilo'],
+          fallbackName: 'Vinilo Alta Adherencia 1.27m',
+          fallbackRate: 14000,
+          detail: 'Gráfica impresa ambas caras con protección UV',
+          width: 0.6,
+          height: 1.0,
+          quantity: 2,
+        },
+      ],
+    },
+    {
+      id: 'kit-vial',
+      label: 'Kit 10 Señaléticas Viales',
+      delivery_method: 'retiro',
+      items: [
+        {
+          match: ['lata galvanizada', 'lata'],
+          fallbackName: 'Lata Galvanizada 0.8mm',
+          fallbackRate: 18000,
+          detail: 'Placas señalética vial 50×70 cm con perforaciones de fijación',
+          width: 0.5,
+          height: 0.7,
+          quantity: 10,
+        },
+        {
+          match: ['reflectante'],
+          fallbackName: 'Adhesivo Reflectante 1.24m',
+          fallbackRate: 24000,
+          detail: 'Gráfica vial reflectante alta visibilidad',
+          width: 0.5,
+          height: 0.7,
+          quantity: 10,
+        },
+      ],
+    },
+    {
+      id: 'kit-acrilico',
+      label: 'Placa Acrílico 5mm',
+      delivery_method: 'instalacion',
+      items: [
+        {
+          match: ['acrílico transparente 5mm', 'acrilico'],
+          fallbackName: 'Acrílico Transparente 5mm',
+          fallbackRate: 45000,
+          detail: 'Placa corporativa corte láser + 4 distanciadores metálicos',
+          width: 0.6,
+          height: 0.4,
+          quantity: 1,
+        },
+      ],
+    },
+    {
+      id: 'kit-pvc',
+      label: 'Gigantografía PVC 3×1.5m',
+      delivery_method: 'retiro',
+      items: [
+        {
+          match: ['tela pvc 380', 'tela pvc'],
+          fallbackName: 'Tela PVC 380gr (3.20m Gran Formato)',
+          fallbackRate: 14000,
+          detail: 'Impresión ecosolvente gran formato con ojetillos metálicos cada 50 cm',
+          width: 3.0,
+          height: 1.5,
+          quantity: 1,
+        },
+      ],
+    },
+  ];
+
+  const handleApplyKit = (kit) => {
+    const newItems = kit.items.map((spec) => {
+      const mat = materials.find((m) =>
+        spec.match.some((kw) => String(m.name || '').toLowerCase().includes(kw))
+      );
+      const baseRate = mat ? Number(mat.pricePerSqm) || spec.fallbackRate : spec.fallbackRate;
+      const area = Number((spec.width * spec.height).toFixed(3));
+      const unitPrice = Math.round(area * baseRate);
+      return {
+        id: uid(),
+        materialId: mat?.id || '',
+        name: mat?.name || spec.fallbackName,
+        detail: spec.detail,
+        width: spec.width,
+        height: spec.height,
+        area,
+        quantity: spec.quantity,
+        priceMode: 'sqm',
+        baseRate,
+        unitPrice,
+        lineTotal: Math.round(unitPrice * spec.quantity),
+      };
+    });
+
+    setForm((prev) => ({
+      ...prev,
+      delivery_method: prev.items.length === 0 && kit.delivery_method ? kit.delivery_method : prev.delivery_method,
+      installation_fee:
+        kit.installation_fee && !Number(prev.installation_fee)
+          ? kit.installation_fee
+          : prev.installation_fee,
+      items: [...prev.items, ...newItems],
+    }));
+    showToast(`Kit "${kit.label}" agregado a la cotización`);
+  };
+
   const handleSelectClient = (clientId) => {
     const found = clients.find((c) => c.id === clientId);
     if (!found) {
@@ -517,9 +664,27 @@ export default function QuoteEditorModal({
 
           {/* AGREGAR ÍTEM */}
           <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              2. Agregar Ítem desde Tarifario o Libre
-            </h4>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                2. Agregar Ítem desde Tarifario o Libre
+              </h4>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1 mr-0.5">
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  Kits rápidos:
+                </span>
+                {QUICK_KITS.map((kit) => (
+                  <button
+                    key={kit.id}
+                    type="button"
+                    onClick={() => handleApplyKit(kit)}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-[11px] font-semibold text-slate-700 hover:text-red-700 transition shadow-2xs"
+                  >
+                    + {kit.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-12 gap-3 items-end">
               <div className="col-span-2 sm:col-span-4">
                 <label className="block text-[11px] text-slate-500 mb-1">Material de Catálogo</label>

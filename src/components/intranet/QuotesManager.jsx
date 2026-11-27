@@ -18,9 +18,10 @@ import {
   AlertCircle,
   X,
   Wallet,
+  MessageCircle,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { QUOTE_STATUSES, OT_STATUSES, OT_PRIORITIES } from '../../data/company';
+import { COMPANY_INFO, QUOTE_STATUSES, OT_STATUSES, OT_PRIORITIES } from '../../data/company';
 import {
   formatCLP,
   formatDateCL,
@@ -35,6 +36,16 @@ const normalizeOtStatus = (status) => {
   if (['entregado', 'despachado', 'pagada'].includes(status)) return 'despachado';
   if (status === 'facturada') return 'terminado';
   return OT_STATUSES.some((s) => s.id === status) ? status : 'pendiente';
+};
+
+const buildFollowUpWhatsAppUrl = (q) => {
+  const clientName = q.client_snapshot?.name || '';
+  const text = encodeURIComponent(
+    `Hola ${clientName}, te saludamos de *${COMPANY_INFO.name}*. Te escribimos para hacer seguimiento a la cotización *${q.correlative}* por *${formatCLP(q.total)}*.\n\n¿Pudiste revisarla o necesitas algún ajuste en medidas/materiales para coordinar fabricación?`
+  );
+  const digits = String(q.client_snapshot?.phone || '').replace(/\D/g, '');
+  if (!digits) return `https://wa.me/?text=${text}`;
+  return `https://wa.me/${digits.startsWith('56') ? digits : `56${digits}`}?text=${text}`;
 };
 
 export default function QuotesManager({
@@ -725,6 +736,19 @@ export default function QuotesManager({
                             <Clock className="w-3.5 h-3.5" />
                             Aplazar
                           </button>
+
+                          {['emitida', 'aplazada'].includes(q.status) && (
+                            <a
+                              href={buildFollowUpWhatsAppUrl(q)}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Enviar mensaje de seguimiento por WhatsApp al cliente"
+                              className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-bold transition flex items-center gap-1"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span>Seguimiento</span>
+                            </a>
+                          )}
                         </>
                       )}
 
