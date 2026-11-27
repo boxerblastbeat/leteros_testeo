@@ -362,6 +362,7 @@ set search_path = public
 as $$
 declare
   v_row public.work_orders%rowtype;
+  v_photos jsonb := '[]'::jsonb;
 begin
   select *
     into v_row
@@ -374,6 +375,24 @@ begin
   if not found then
     return null;
   end if;
+
+  select coalesce(
+    (
+      select jsonb_agg(jsonb_build_object(
+        'url', elem->>'url',
+        'caption', elem->>'caption',
+        'at', elem->>'at'
+      ))
+      from jsonb_array_elements(coalesce(q.client_snapshot->'ot_photos', '[]'::jsonb)) as elem
+      where coalesce((elem->>'showInTracking')::boolean, false) = true
+    ),
+    '[]'::jsonb
+  )
+    into v_photos
+    from public.quotes q
+   where (v_row.quote_id is not null and q.id = v_row.quote_id)
+      or (v_row.quote_correlative is not null and q.correlative = v_row.quote_correlative)
+   limit 1;
 
   return jsonb_build_object(
     'ot_number', v_row.ot_number,
@@ -390,7 +409,8 @@ begin
         'height', elem->>'height'
       )), '[]'::jsonb)
       from jsonb_array_elements(coalesce(v_row.items, '[]'::jsonb)) as elem
-    )
+    ),
+    'photos', coalesce(v_photos, '[]'::jsonb)
   );
 end;
 $$;

@@ -770,6 +770,12 @@ export const erpService = {
         String(w.quote_correlative || '').toUpperCase() === clean
     );
     if (!found) return null;
+    const linkedQuote = (db.quotes || []).find(
+      (q) => (found.quote_id && q.id === found.quote_id) || (found.quote_correlative && q.correlative === found.quote_correlative)
+    );
+    const rawPhotos = Array.isArray(linkedQuote?.client_snapshot?.ot_photos)
+      ? linkedQuote.client_snapshot.ot_photos
+      : [];
     return {
       ot_number: found.ot_number,
       quote_correlative: found.quote_correlative,
@@ -783,6 +789,9 @@ export const erpService = {
         width: i.width,
         height: i.height,
       })),
+      photos: rawPhotos
+        .filter((p) => Boolean(p.showInTracking))
+        .map((p) => ({ url: p.url, caption: p.caption, at: p.at })),
     };
   },
 

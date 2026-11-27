@@ -19,6 +19,8 @@ import {
   DollarSign,
   Camera,
   ExternalLink,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
@@ -137,6 +139,7 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
   const [photosOt, setPhotosOt] = useState(null);
   const [localPhotosMap, setLocalPhotosMap] = useState(() => readLocalOtPhotos());
   const [photoCaption, setPhotoCaption] = useState('');
+  const [photoPublic, setPhotoPublic] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photosClose = useModalClose(Boolean(photosOt), () => setPhotosOt(null), {
     confirm: false,
@@ -159,6 +162,7 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
         url,
         storagePath,
         caption: photoCaption.trim() || 'Respaldo de avance / entrega',
+        showInTracking: Boolean(photoPublic),
         at: new Date().toISOString(),
         by: session?.user?.email || '',
       };
@@ -215,6 +219,38 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
       }
     }
     showToast('Foto eliminada');
+  };
+
+  const handleTogglePhotoVisibility = async (ot, photoId) => {
+    let nextVisible = false;
+    const nextList = getOtPhotos(ot).map((p) => {
+      if (p.id !== photoId) return p;
+      nextVisible = !Boolean(p.showInTracking);
+      return { ...p, showInTracking: nextVisible };
+    });
+    const linked = findLinkedQuoteForOt(ot);
+    if (linked) {
+      await saveQuote({
+        ...linked,
+        client_snapshot: {
+          ...(linked.client_snapshot || {}),
+          ot_photos: nextList,
+        },
+      });
+    } else {
+      const updated = { ...localPhotosMap, [ot.id]: nextList };
+      setLocalPhotosMap(updated);
+      try {
+        localStorage.setItem(OT_PHOTOS_LOCAL_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+    }
+    showToast(
+      nextVisible
+        ? 'Foto visible para el cliente en Tracking'
+        : 'Foto cambiada a Solo Interno (oculta en Tracking)'
+    );
   };
 
   const findLinkedQuoteForOt = (ot) =>
@@ -1362,6 +1398,17 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
                   placeholder="Descripción breve (ej: Letrero instalado en fachada, Entrega conforme...)"
                   className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
                 />
+                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={photoPublic}
+                    onChange={(e) => setPhotoPublic(e.target.checked)}
+                    className="rounded border-slate-300 text-red-600 focus:ring-red-600"
+                  />
+                  <span className="font-medium">
+                    Visible para el cliente en el link de Tracking (`/seguimiento`)
+                  </span>
+                </label>
                 <label className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold cursor-pointer transition">
                   <Camera className="w-4 h-4" />
                   <span>{uploadingPhoto ? 'Subiendo foto...' : 'Tomar / Subir Foto de Respaldo'}</span>
@@ -1404,33 +1451,57 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
                           className="w-full h-full object-cover hover:scale-105 transition"
                         />
                       </a>
-                      <div className="p-2.5 flex items-center justify-between gap-2 text-xs bg-white">
-                        <div className="min-w-0">
-                          <div className="font-semibold text-slate-800 truncate">{p.caption}</div>
-                          <div className="text-[10px] text-slate-400">
-                            {formatDateCL(p.at)}
-                            {p.by ? ` · ${p.by}` : ''}
+                      <div className="p-2.5 space-y-2 text-xs bg-white">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-semibold text-slate-800 truncate">{p.caption}</div>
+                            <div className="text-[10px] text-slate-400">
+                              {formatDateCL(p.at)}
+                              {p.by ? ` · ${p.by}` : ''}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <a
+                              href={p.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"
+                              title="Abrir tamaño completo"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOtPhoto(photosOt, p)}
+                              className="p-1.5 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600"
+                              title="Eliminar foto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <a
-                            href={p.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"
-                            title="Abrir tamaño completo"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteOtPhoto(photosOt, p)}
-                            className="p-1.5 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600"
-                            title="Eliminar foto"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePhotoVisibility(photosOt, p.id)}
+                          className={`w-full py-1.5 px-2.5 rounded-lg border text-[11px] font-bold flex items-center justify-center gap-1.5 transition ${
+                            p.showInTracking
+                              ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                              : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-600'
+                          }`}
+                          title="Cambiar si esta foto se muestra al cliente en /seguimiento"
+                        >
+                          {p.showInTracking ? (
+                            <>
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Visible en Tracking (clic para ocultar)</span>
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="w-3.5 h-3.5" />
+                              <span>Solo Interno Taller (clic para mostrar)</span>
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
                   ))}
