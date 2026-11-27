@@ -47,6 +47,11 @@ where email = 'ventas@letrerosolivar.com';
 update auth.users
 set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role": "admin"}'::jsonb
 where email = 'contacto@letrerosolivar.com';
+
+-- Obligar a un usuario a crear su contraseña personal en su próximo ingreso (tras darle una clave temporal)
+update auth.users
+set raw_user_meta_data = coalesce(raw_user_meta_data, '{}'::jsonb) || '{"must_change_password": true}'::jsonb
+where email = 'taller@letrerosolivar.com';
 ```
 
 *(El usuario debe cerrar sesión y volver a entrar para tomar el nuevo rol).*

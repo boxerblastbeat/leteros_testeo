@@ -360,6 +360,21 @@ export const erpService = {
     sessionStorage.removeItem('olivar_demo_auth');
   },
 
+  async completeFirstPasswordChange(newPassword) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('La nueva contraseña debe tener al menos 6 caracteres.');
+    }
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.auth.updateUser({
+        password: newPassword,
+        data: { must_change_password: false },
+      });
+      if (error) throw error;
+      return data?.user || null;
+    }
+    return null;
+  },
+
   // --- LOAD ALL ---
   async loadPublicCatalog() {
     if (isSupabaseConfigured) {

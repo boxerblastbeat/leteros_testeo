@@ -14,9 +14,12 @@ import {
   History,
   User,
   BarChart3,
+  KeyRound,
+  ShieldCheck,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { COMPANY_INFO } from '../../data/company';
+import { erpService } from '../../lib/erpService';
 import QuotesManager from './QuotesManager';
 import WorkOrdersPanel from './WorkOrdersPanel';
 
@@ -61,12 +64,46 @@ const resolveUserRole = (session) => {
 };
 
 export default function IntranetApp({ onGoPublic }) {
-  const { session, quotes, quoteRequests, workOrders, isCloud, signOut } = useErp();
+  const { session, quotes, quoteRequests, workOrders, isCloud, signOut, showToast, recordAudit } = useErp();
 
   const userRole = resolveUserRole(session);
   const roleMeta = ROLE_META[userRole] || ROLE_META.admin;
   const allowedTabs = ROLE_ALLOWED_TABS[userRole] || ROLE_ALLOWED_TABS.admin;
   const canCreateQuote = userRole !== 'taller';
+
+  const mustChangePassword = Boolean(session?.user?.user_metadata?.must_change_password);
+  const [pwdForm, setPwdForm] = useState({ password: '', confirm: '' });
+  const [pwdError, setPwdError] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
+
+  const handleForcePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPwdError('');
+    if (pwdForm.password.length < 6) {
+      setPwdError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+    if (pwdForm.password !== pwdForm.confirm) {
+      setPwdError('Las contraseñas no coinciden.');
+      return;
+    }
+    setPwdSaving(true);
+    try {
+      await erpService.completeFirstPasswordChange(pwdForm.password);
+      await recordAudit?.({
+        action: 'sesion',
+        entity_type: 'sesion',
+        entity_ref: session?.user?.email || '',
+        summary: 'Definió su contraseña personal desde clave temporal',
+      });
+      setPwdForm({ password: '', confirm: '' });
+      showToast('¡Contraseña personal actualizada correctamente!');
+    } catch (err) {
+      setPwdError(err?.message || 'No se pudo actualizar la contraseña.');
+    } finally {
+      setPwdSaving(false);
+    }
+  };
 
   const [activeTab, setActiveTab] = useState(() => (userRole === 'taller' ? 'taller' : 'cotizaciones'));
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
@@ -292,7 +329,7 @@ export default function IntranetApp({ onGoPublic }) {
 
         {printQuote && <QuotePrintModal quote={printQuote} onClose={() => setPrintQuote(null)} />}
 
-        {showWeeklyModal && (
+        {showWeeklyModal && !mustChangePassword && (
           <WeeklyScheduleModal
             onClose={() => setShowWeeklyModal(false)}
             onSelectOt={(ot) => {
@@ -303,6 +340,82 @@ export default function IntranetApp({ onGoPublic }) {
           />
         )}
       </Suspense>
+
+      {/* MODAL OBLIGATORIO DE CAMBIO DE CLAVE TEMPORAL (NO SE PUEDE SALTAR) */}
+      {mustChangePassword && (
+        <div className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleForcePasswordSubmit}
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-900"
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center shrink-0">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-heading font-bold text-slate-900 text-base sm:text-lg">
+                  Crea tu Contraseña Personal
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Ingresaste con una clave temporal. Define tu contraseña definitiva para continuar.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="text-xs px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-mono">
+                Cuenta: <strong className="text-slate-900">{session?.user?.email}</strong>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  Nueva contraseña (mín. 6 caracteres)
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  autoFocus
+                  value={pwdForm.password}
+                  onChange={(e) => setPwdForm({ ...pwdForm, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                  Confirmar nueva contraseña
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={pwdForm.confirm}
+                  onChange={(e) => setPwdForm({ ...pwdForm, confirm: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
+                />
+              </div>
+
+              {pwdError && (
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                  {pwdError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={pwdSaving}
+                className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-red-600/20"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>{pwdSaving ? 'Guardando...' : 'Guardar Contraseña e Ingresar'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Lock, X, ShieldCheck, Database } from 'lucide-react';
+import { Lock, X, ShieldCheck, Database, MessageCircle } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
+import { COMPANY_INFO } from '../../data/company';
 import { useModalClose } from '../../lib/useModalClose';
 
 const LAST_EMAIL_KEY = 'olivar_last_login_email';
@@ -141,6 +142,20 @@ export default function LoginModal({ open, onClose, onSuccess }) {
             <ShieldCheck className="w-4 h-4" />
             {submitting ? 'Verificando...' : 'Ingresar a Intranet'}
           </button>
+
+          <div className="pt-2 border-t border-slate-100 text-center">
+            <a
+              href={`https://wa.me/${COMPANY_INFO.whatsapp}?text=${encodeURIComponent(
+                `Hola, necesito una contraseña temporal para mi usuario de la Intranet (${identifier.trim() || 'mi cuenta'}).`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-emerald-700 transition"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+              <span>¿Necesitas clave temporal? Contactar al Administrador</span>
+            </a>
+          </div>
         </form>
       </div>
     </div>
