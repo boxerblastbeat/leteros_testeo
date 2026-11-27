@@ -70,9 +70,14 @@ function MainRouter() {
   };
 
   if (loading) {
+    const isIntranetPath = view === 'intranet';
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400 text-sm">
-        Cargando Letreros Olivar...
+      <div
+        className={`min-h-screen flex items-center justify-center text-sm font-medium ${
+          isIntranetPath ? 'bg-slate-50 text-slate-600' : 'bg-zinc-950 text-zinc-400'
+        }`}
+      >
+        {isIntranetPath ? 'Cargando Intranet Mini-ERP...' : 'Cargando Letreros Olivar...'}
       </div>
     );
   }

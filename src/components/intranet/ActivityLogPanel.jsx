@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import {
   History,
   Search,
@@ -58,12 +58,22 @@ const getInitials = (email) => {
 };
 
 export default function ActivityLogPanel() {
-  const { auditLogs } = useErp();
+  const { auditLogs, loadAuditLogsOnDemand } = useErp();
 
   const [accountFilter, setAccountFilter] = useState('todas');
   const [entityFilter, setEntityFilter] = useState('todos');
   const [actionFilter, setActionFilter] = useState('todas');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [visibleCount, setVisibleCount] = useState(40);
+
+  useEffect(() => {
+    loadAuditLogsOnDemand?.();
+  }, [loadAuditLogsOnDemand]);
+
+  useEffect(() => {
+    setVisibleCount(40);
+  }, [accountFilter, entityFilter, actionFilter, deferredSearch]);
 
   const accounts = useMemo(() => {
     const set = new Set();
@@ -74,7 +84,7 @@ export default function ActivityLogPanel() {
   }, [auditLogs]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     return auditLogs.filter((log) => {
       if (accountFilter !== 'todas' && log.user_email !== accountFilter) return false;
       if (entityFilter !== 'todos' && log.entity_type !== entityFilter) return false;
@@ -86,7 +96,9 @@ export default function ActivityLogPanel() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [auditLogs, accountFilter, entityFilter, actionFilter, search]);
+  }, [auditLogs, accountFilter, entityFilter, actionFilter, deferredSearch]);
+
+  const visibleLogs = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   const exportCsv = () => {
     const headers = ['Fecha/Hora', 'Cuenta', 'Acción', 'Módulo', 'Referencia', 'Detalle'];
@@ -217,7 +229,7 @@ export default function ActivityLogPanel() {
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-2xl shadow-xs divide-y divide-slate-100 overflow-hidden">
-          {filtered.map((log) => {
+          {visibleLogs.map((log) => {
             const actionMeta = ACTION_META[log.action] || {
               label: log.action,
               badge: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -276,6 +288,17 @@ export default function ActivityLogPanel() {
               </div>
             );
           })}
+          {filtered.length > visibleCount && (
+            <div className="p-3.5 bg-slate-50 text-center">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => prev + 40)}
+                className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-bold text-slate-700 transition"
+              >
+                Mostrar 40 más ({filtered.length - visibleCount} restantes)
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -482,7 +482,7 @@ export const erpService = {
 
   async loadAllErpData() {
     if (isSupabaseConfigured) {
-      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes, auditRes] =
+      const [clientsRes, materialsRes, consumablesRes, reqRes, quotesRes, otRes, calRes] =
         await Promise.all([
           supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(500),
           supabase.from('materials').select('*').order('category', { ascending: true }).limit(300),
@@ -491,7 +491,6 @@ export const erpService = {
           supabase.from('quotes').select('*').order('created_at', { ascending: false }).limit(300),
           supabase.from('work_orders').select('*').order('created_at', { ascending: false }).limit(250),
           supabase.from('calendar_events').select('*').order('event_date', { ascending: true }).limit(300),
-          supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(500),
         ]);
 
       return {
@@ -516,7 +515,7 @@ export const erpService = {
         quotes: quotesRes.data || [],
         workOrders: otRes.data || [],
         calendarEvents: calRes.data || [],
-        auditLogs: auditRes.data || [],
+        auditLogs: [],
       };
     }
 

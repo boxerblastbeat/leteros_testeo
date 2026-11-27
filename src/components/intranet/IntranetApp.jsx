@@ -146,7 +146,7 @@ export default function IntranetApp({ onGoPublic }) {
   ].filter((item) => allowedTabs.includes(item.id));
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
+    <div className="intranet-theme min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       {/* TOP BAR (Tema Claro Corporativo) */}
       <header className="no-print sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-md shadow-sm">
         <div className="max-w-[1440px] mx-auto px-3 sm:px-6 min-h-[60px] py-2 flex items-center justify-between gap-2 sm:gap-4">

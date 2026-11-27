@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import { Users, Plus, Search, Edit3, Trash2, Phone, Mail, MapPin, X } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { useModalClose } from '../../lib/useModalClose';
@@ -6,7 +6,13 @@ import { useModalClose } from '../../lib/useModalClose';
 export default function ClientsPanel() {
   const { clients, saveClient, deleteClient, showToast } = useErp();
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [visibleCount, setVisibleCount] = useState(30);
   const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [deferredSearch]);
   const { handleClose: requestCloseModal, handleBackdropClick } = useModalClose(
     modalOpen,
     () => setModalOpen(false),
@@ -25,7 +31,7 @@ export default function ClientsPanel() {
   });
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     if (!q) return clients;
     return clients.filter((c) =>
       [c.name, c.rut, c.contact_name, c.phone, c.email, c.address]
@@ -34,7 +40,9 @@ export default function ClientsPanel() {
         .toLowerCase()
         .includes(q)
     );
-  }, [clients, search]);
+  }, [clients, deferredSearch]);
+
+  const visibleClients = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   const openNew = () => {
     setForm({
@@ -107,7 +115,7 @@ export default function ClientsPanel() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {filtered.map((c) => (
+        {visibleClients.map((c) => (
           <div
             key={c.id}
             className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between gap-3 sm:gap-4"
@@ -171,6 +179,18 @@ export default function ClientsPanel() {
           </div>
         ))}
       </div>
+
+      {filtered.length > visibleCount && (
+        <div className="text-center pt-1">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((prev) => prev + 30)}
+            className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-bold text-slate-700 transition shadow-xs"
+          >
+            Mostrar 30 más ({filtered.length - visibleCount} restantes)
+          </button>
+        </div>
+      )}
 
       {modalOpen && (
         <div

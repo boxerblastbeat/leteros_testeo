@@ -27,7 +27,7 @@
   display: none;
 }
 
-/* Custom sleek scrollbars */
+/* Custom sleek scrollbars (oscuro para Web Pública, claro para Intranet) */
 ::-webkit-scrollbar {
   width: 7px;
   height: 7px;
@@ -41,6 +41,20 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #dc2626;
+}
+
+.intranet-theme ::-webkit-scrollbar-track,
+.intranet-theme::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.intranet-theme ::-webkit-scrollbar-thumb,
+.intranet-theme::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.intranet-theme ::-webkit-scrollbar-thumb:hover,
+.intranet-theme::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Clean Letter/Carta Print Styles (PDF Cotizaciones, OTs y Planos de Corte) */

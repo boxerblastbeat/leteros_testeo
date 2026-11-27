@@ -633,9 +633,10 @@ export default function PublicSite({ onOpenIntranet }) {
               >
                 <div className="relative h-52 overflow-hidden bg-zinc-900">
                   <img
-                    src={project.image}
+                    src={project.image.replace('w=1200&q=80', 'w=700&q=75')}
                     alt={project.title}
                     loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />

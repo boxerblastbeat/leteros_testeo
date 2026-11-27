@@ -42,7 +42,15 @@ export function ErpProvider({ children }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLogsLoaded, setAuditLogsLoaded] = useState(false);
   const loadedUserRef = useRef(null);
+
+  const loadAuditLogsOnDemand = useCallback(async ({ force = false } = {}) => {
+    if (auditLogsLoaded && !force) return;
+    const rows = await erpService.loadAuditLogs();
+    setAuditLogs(rows);
+    setAuditLogsLoaded(true);
+  }, [auditLogsLoaded]);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type, id: Date.now() });
@@ -89,8 +97,10 @@ export function ErpProvider({ children }) {
     setQuotes(data.quotes);
     setWorkOrders(data.workOrders);
     setCalendarEvents(data.calendarEvents);
-    setAuditLogs(data.auditLogs || []);
-  }, []);
+    if (auditLogsLoaded) {
+      setAuditLogs(await erpService.loadAuditLogs());
+    }
+  }, [auditLogsLoaded]);
 
   useEffect(() => {
     let mounted = true;
@@ -601,6 +611,7 @@ export function ErpProvider({ children }) {
         workOrders,
         calendarEvents,
         auditLogs,
+        loadAuditLogsOnDemand,
         refreshErp,
         recordAudit,
         signIn,

@@ -559,7 +559,50 @@ export default function AdminReportsPanel() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Vista móvil compacta de documentos */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {detailRows.length === 0 ? (
+            <div className="py-8 px-4 text-center text-xs text-slate-400">
+              No hay documentos en este filtro para {periodLabel}.
+            </div>
+          ) : (
+            detailRows.map((q) => {
+              const meta = getStatusMeta(q.status);
+              return (
+                <div key={q.id} className="p-3.5 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-slate-900">{q.correlative}</span>
+                      {q.invoice_number && (
+                        <span className="font-mono text-[10px] text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded border border-cyan-200">
+                          FAC {q.invoice_number}
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${meta.color}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                      {meta.label}
+                    </span>
+                  </div>
+                  <div className="font-semibold text-slate-800 truncate">
+                    {q.client_snapshot?.name || 'Cliente'}
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                    <span>{formatDateCL(q._effDate)}</span>
+                    <div className="flex items-center gap-2 font-mono">
+                      <span>IVA {formatCLP(q.tax_amount)}</span>
+                      <strong className="text-slate-900 text-xs">{formatCLP(q.total)}</strong>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[820px] text-xs">
             <thead className="bg-slate-50/70 border-b border-slate-200 text-slate-500">
               <tr>

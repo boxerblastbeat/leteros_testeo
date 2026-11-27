@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useDeferredValue } from 'react';
 import {
   Plus,
   Search,
@@ -68,6 +68,12 @@ export default function QuotesManager({
 
   const [statusFilter, setStatusFilter] = useState('activas');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [statusFilter, deferredSearch]);
 
   const [approveModal, setApproveModal] = useState(null);
   const [approveForm, setApproveForm] = useState({
@@ -184,7 +190,7 @@ export default function QuotesManager({
   }, [quotes]);
 
   const filteredQuotes = useMemo(() => {
-    const qLower = search.trim().toLowerCase();
+    const qLower = deferredSearch.trim().toLowerCase();
     return quotes.filter((q) => {
       if (statusFilter === 'activas' && ['pagada', 'rechazada'].includes(q.status)) return false;
       if (statusFilter !== 'todas' && statusFilter !== 'activas' && q.status !== statusFilter)
@@ -206,7 +212,12 @@ export default function QuotesManager({
         .toLowerCase();
       return haystack.includes(qLower);
     });
-  }, [quotes, workOrders, statusFilter, search]);
+  }, [quotes, workOrders, statusFilter, deferredSearch]);
+
+  const visibleQuotes = useMemo(
+    () => filteredQuotes.slice(0, visibleCount),
+    [filteredQuotes, visibleCount]
+  );
 
   const getStatusMeta = (id) =>
     QUOTE_STATUSES.find((s) => s.id === id) || QUOTE_STATUSES[0];
@@ -554,7 +565,7 @@ export default function QuotesManager({
             No se encontraron cotizaciones con los filtros seleccionados.
           </div>
         ) : (
-          filteredQuotes.map((q) => {
+          visibleQuotes.map((q) => {
             const meta = getStatusMeta(q.status);
             const linkedOt = findLinkedOt(q);
             const normalizedOtStatus = linkedOt ? normalizeOtStatus(linkedOt.status) : null;
@@ -871,15 +882,13 @@ export default function QuotesManager({
                   <div className="pt-2.5 border-t border-slate-100 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${
-                            linkedOt.priority === 'urgente'
-                              ? 'bg-red-50 text-red-700 border-red-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          }`}
-                        >
-                          {linkedOt.priority === 'urgente' ? 'URGENTE' : 'NORMAL'}
-                        </span>
+                        {linkedOtPrio && (
+                          <span
+                            className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${linkedOtPrio.badge}`}
+                          >
+                            {linkedOtPrio.label}
+                          </span>
+                        )}
                         <span className="text-slate-600">
                           Avance en Taller ({' '}
                           <span className="font-mono font-bold text-slate-800">
@@ -925,6 +934,17 @@ export default function QuotesManager({
               </div>
             );
           })
+        )}
+        {filteredQuotes.length > visibleCount && (
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((prev) => prev + 25)}
+              className="px-4 py-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-bold text-slate-700 transition shadow-xs"
+            >
+              Mostrar 25 cotizaciones más ({filteredQuotes.length - visibleCount} restantes)
+            </button>
+          </div>
         )}
       </div>
 
