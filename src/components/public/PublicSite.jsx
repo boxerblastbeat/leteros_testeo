@@ -195,32 +195,33 @@ export default function PublicSite({ onOpenIntranet }) {
 
   return (
     <div className="min-h-screen bg-black text-zinc-100">
-      {/* BARRA SUPERIOR CORPORATIVA (Visible completa en móvil y escritorio) */}
-      <div className="bg-zinc-950 border-b border-zinc-900 text-[11px] sm:text-xs py-2.5 px-3 sm:px-6 lg:px-10 no-print">
-        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4 text-zinc-400">
+      {/* BARRA SUPERIOR CORPORATIVA (1 sola línea limpia en escritorio y 13") */}
+      <div className="bg-zinc-950 border-b border-zinc-900 text-[11px] 2xl:text-xs py-2 px-3 sm:px-5 lg:px-6 no-print">
+        <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-3 text-zinc-400">
           {/* Ubicación y Dirección */}
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <span className="text-zinc-200 font-medium">
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
+            <span className="text-zinc-200 font-medium whitespace-nowrap hidden 2xl:inline">
               Taller Matriz: Olivar, Región de O&apos;Higgins
             </span>
-            <span className="text-zinc-700">|</span>
+            <span className="text-zinc-700 hidden 2xl:inline">|</span>
             <a
               href={COMPANY_INFO.mapsUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-zinc-300 hover:text-red-400 transition underline underline-offset-4 decoration-red-600/70"
+              className="inline-flex items-center gap-1 text-zinc-300 hover:text-red-400 transition underline underline-offset-4 decoration-red-600/70 whitespace-nowrap truncate"
+              title={COMPANY_INFO.address}
             >
               <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
-              <span>{COMPANY_INFO.address}</span>
+              <span className="truncate">{COMPANY_INFO.address}</span>
             </a>
           </div>
 
           {/* Contacto, Redes y Acceso Intranet */}
-          <div className="flex flex-wrap items-center justify-between lg:justify-end gap-x-3.5 sm:gap-x-4 lg:gap-x-5 gap-y-2 pt-1.5 lg:pt-0 border-t border-zinc-900 lg:border-t-0">
-            <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5">
+          <div className="flex flex-wrap lg:flex-nowrap items-center justify-between lg:justify-end gap-x-3 2xl:gap-x-4 gap-y-1.5 pt-1.5 lg:pt-0 border-t border-zinc-900 lg:border-t-0 shrink-0">
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 2xl:gap-x-4 gap-y-1">
               <a
                 href={`mailto:${COMPANY_INFO.email}`}
-                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
+                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1 whitespace-nowrap"
                 title={`Enviar correo a ${COMPANY_INFO.email}`}
               >
                 <Mail className="w-3.5 h-3.5 text-red-500 shrink-0" />
@@ -228,7 +229,7 @@ export default function PublicSite({ onOpenIntranet }) {
               </a>
               <a
                 href={`tel:${COMPANY_INFO.phone.replace(/\s+/g, '')}`}
-                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1.5"
+                className="text-zinc-300 hover:text-white transition font-mono flex items-center gap-1 whitespace-nowrap"
               >
                 <Phone className="w-3.5 h-3.5 text-red-500 shrink-0" />
                 <span>{COMPANY_INFO.phone}</span>
@@ -237,7 +238,7 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.whatsapp}
                 target="_blank"
                 rel="noreferrer"
-                className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1.5 transition"
+                className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition whitespace-nowrap"
               >
                 <WhatsAppIcon className="w-3.5 h-3.5 shrink-0" />
                 <span>WhatsApp</span>
@@ -246,7 +247,7 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.instagram}
                 target="_blank"
                 rel="noreferrer"
-                className="text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1.5 transition"
+                className="text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1 transition whitespace-nowrap"
                 title="Instagram @letreros_olivar"
               >
                 <Instagram className="w-3.5 h-3.5 shrink-0" />
@@ -256,7 +257,7 @@ export default function PublicSite({ onOpenIntranet }) {
                 href={COMPANY_INFO.social.facebook}
                 target="_blank"
                 rel="noreferrer"
-                className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1.5 transition"
+                className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 transition whitespace-nowrap"
                 title="Facebook Letreros Olivar"
               >
                 <Facebook className="w-3.5 h-3.5 shrink-0" />
@@ -264,13 +265,13 @@ export default function PublicSite({ onOpenIntranet }) {
               </a>
             </div>
 
-            <div className="lg:border-l lg:border-zinc-800 lg:pl-4">
+            <div className="lg:border-l lg:border-zinc-800 lg:pl-3 shrink-0">
               <button
                 onClick={onOpenIntranet}
-                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-600/35 text-[11px] sm:text-xs transition whitespace-nowrap"
+                className="text-red-500 hover:text-red-400 font-bold flex items-center gap-1.5 bg-red-600/10 hover:bg-red-600/20 px-2.5 py-1 rounded-lg border border-red-600/35 text-[11px] 2xl:text-xs transition whitespace-nowrap"
                 title="Acceso directo a la Intranet de Taller y Cotizaciones"
               >
-                <Lock className="w-3.5 h-3.5" />
+                <Lock className="w-3 h-3" />
                 <span>{session ? 'Ir a Intranet' : 'Acceso Intranet'}</span>
               </button>
             </div>
