@@ -12,6 +12,7 @@ import {
 import { useErp } from '../../context/ErpContext';
 import { QUOTE_STATUSES } from '../../data/company';
 import { formatCLP, formatDateCL, todayISO, getQuoteFinancialState } from '../../lib/formatters';
+import AdminDashboardCharts from './AdminDashboardCharts';
 
 const MONTH_NAMES = [
   'Enero',
@@ -60,7 +61,7 @@ const sumFinancials = (list) =>
   );
 
 export default function AdminReportsPanel() {
-  const { quotes } = useErp();
+  const { quotes, quoteRequests, materials } = useErp();
 
   const currentYear = String(new Date().getFullYear());
 
@@ -146,6 +147,10 @@ export default function AdminReportsPanel() {
         mQuotes.filter((q) => ['aceptada', 'en_taller'].includes(q.status))
       );
       const emitidas = sumFinancials(mQuotes.filter((q) => q.status === 'emitida'));
+      const abonosParciales = mQuotes.reduce((sum, q) => {
+        if (q.status === 'pagada' || q.status === 'rechazada') return sum;
+        return sum + getQuoteFinancialState(q).paidAmount;
+      }, 0);
       const ivaDebitoMes = facturadoMes.iva;
       const hasData = mQuotes.length > 0;
       return {
@@ -153,6 +158,7 @@ export default function AdminReportsPanel() {
         name,
         totalDocs: mQuotes.length,
         pagadas,
+        abonosParciales,
         porCobrar,
         enTaller,
         emitidas,
@@ -397,6 +403,18 @@ export default function AdminReportsPanel() {
           </div>
         </div>
       </div>
+
+      {/* DASHBOARD VISUAL EJECUTIVO */}
+      <AdminDashboardCharts
+        monthlyRows={monthlyRows}
+        periodQuotes={periodQuotes}
+        quoteRequests={quoteRequests}
+        materials={materials}
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        onSelectMonth={setSelectedMonth}
+        periodLabel={periodLabel}
+      />
 
       {/* RESUMEN MENSUAL DEL AÑO */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
