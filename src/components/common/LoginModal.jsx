@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, X, ShieldCheck, Database, MessageCircle, Mail } from 'lucide-react';
+import { Lock, X, ShieldCheck, Database } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { ADMIN_SUPPORT } from '../../data/company';
 import { useModalClose } from '../../lib/useModalClose';
 
 const LAST_EMAIL_KEY = 'olivar_last_login_email';
@@ -142,37 +141,6 @@ export default function LoginModal({ open, onClose, onSuccess }) {
             <ShieldCheck className="w-4 h-4" />
             {submitting ? 'Verificando...' : 'Ingresar a Intranet'}
           </button>
-
-          <div className="pt-3 border-t border-slate-100 text-center space-y-1.5">
-            <div className="text-[11px] font-semibold text-slate-500">
-              ¿Necesitas clave temporal o soporte de acceso?
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
-              <a
-                href={`https://wa.me/${ADMIN_SUPPORT.whatsapp}?text=${encodeURIComponent(
-                  `Hola, necesito una contraseña temporal para mi usuario de la Intranet Letreros Olivar (${identifier.trim() || 'mi cuenta'}).`
-                )}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-800 transition"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>WhatsApp ({ADMIN_SUPPORT.phone})</span>
-              </a>
-              <span className="text-slate-300">·</span>
-              <a
-                href={`mailto:${ADMIN_SUPPORT.email}?subject=${encodeURIComponent(
-                  'Solicitud de clave temporal — Intranet Letreros Olivar'
-                )}&body=${encodeURIComponent(
-                  `Hola, solicito una contraseña temporal para el usuario: ${identifier.trim() || ''}`
-                )}`}
-                className="inline-flex items-center gap-1 font-semibold text-slate-600 hover:text-red-600 transition"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                <span>{ADMIN_SUPPORT.email}</span>
-              </a>
-            </div>
-          </div>
         </form>
       </div>
     </div>
