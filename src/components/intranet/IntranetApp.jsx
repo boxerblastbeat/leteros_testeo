@@ -13,6 +13,7 @@ import {
   Plus,
   History,
   User,
+  BarChart3,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { COMPANY_INFO } from '../../data/company';
@@ -23,6 +24,7 @@ import CalendarPanel from './CalendarPanel';
 import ClientsPanel from './ClientsPanel';
 import MaterialsPanel from './MaterialsPanel';
 import ActivityLogPanel from './ActivityLogPanel';
+import AdminReportsPanel from './AdminReportsPanel';
 import QuoteEditorModal from './QuoteEditorModal';
 import QuotePrintModal from './QuotePrintModal';
 import WeeklyScheduleModal from './WeeklyScheduleModal';
@@ -61,6 +63,7 @@ export default function IntranetApp({ onGoPublic }) {
     { id: 'optimizador', label: 'Cortes 2D', icon: Scissors },
     { id: 'clientes', label: 'Clientes', icon: Users },
     { id: 'tarifario', label: 'Tarifario', icon: Package },
+    { id: 'administracion', label: 'Administración', icon: BarChart3 },
     { id: 'bitacora', label: 'Bitácora', icon: History },
   ];
 
@@ -205,6 +208,7 @@ export default function IntranetApp({ onGoPublic }) {
         )}
         {activeTab === 'clientes' && <ClientsPanel />}
         {activeTab === 'tarifario' && <MaterialsPanel />}
+        {activeTab === 'administracion' && <AdminReportsPanel />}
         {activeTab === 'bitacora' && <ActivityLogPanel />}
       </main>
 

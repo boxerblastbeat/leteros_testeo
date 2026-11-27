@@ -105,13 +105,17 @@ export default function QuotesManager({
     return {
       emitidasCount: emitidas.length,
       totalPipeline: emitidas.reduce((s, q) => s + (Number(q.total) || 0), 0),
+      ivaPipeline: emitidas.reduce((s, q) => s + (Number(q.tax_amount) || 0), 0),
       aplazadasCount: aplazadas.length,
       enTallerCount: enTaller.length,
       totalEnTaller: enTaller.reduce((s, q) => s + (Number(q.total) || 0), 0),
+      ivaEnTaller: enTaller.reduce((s, q) => s + (Number(q.tax_amount) || 0), 0),
       porCobrarCount: porCobrar.length,
       totalPorCobrar: porCobrar.reduce((s, q) => s + (Number(q.total) || 0), 0),
+      ivaPorCobrar: porCobrar.reduce((s, q) => s + (Number(q.tax_amount) || 0), 0),
       pagadasCount: pagadas.length,
       totalPagado: pagadas.reduce((s, q) => s + (Number(q.total) || 0), 0),
+      ivaPagado: pagadas.reduce((s, q) => s + (Number(q.tax_amount) || 0), 0),
     };
   }, [quotes]);
 
@@ -389,7 +393,7 @@ export default function QuotesManager({
             {formatCLP(kpis.totalEnTaller)}
           </div>
           <div className="text-[11px] text-violet-600 font-semibold mt-1">
-            {kpis.enTallerCount} en producción (sin facturar)
+            {kpis.enTallerCount} en producción · IVA {formatCLP(kpis.ivaEnTaller)}
           </div>
         </button>
 
@@ -405,7 +409,7 @@ export default function QuotesManager({
             {formatCLP(kpis.totalPorCobrar)}
           </div>
           <div className="text-[11px] text-amber-700 font-semibold mt-1">
-            {kpis.porCobrarCount} {kpis.porCobrarCount === 1 ? 'pendiente' : 'pendientes'} de pago
+            {kpis.porCobrarCount} sin pagar · IVA {formatCLP(kpis.ivaPorCobrar)}
           </div>
         </button>
 
@@ -421,7 +425,8 @@ export default function QuotesManager({
             {formatCLP(kpis.totalPagado)}
           </div>
           <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-            {kpis.pagadasCount} {kpis.pagadasCount === 1 ? 'pagada' : 'pagadas'} (caja real)
+            {kpis.pagadasCount} {kpis.pagadasCount === 1 ? 'pagada' : 'pagadas'} · IVA{' '}
+            {formatCLP(kpis.ivaPagado)}
           </div>
         </button>
 
