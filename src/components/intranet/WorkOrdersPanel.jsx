@@ -371,6 +371,15 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
     });
   }, [workOrders, filter]);
 
+  // Memoizar cubicación 2D por OT para evitar recalcular en cada render/tecla en modales
+  const cubicationByOtId = useMemo(() => {
+    const map = new Map();
+    filtered.forEach((ot) => {
+      map.set(ot.id, computeOtCubicationAndCuts(ot.items));
+    });
+    return map;
+  }, [filtered]);
+
   const syncLinkedQuoteFromWorkshop = async (ot, targetStatus, direction) => {
     const linked =
       (ot.quote_id && quotes.find((q) => q.id === ot.quote_id)) ||
@@ -728,8 +737,8 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
 
                   {/* Glosa automática de cortes optimizados */}
                   {(() => {
-                    const cub = computeOtCubicationAndCuts(ot.items);
-                    if (!cub.hasOptimization) return null;
+                    const cub = cubicationByOtId.get(ot.id);
+                    if (!cub?.hasOptimization) return null;
                     return (
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px]">
                         <div className="flex items-center justify-between gap-2">

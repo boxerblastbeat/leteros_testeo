@@ -158,7 +158,12 @@ export default function MaterialsPanel() {
 
       {/* Vista Tarjetas en Móvil */}
       <div className="md:hidden space-y-2.5">
-        {filtered.map((m) => (
+        {filtered.map((m) => {
+          const st = stockMap[m.id];
+          const hasStock = st !== undefined;
+          const isOut = hasStock && st.stock === 0;
+          const isLow = hasStock && st.stock > 0 && st.stock <= st.minStock;
+          return (
           <div
             key={m.id}
             className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2.5"
@@ -197,16 +202,50 @@ export default function MaterialsPanel() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-              <span className="text-slate-500">
-                Costo ref.: <strong className="font-mono text-slate-700">{formatCLP(m.cost)}</strong>
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500">
+                  Costo: <strong className="font-mono text-slate-700">{formatCLP(m.cost)}</strong>
+                </span>
+                <div className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => updateStock(m.id, (st?.stock ?? 0) - 1)}
+                    className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 inline-flex items-center justify-center"
+                    aria-label="Restar stock"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                      isOut
+                        ? 'bg-red-100 text-red-700 border-red-300'
+                        : isLow
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : hasStock
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-slate-50 text-slate-400 border-slate-200'
+                    }`}
+                  >
+                    Stock: {hasStock ? st.stock : '—'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateStock(m.id, (st?.stock ?? 0) + 1)}
+                    className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 inline-flex items-center justify-center"
+                    aria-label="Sumar stock"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
               <span className="font-mono font-extrabold text-emerald-700 text-sm">
                 {formatCLP(m.pricePerSqm)} / {m.unit}
               </span>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Vista Tabla en Tablet / Desktop */}

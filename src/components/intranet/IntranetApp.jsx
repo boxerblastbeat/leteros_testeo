@@ -18,18 +18,26 @@ import {
 import { useErp } from '../../context/ErpContext';
 import { COMPANY_INFO } from '../../data/company';
 import QuotesManager from './QuotesManager';
-import RequestsInbox from './RequestsInbox';
 import WorkOrdersPanel from './WorkOrdersPanel';
-import CalendarPanel from './CalendarPanel';
-import ClientsPanel from './ClientsPanel';
-import MaterialsPanel from './MaterialsPanel';
-import ActivityLogPanel from './ActivityLogPanel';
-import AdminReportsPanel from './AdminReportsPanel';
-import QuoteEditorModal from './QuoteEditorModal';
-import QuotePrintModal from './QuotePrintModal';
-import WeeklyScheduleModal from './WeeklyScheduleModal';
 
+const RequestsInbox = lazy(() => import('./RequestsInbox'));
+const CalendarPanel = lazy(() => import('./CalendarPanel'));
+const ClientsPanel = lazy(() => import('./ClientsPanel'));
+const MaterialsPanel = lazy(() => import('./MaterialsPanel'));
+const ActivityLogPanel = lazy(() => import('./ActivityLogPanel'));
+const AdminReportsPanel = lazy(() => import('./AdminReportsPanel'));
+const QuoteEditorModal = lazy(() => import('./QuoteEditorModal'));
+const QuotePrintModal = lazy(() => import('./QuotePrintModal'));
+const WeeklyScheduleModal = lazy(() => import('./WeeklyScheduleModal'));
 const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
+
+function PanelFallback({ label = 'Cargando módulo...' }) {
+  return (
+    <div className="p-10 rounded-2xl bg-white border border-slate-200 text-center text-xs text-slate-500 shadow-xs">
+      {label}
+    </div>
+  );
+}
 
 const ROLE_META = {
   admin: { label: 'Admin', badge: 'bg-red-50 text-red-700 border-red-200' },
@@ -220,11 +228,13 @@ export default function IntranetApp({ onGoPublic }) {
           />
         )}
         {activeTab === 'solicitudes' && (
-          <RequestsInbox
-            onConvertRequest={(req) => {
-              setEditorState({ open: true, quote: null, request: req });
-            }}
-          />
+          <Suspense fallback={<PanelFallback label="Cargando Solicitudes Web..." />}>
+            <RequestsInbox
+              onConvertRequest={(req) => {
+                setEditorState({ open: true, quote: null, request: req });
+              }}
+            />
+          </Suspense>
         )}
         {activeTab === 'taller' && (
           <WorkOrdersPanel
@@ -236,47 +246,63 @@ export default function IntranetApp({ onGoPublic }) {
             }}
           />
         )}
-        {activeTab === 'calendario' && <CalendarPanel />}
+        {activeTab === 'calendario' && (
+          <Suspense fallback={<PanelFallback label="Cargando Agenda & Despachos..." />}>
+            <CalendarPanel />
+          </Suspense>
+        )}
         {activeTab === 'optimizador' && (
-          <Suspense
-            fallback={
-              <div className="p-10 text-center text-xs text-slate-500">
-                Cargando Optimizador 2D...
-              </div>
-            }
-          >
+          <Suspense fallback={<PanelFallback label="Cargando Optimizador 2D..." />}>
             <CutOptimizer2D initialPayload={optimizerPayload} />
           </Suspense>
         )}
-        {activeTab === 'clientes' && <ClientsPanel />}
-        {activeTab === 'tarifario' && <MaterialsPanel />}
-        {activeTab === 'administracion' && <AdminReportsPanel />}
-        {activeTab === 'bitacora' && <ActivityLogPanel />}
+        {activeTab === 'clientes' && (
+          <Suspense fallback={<PanelFallback label="Cargando Clientes..." />}>
+            <ClientsPanel />
+          </Suspense>
+        )}
+        {activeTab === 'tarifario' && (
+          <Suspense fallback={<PanelFallback label="Cargando Tarifario & Bodega..." />}>
+            <MaterialsPanel />
+          </Suspense>
+        )}
+        {activeTab === 'administracion' && (
+          <Suspense fallback={<PanelFallback label="Cargando Dashboard de Administración..." />}>
+            <AdminReportsPanel />
+          </Suspense>
+        )}
+        {activeTab === 'bitacora' && (
+          <Suspense fallback={<PanelFallback label="Cargando Bitácora..." />}>
+            <ActivityLogPanel />
+          </Suspense>
+        )}
       </main>
 
-      {/* MODALS */}
-      {editorState.open && (
-        <QuoteEditorModal
-          open={editorState.open}
-          initialQuote={editorState.quote}
-          fromRequest={editorState.request}
-          onClose={() => setEditorState({ open: false, quote: null, request: null })}
-          onSaved={() => setActiveTab('cotizaciones')}
-        />
-      )}
+      {/* MODALS (cargados bajo demanda) */}
+      <Suspense fallback={null}>
+        {editorState.open && (
+          <QuoteEditorModal
+            open={editorState.open}
+            initialQuote={editorState.quote}
+            fromRequest={editorState.request}
+            onClose={() => setEditorState({ open: false, quote: null, request: null })}
+            onSaved={() => setActiveTab('cotizaciones')}
+          />
+        )}
 
-      {printQuote && <QuotePrintModal quote={printQuote} onClose={() => setPrintQuote(null)} />}
+        {printQuote && <QuotePrintModal quote={printQuote} onClose={() => setPrintQuote(null)} />}
 
-      {showWeeklyModal && (
-        <WeeklyScheduleModal
-          onClose={() => setShowWeeklyModal(false)}
-          onSelectOt={(ot) => {
-            setFocusedOtId(ot.id);
-            setShowWeeklyModal(false);
-            setActiveTab('taller');
-          }}
-        />
-      )}
+        {showWeeklyModal && (
+          <WeeklyScheduleModal
+            onClose={() => setShowWeeklyModal(false)}
+            onSelectOt={(ot) => {
+              setFocusedOtId(ot.id);
+              setShowWeeklyModal(false);
+              setActiveTab('taller');
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
 import { Lock, X, ShieldCheck, Database } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
+import { useModalClose } from '../../lib/useModalClose';
+
+const LAST_EMAIL_KEY = 'olivar_last_login_email';
 
 export default function LoginModal({ open, onClose, onSuccess }) {
   const { signIn, isCloud } = useErp();
-  const [email, setEmail] = useState('contacto@letrerosolivar.com');
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem(LAST_EMAIL_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const { handleClose, handleBackdropClick } = useModalClose(open, onClose, { confirm: false });
 
   if (!open) return null;
 
@@ -16,7 +27,12 @@ export default function LoginModal({ open, onClose, onSuccess }) {
     setError('');
     setSubmitting(true);
     try {
-      await signIn(email, password);
+      await signIn(email.trim(), password);
+      try {
+        localStorage.setItem(LAST_EMAIL_KEY, email.trim());
+      } catch {
+        // ignore
+      }
       setPassword('');
       onSuccess?.();
     } catch (err) {
@@ -27,7 +43,10 @@ export default function LoginModal({ open, onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+    >
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-900">
         <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-3">
@@ -40,7 +59,8 @@ export default function LoginModal({ open, onClose, onSuccess }) {
             </div>
           </div>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={handleClose}
             className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition"
           >
             <X className="w-4 h-4" />
