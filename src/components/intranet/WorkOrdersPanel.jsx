@@ -14,6 +14,7 @@ import {
   Clock,
   Scissors,
   Trash2,
+  MessageCircle,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
@@ -26,6 +27,22 @@ const normalizeWorkshopStatus = (status) => {
   if (['entregado', 'despachado', 'pagada'].includes(status)) return 'despachado';
   if (status === 'facturada') return 'terminado';
   return OT_STATUSES.some((s) => s.id === status) ? status : 'pendiente';
+};
+
+const buildOtWhatsAppUrl = (ot) => {
+  const ref = ot.quote_correlative || ot.ot_number;
+  const actionMsg =
+    ot.delivery_method === 'retiro'
+      ? `ya se encuentra *terminado y listo para retiro* en Taller Letreros Olivar (${COMPANY_INFO.address}).`
+      : ot.delivery_method === 'instalacion'
+        ? `ya se encuentra *terminado en taller* y listo para coordinar la *instalación en terreno*.`
+        : `ya se encuentra *terminado en taller* y listo para coordinar el *despacho / entrega*.`;
+  const text = encodeURIComponent(
+    `Hola ${ot.client_name || ''}, te escribimos de *${COMPANY_INFO.name}* para avisarte que tu trabajo *${ref}* ${actionMsg}\n\nQuedamos atentos para coordinar.`
+  );
+  const digits = String(ot.client_phone || '').replace(/\D/g, '');
+  if (!digits) return `https://wa.me/?text=${text}`;
+  return `https://wa.me/${digits.startsWith('56') ? digits : `56${digits}`}?text=${text}`;
 };
 
 export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOpenInOptimizer }) {
@@ -570,6 +587,19 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
                       <Printer className="w-3.5 h-3.5" />
                       <span>Ficha</span>
                     </button>
+
+                    {['terminado', 'despachado'].includes(normStatus) && (
+                      <a
+                        href={buildOtWhatsAppUrl(ot)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Avisar al cliente por WhatsApp que su trabajo está listo"
+                        className="px-2.5 py-2 sm:py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 transition"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
 
                     {!isFinished && (
                       <button

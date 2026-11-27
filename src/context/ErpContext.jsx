@@ -1,7 +1,30 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { erpService } from '../lib/erpService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { DEFAULT_WORKSHOP_MATERIALS, DEFAULT_WORKSHOP_CONSUMABLES } from '../data/products';
+import { uid, getQuotePayments } from '../lib/formatters';
+
+const applyRealtimeRow = (setter, payload, { maxItems = 400, sortFn = null } = {}) => {
+  const { eventType, new: nextRow, old: prevRow } = payload || {};
+  setter((prev) => {
+    let next = prev;
+    if (eventType === 'INSERT' && nextRow) {
+      const exists = prev.some((item) => item.id === nextRow.id);
+      next = exists
+        ? prev.map((item) => (item.id === nextRow.id ? nextRow : item))
+        : [nextRow, ...prev];
+    } else if (eventType === 'UPDATE' && nextRow) {
+      const exists = prev.some((item) => item.id === nextRow.id);
+      next = exists
+        ? prev.map((item) => (item.id === nextRow.id ? nextRow : item))
+        : [nextRow, ...prev];
+    } else if (eventType === 'DELETE' && prevRow?.id) {
+      next = prev.filter((item) => item.id !== prevRow.id);
+    }
+    if (sortFn) next = [...next].sort(sortFn);
+    return maxItems ? next.slice(0, maxItems) : next;
+  });
+};
 import { formatCLP } from '../lib/formatters';
 
 const ErpContext = createContext(null);
@@ -19,6 +42,7 @@ export function ErpProvider({ children }) {
   const [workOrders, setWorkOrders] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const loadedUserRef = useRef(null);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type, id: Date.now() });
@@ -80,6 +104,7 @@ export function ErpProvider({ children }) {
         setSession(sess);
         setMaterials(pubMaterials);
         if (sess) {
+          loadedUserRef.current = sess.user?.id || 'local';
           await refreshErp();
         }
       } finally {
@@ -90,31 +115,22 @@ export function ErpProvider({ children }) {
     if (isSupabaseConfigured && supabase) {
       const {
         data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      } = supabase.auth.onAuthStateChange((event, newSession) => {
         setSession(newSession);
-        if (newSession) refreshErp();
+        if (newSession) {
+          const uidKey = newSession.user?.id || 'local';
+          if (event === 'SIGNED_IN' && loadedUserRef.current !== uidKey) {
+            loadedUserRef.current = uidKey;
+            refreshErp();
+          }
+        } else {
+          loadedUserRef.current = null;
+        }
       });
-
-      const channel = supabase
-        .channel('erp-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_requests' }, async () => {
-          setQuoteRequests(await erpService.loadQuoteRequests());
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'quotes' }, async () => {
-          setQuotes(await erpService.loadQuotes());
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, async () => {
-          setWorkOrders(await erpService.loadWorkOrders());
-        })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, async () => {
-          setAuditLogs(await erpService.loadAuditLogs());
-        })
-        .subscribe();
 
       return () => {
         mounted = false;
         subscription?.unsubscribe();
-        supabase.removeChannel(channel);
       };
     }
 
@@ -123,9 +139,41 @@ export function ErpProvider({ children }) {
     };
   }, [refreshErp]);
 
+  // Suscripción Realtime incremental SOLO cuando hay sesión autenticada (0 tráfico en Web Pública)
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase || !session?.user?.id) return undefined;
+
+    const channel = supabase
+      .channel(`erp-realtime-${session.user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quote_requests' }, (payload) => {
+        applyRealtimeRow(setQuoteRequests, payload, { maxItems: 250 });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quotes' }, (payload) => {
+        applyRealtimeRow(setQuotes, payload, { maxItems: 300 });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'work_orders' }, (payload) => {
+        applyRealtimeRow(setWorkOrders, payload, { maxItems: 250 });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, (payload) => {
+        applyRealtimeRow(setCalendarEvents, payload, {
+          maxItems: 300,
+          sortFn: (a, b) => String(a.event_date || '').localeCompare(String(b.event_date || '')),
+        });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'audit_logs' }, (payload) => {
+        applyRealtimeRow(setAuditLogs, payload, { maxItems: 500 });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
+
   const signIn = async (email, password) => {
     const sess = await erpService.signIn(email, password);
     setSession(sess);
+    loadedUserRef.current = sess?.user?.id || 'local';
     await refreshErp();
     await recordAudit({
       action: 'sesion',
@@ -288,6 +336,71 @@ export function ErpProvider({ children }) {
     }
 
     return saved;
+  };
+
+  const addQuotePayment = async (quote, { amount, date, method = 'Transferencia bancaria', note = '' }) => {
+    const cleanAmount = Math.round(Number(amount) || 0);
+    if (cleanAmount <= 0) throw new Error('Ingresa un monto de abono válido mayor a $0');
+
+    const prevPayments = getQuotePayments(quote);
+    const paymentEntry = {
+      id: uid(),
+      amount: cleanAmount,
+      date: date || new Date().toISOString().slice(0, 10),
+      method,
+      note: String(note || '').trim(),
+      by: session?.user?.email || '',
+      at: new Date().toISOString(),
+    };
+    const nextPayments = [...prevPayments, paymentEntry];
+    const paidSum = nextPayments.reduce((s, p) => s + (Math.round(Number(p.amount) || 0)), 0);
+    const total = Math.round(Number(quote.total) || 0);
+    const completesTotal = total > 0 && paidSum >= total;
+    const nextStatus = completesTotal ? 'pagada' : quote.status;
+
+    const nextHistory = [
+      ...(Array.isArray(quote.status_history) ? quote.status_history : []),
+      {
+        status: nextStatus,
+        at: paymentEntry.at,
+        by: paymentEntry.by,
+        note: completesTotal
+          ? `Pago completado (+$${cleanAmount.toLocaleString('es-CL')} · ${method})`
+          : `Abono registrado: $${cleanAmount.toLocaleString('es-CL')} (${method})`,
+      },
+    ];
+
+    const saved = await saveQuote(
+      {
+        ...quote,
+        status: nextStatus,
+        client_snapshot: {
+          ...(quote.client_snapshot || {}),
+          payments: nextPayments,
+        },
+        status_history: nextHistory,
+      },
+      { skipAudit: true }
+    );
+
+    await recordAudit({
+      action: completesTotal ? 'pagar' : 'abono',
+      entity_type: 'cotizacion',
+      entity_id: saved.id,
+      entity_ref: saved.correlative,
+      summary: completesTotal
+        ? `Completó pago de ${saved.correlative} (+$${cleanAmount.toLocaleString('es-CL')} · ${method}) · ${saved.client_snapshot?.name || 'Cliente'}`
+        : `Registró abono de $${cleanAmount.toLocaleString('es-CL')} en ${saved.correlative} (${method}) · Saldo $${Math.max(0, total - paidSum).toLocaleString('es-CL')}`,
+      details: {
+        amount: cleanAmount,
+        method,
+        paid_total: paidSum,
+        pending_balance: Math.max(0, total - paidSum),
+        total,
+      },
+    });
+
+    return { saved, completesTotal, paidSum, pendingBalance: Math.max(0, total - paidSum) };
   };
 
   const deleteQuote = async (id) => {
@@ -497,6 +610,7 @@ export function ErpProvider({ children }) {
         deleteQuoteRequest,
         saveQuote,
         changeQuoteStatus,
+        addQuotePayment,
         deleteQuote,
         saveWorkOrder,
         deleteWorkOrder,

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { QUOTE_STATUSES } from '../../data/company';
-import { formatCLP, formatDateCL, todayISO } from '../../lib/formatters';
+import { formatCLP, formatDateCL, todayISO, getQuoteFinancialState } from '../../lib/formatters';
 
 const MONTH_NAMES = [
   'Enero',
@@ -42,10 +42,13 @@ const sumFinancials = (list) =>
       const subtotal = Number(q.subtotal) || 0;
       const tax = Number(q.tax_amount) || 0;
       const total = Number(q.total) || 0;
+      const fin = getQuoteFinancialState(q);
       acc.count += 1;
       acc.net += subtotal;
       acc.iva += tax;
       acc.total += total;
+      acc.paid += fin.paidAmount;
+      acc.pending += fin.pendingBalance;
       if (Number(q.tax_rate) > 0 && tax > 0) {
         acc.afectoNet += subtotal;
       } else {
@@ -53,7 +56,7 @@ const sumFinancials = (list) =>
       }
       return acc;
     },
-    { count: 0, net: 0, iva: 0, total: 0, afectoNet: 0, exentoNet: 0 }
+    { count: 0, net: 0, iva: 0, total: 0, paid: 0, pending: 0, afectoNet: 0, exentoNet: 0 }
   );
 
 export default function AdminReportsPanel() {
@@ -97,21 +100,31 @@ export default function AdminReportsPanel() {
     return yearQuotes.filter((q) => q._month === mNum);
   }, [yearQuotes, selectedMonth]);
 
-  // KPIs del período seleccionado
+  // KPIs del período seleccionado (F29 solo documentos efectivamente facturados; Caja incluye abonos)
   const kpis = useMemo(() => {
     const pagadas = sumFinancials(periodQuotes.filter((q) => q.status === 'pagada'));
     const porCobrar = sumFinancials(
-      periodQuotes.filter((q) => ['facturada', 'despacho'].includes(q.status))
+      periodQuotes.filter((q) => {
+        const fin = getQuoteFinancialState(q);
+        return fin.invoiced && !fin.isPaid;
+      })
+    );
+    const sinFacturar = sumFinancials(
+      periodQuotes.filter((q) => getQuoteFinancialState(q).deliveredWithoutInvoice)
     );
     const facturadoTotal = sumFinancials(
-      periodQuotes.filter((q) => ['facturada', 'despacho', 'pagada'].includes(q.status))
+      periodQuotes.filter((q) => getQuoteFinancialState(q).invoiced)
     );
     const enTaller = sumFinancials(
       periodQuotes.filter((q) => ['aceptada', 'en_taller'].includes(q.status))
     );
     const emitidas = sumFinancials(periodQuotes.filter((q) => q.status === 'emitida'));
+    const abonosParciales = periodQuotes.reduce((sum, q) => {
+      if (q.status === 'pagada' || q.status === 'rechazada') return sum;
+      return sum + getQuoteFinancialState(q).paidAmount;
+    }, 0);
 
-    return { pagadas, porCobrar, facturadoTotal, enTaller, emitidas };
+    return { pagadas, porCobrar, sinFacturar, facturadoTotal, enTaller, emitidas, abonosParciales };
   }, [periodQuotes]);
 
   // Tabla mensual del año seleccionado
@@ -121,13 +134,19 @@ export default function AdminReportsPanel() {
       const mQuotes = yearQuotes.filter((q) => q._month === mNum);
       const pagadas = sumFinancials(mQuotes.filter((q) => q.status === 'pagada'));
       const porCobrar = sumFinancials(
-        mQuotes.filter((q) => ['facturada', 'despacho'].includes(q.status))
+        mQuotes.filter((q) => {
+          const fin = getQuoteFinancialState(q);
+          return fin.invoiced && !fin.isPaid;
+        })
+      );
+      const facturadoMes = sumFinancials(
+        mQuotes.filter((q) => getQuoteFinancialState(q).invoiced)
       );
       const enTaller = sumFinancials(
         mQuotes.filter((q) => ['aceptada', 'en_taller'].includes(q.status))
       );
       const emitidas = sumFinancials(mQuotes.filter((q) => q.status === 'emitida'));
-      const ivaDebitoMes = pagadas.iva + porCobrar.iva;
+      const ivaDebitoMes = facturadoMes.iva;
       const hasData = mQuotes.length > 0;
       return {
         month: mNum,
@@ -146,7 +165,13 @@ export default function AdminReportsPanel() {
   const annualTotals = useMemo(() => {
     const pagadas = sumFinancials(yearQuotes.filter((q) => q.status === 'pagada'));
     const porCobrar = sumFinancials(
-      yearQuotes.filter((q) => ['facturada', 'despacho'].includes(q.status))
+      yearQuotes.filter((q) => {
+        const fin = getQuoteFinancialState(q);
+        return fin.invoiced && !fin.isPaid;
+      })
+    );
+    const facturadoAnual = sumFinancials(
+      yearQuotes.filter((q) => getQuoteFinancialState(q).invoiced)
     );
     const enTaller = sumFinancials(
       yearQuotes.filter((q) => ['aceptada', 'en_taller'].includes(q.status))
@@ -156,7 +181,7 @@ export default function AdminReportsPanel() {
       pagadas,
       porCobrar,
       enTaller,
-      ivaDebitoAnual: pagadas.iva + porCobrar.iva,
+      ivaDebitoAnual: facturadoAnual.iva,
     };
   }, [yearQuotes]);
 
@@ -296,39 +321,40 @@ export default function AdminReportsPanel() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="p-4 rounded-2xl bg-white border border-emerald-200 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-xs font-semibold text-emerald-700">
-            <span>Realmente Pagado ({periodLabel})</span>
+            <span>Caja Recibida ({periodLabel})</span>
             <BadgeDollarSign className="w-4 h-4 shrink-0" />
           </div>
           <div className="font-heading text-2xl font-extrabold text-emerald-700">
-            {formatCLP(kpis.pagadas.total)}
+            {formatCLP(kpis.pagadas.total + kpis.abonosParciales)}
           </div>
           <div className="text-[11px] text-slate-600 flex flex-wrap gap-x-3 gap-y-0.5 pt-1 border-t border-slate-100">
             <span>
-              Neto: <strong className="font-mono">{formatCLP(kpis.pagadas.net)}</strong>
+              Pagadas: <strong className="font-mono">{formatCLP(kpis.pagadas.total)}</strong>
             </span>
-            <span>
-              IVA: <strong className="font-mono">{formatCLP(kpis.pagadas.iva)}</strong>
-            </span>
+            {kpis.abonosParciales > 0 && (
+              <span className="text-emerald-700 font-semibold">
+                +Abonos: {formatCLP(kpis.abonosParciales)}
+              </span>
+            )}
             <span className="text-emerald-700 font-semibold">{kpis.pagadas.count} docs</span>
           </div>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-amber-200 shadow-xs space-y-1.5">
           <div className="flex items-center justify-between text-xs font-semibold text-amber-800">
-            <span>Facturado por Cobrar</span>
+            <span>Saldo Facturado por Cobrar</span>
             <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
           </div>
           <div className="font-heading text-2xl font-extrabold text-amber-700">
-            {formatCLP(kpis.porCobrar.total)}
+            {formatCLP(kpis.porCobrar.pending)}
           </div>
           <div className="text-[11px] text-slate-600 flex flex-wrap gap-x-3 gap-y-0.5 pt-1 border-t border-slate-100">
-            <span>
-              Neto: <strong className="font-mono">{formatCLP(kpis.porCobrar.net)}</strong>
-            </span>
-            <span>
-              IVA: <strong className="font-mono">{formatCLP(kpis.porCobrar.iva)}</strong>
-            </span>
-            <span className="text-amber-700 font-semibold">{kpis.porCobrar.count} sin pagar</span>
+            <span className="text-amber-700 font-semibold">{kpis.porCobrar.count} fact. impagas</span>
+            {kpis.sinFacturar.count > 0 && (
+              <span className="text-orange-700 font-semibold">
+                · {kpis.sinFacturar.count} desp. sin facturar ({formatCLP(kpis.sinFacturar.total)})
+              </span>
+            )}
           </div>
         </div>
 

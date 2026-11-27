@@ -15,7 +15,6 @@ import {
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, OT_PRIORITIES } from '../../data/company';
 import { DELIVERY_LABELS, formatDateCL, todayISO } from '../../lib/formatters';
-import { useModalClose } from '../../lib/useModalClose';
 
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -57,7 +56,6 @@ const diffDaysISO = (fromIso, toIso) => {
 export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
   const { workOrders, quotes } = useErp();
   const [weekOffset, setWeekOffset] = useState(0);
-  const modalClose = useModalClose(true, onClose, { confirm: false });
 
   const today = todayISO();
 
@@ -158,10 +156,7 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
   };
 
   return (
-    <div
-      onClick={modalClose.handleBackdropClick}
-      className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
-    >
+    <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4">
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-[96vw] xl:max-w-[1440px] max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden text-slate-900">
         {/* HEADER */}
         <div className="px-4 sm:px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">

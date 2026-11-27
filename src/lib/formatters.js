@@ -65,3 +65,36 @@ export const calculateQuoteTotals = ({
     total,
   };
 };
+
+export const getQuotePayments = (quote) => {
+  const list = quote?.payments || quote?.client_snapshot?.payments;
+  return Array.isArray(list) ? list : [];
+};
+
+export const isQuoteInvoiced = (quote) => {
+  if (!quote) return false;
+  return (
+    Boolean(String(quote.invoice_number || '').trim()) ||
+    ['facturada', 'pagada'].includes(quote.status)
+  );
+};
+
+export const getQuoteFinancialState = (quote) => {
+  const total = Math.max(0, Math.round(Number(quote?.total) || 0));
+  const payments = getQuotePayments(quote);
+  const paymentsSum = payments.reduce((sum, p) => sum + Math.round(Number(p.amount) || 0), 0);
+  const isPaid = quote?.status === 'pagada' || (total > 0 && paymentsSum >= total);
+  const paidAmount = isPaid ? total : Math.min(total, paymentsSum);
+  const pendingBalance = Math.max(0, total - paidAmount);
+  const invoiced = isQuoteInvoiced(quote);
+  return {
+    total,
+    payments,
+    paidAmount,
+    pendingBalance,
+    hasPartialPayment: paidAmount > 0 && pendingBalance > 0,
+    isPaid,
+    invoiced,
+    deliveredWithoutInvoice: quote?.status === 'despacho' && !invoiced,
+  };
+};
