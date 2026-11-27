@@ -27,6 +27,13 @@ export const COMPANY_INFO = {
   },
 };
 
+export const ADMIN_SUPPORT = {
+  name: 'Administrador de Plataforma',
+  email: 'cesarcifmetal@gmail.com',
+  phone: '+56 9 9732 4359',
+  whatsapp: '56997324359',
+};
+
 export const PUBLIC_SERVICES = [
   {
     id: 'grafica-corporativa',
