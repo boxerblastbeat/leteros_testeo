@@ -20,15 +20,22 @@ export default function MaterialsPanel() {
   const [stockMap, setStockMap] = useState(() => readStockMap());
   const [modalOpen, setModalOpen] = useState(false);
 
-  const updateStock = (matId, nextStock, nextMinStock = undefined) => {
+  const getStockEntry = (m) => {
+    if (m.stock !== null && m.stock !== undefined) {
+      return { stock: Number(m.stock) || 0, minStock: Number(m.minStock ?? 3) };
+    }
+    return stockMap[m.id] || null;
+  };
+
+  const updateStock = (m, nextStock, nextMinStock = undefined) => {
+    const current = getStockEntry(m) || { stock: 0, minStock: 3 };
+    const cleanStock = Math.max(0, Math.round(Number(nextStock) || 0));
+    const cleanMin =
+      nextMinStock !== undefined ? Math.max(0, Math.round(Number(nextMinStock) || 0)) : current.minStock;
     setStockMap((prev) => {
-      const current = prev[matId] || { stock: 0, minStock: 3 };
       const updated = {
         ...prev,
-        [matId]: {
-          stock: Math.max(0, Number(nextStock) || 0),
-          minStock: nextMinStock !== undefined ? Math.max(0, Number(nextMinStock) || 0) : current.minStock,
-        },
+        [m.id]: { stock: cleanStock, minStock: cleanMin },
       };
       try {
         localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(updated));
@@ -37,11 +44,12 @@ export default function MaterialsPanel() {
       }
       return updated;
     });
+    saveMaterial({ ...m, stock: cleanStock, minStock: cleanMin }).catch(() => {});
   };
 
   const lowStockItems = useMemo(() => {
     return materials.filter((m) => {
-      const s = stockMap[m.id];
+      const s = getStockEntry(m);
       return s && s.minStock > 0 && s.stock <= s.minStock;
     });
   }, [materials, stockMap]);
@@ -150,7 +158,7 @@ export default function MaterialsPanel() {
             <span>
               <strong>Alerta de Bodega:</strong> {lowStockItems.length}{' '}
               {lowStockItems.length === 1 ? 'material está' : 'materiales están'} en stock mínimo o
-              agotado ({lowStockItems.map((m) => `${m.name}: ${stockMap[m.id]?.stock ?? 0}`).join(' · ')}).
+              agotado ({lowStockItems.map((m) => `${m.name}: ${getStockEntry(m)?.stock ?? 0}`).join(' · ')}).
             </span>
           </div>
         </div>
@@ -159,8 +167,8 @@ export default function MaterialsPanel() {
       {/* Vista Tarjetas en Móvil */}
       <div className="md:hidden space-y-2.5">
         {filtered.map((m) => {
-          const st = stockMap[m.id];
-          const hasStock = st !== undefined;
+          const st = getStockEntry(m);
+          const hasStock = st !== null;
           const isOut = hasStock && st.stock === 0;
           const isLow = hasStock && st.stock > 0 && st.stock <= st.minStock;
           return (
@@ -210,7 +218,7 @@ export default function MaterialsPanel() {
                 <div className="inline-flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => updateStock(m.id, (st?.stock ?? 0) - 1)}
+                    onClick={() => updateStock(m, (st?.stock ?? 0) - 1)}
                     className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 inline-flex items-center justify-center"
                     aria-label="Restar stock"
                   >
@@ -231,7 +239,7 @@ export default function MaterialsPanel() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => updateStock(m.id, (st?.stock ?? 0) + 1)}
+                    onClick={() => updateStock(m, (st?.stock ?? 0) + 1)}
                     className="w-6 h-6 rounded-md bg-slate-100 text-slate-700 inline-flex items-center justify-center"
                     aria-label="Sumar stock"
                   >
@@ -265,8 +273,8 @@ export default function MaterialsPanel() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.map((m) => {
-              const st = stockMap[m.id];
-              const hasStock = st !== undefined;
+              const st = getStockEntry(m);
+              const hasStock = st !== null;
               const isOut = hasStock && st.stock === 0;
               const isLow = hasStock && st.stock > 0 && st.stock <= st.minStock;
               return (
@@ -285,7 +293,7 @@ export default function MaterialsPanel() {
                   <div className="inline-flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => updateStock(m.id, (st?.stock ?? 0) - 1)}
+                      onClick={() => updateStock(m, (st?.stock ?? 0) - 1)}
                       className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 inline-flex items-center justify-center"
                       title="Restar 1"
                     >
@@ -307,7 +315,7 @@ export default function MaterialsPanel() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => updateStock(m.id, (st?.stock ?? 0) + 1)}
+                      onClick={() => updateStock(m, (st?.stock ?? 0) + 1)}
                       className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 inline-flex items-center justify-center"
                       title="Sumar 1"
                     >
@@ -427,6 +435,40 @@ export default function MaterialsPanel() {
                     <option value="unidad">unidad</option>
                     <option value="tira">tira</option>
                   </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] text-slate-500 mb-1">
+                    Stock Bodega (opcional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Sin control"
+                    value={form.stock ?? ''}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        stock: e.target.value === '' ? null : Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm font-mono text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-500 mb-1">
+                    Stock Mínimo (alerta)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.minStock ?? 3}
+                    onChange={(e) =>
+                      setForm({ ...form, minStock: Math.max(0, Number(e.target.value) || 0) })
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm font-mono text-slate-900"
+                  />
                 </div>
               </div>
             </div>

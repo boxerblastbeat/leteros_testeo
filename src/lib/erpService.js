@@ -505,6 +505,8 @@ export const erpService = {
                 cost: Number(m.cost) || 0,
                 pricePerSqm: Number(m.price_per_sqm) || 0,
                 unit: m.unit,
+                stock: m.stock !== null && m.stock !== undefined ? Number(m.stock) : null,
+                minStock: m.min_stock !== null && m.min_stock !== undefined ? Number(m.min_stock) : 3,
               }))
             : DEFAULT_WORKSHOP_MATERIALS,
         consumables:
@@ -985,10 +987,18 @@ export const erpService = {
       cost: Number(material.cost) || 0,
       pricePerSqm: Number(material.pricePerSqm) || 0,
       unit: material.unit || 'm²',
+      stock:
+        material.stock !== null && material.stock !== undefined && material.stock !== ''
+          ? Math.max(0, Math.round(Number(material.stock) || 0))
+          : null,
+      minStock:
+        material.minStock !== null && material.minStock !== undefined && material.minStock !== ''
+          ? Math.max(0, Math.round(Number(material.minStock) || 0))
+          : 3,
     };
 
     if (isSupabaseConfigured) {
-      const { error } = await supabase.from('materials').upsert({
+      const baseRow = {
         id: normalized.id,
         name: normalized.name,
         category: normalized.category,
@@ -998,8 +1008,21 @@ export const erpService = {
         unit: normalized.unit,
         active: true,
         updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('materials').upsert({
+        ...baseRow,
+        stock: normalized.stock,
+        min_stock: normalized.minStock,
       });
-      if (error) throw error;
+      if (error) {
+        // Fallback seguro si el proyecto Supabase aún no tiene columnas stock/min_stock
+        if (String(error.message || '').toLowerCase().includes('column')) {
+          const { error: retryErr } = await supabase.from('materials').upsert(baseRow);
+          if (retryErr) throw retryErr;
+        } else {
+          throw error;
+        }
+      }
       return normalized;
     }
 

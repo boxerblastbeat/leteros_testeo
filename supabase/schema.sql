@@ -83,6 +83,8 @@ create table if not exists public.materials (
   cost numeric not null default 0 check (cost >= 0),
   price_per_sqm numeric not null default 0 check (price_per_sqm >= 0),
   unit text not null default 'm²',
+  stock integer,
+  min_stock integer not null default 3 check (min_stock >= 0),
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
