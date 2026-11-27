@@ -4,10 +4,17 @@ import { useErp } from '../../context/ErpContext';
 import { useModalClose } from '../../lib/useModalClose';
 
 const LAST_EMAIL_KEY = 'olivar_last_login_email';
+const DEFAULT_LOGIN_DOMAIN = 'letrerosolivar.com';
+
+const normalizeLoginIdentifier = (raw) => {
+  const clean = String(raw || '').trim().toLowerCase();
+  if (!clean) return '';
+  return clean.includes('@') ? clean : `${clean}@${DEFAULT_LOGIN_DOMAIN}`;
+};
 
 export default function LoginModal({ open, onClose, onSuccess }) {
   const { signIn, isCloud } = useErp();
-  const [email, setEmail] = useState(() => {
+  const [identifier, setIdentifier] = useState(() => {
     try {
       return localStorage.getItem(LAST_EMAIL_KEY) || '';
     } catch {
@@ -27,9 +34,10 @@ export default function LoginModal({ open, onClose, onSuccess }) {
     setError('');
     setSubmitting(true);
     try {
-      await signIn(email.trim(), password);
+      const resolvedEmail = normalizeLoginIdentifier(identifier);
+      await signIn(resolvedEmail, password);
       try {
-        localStorage.setItem(LAST_EMAIL_KEY, email.trim());
+        localStorage.setItem(LAST_EMAIL_KEY, identifier.trim());
       } catch {
         // ignore
       }
@@ -86,16 +94,23 @@ export default function LoginModal({ open, onClose, onSuccess }) {
           {isCloud && (
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Correo corporativo
+                Usuario o correo
               </label>
               <input
-                type="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
-                placeholder="contacto@letrerosolivar.com"
+                placeholder="Ej: taller, ventas o correo@letrerosolivar.com"
               />
+              {identifier.trim() && !identifier.includes('@') && (
+                <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                  Ingresará como: {normalizeLoginIdentifier(identifier)}
+                </p>
+              )}
             </div>
           )}
 

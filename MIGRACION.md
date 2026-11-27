@@ -28,6 +28,7 @@ Tienes 2 opciones (elige la más cómoda):
 
 ## Paso 3 — Crear usuarios y asignar Roles (Admin / Ventas / Taller)
 1. En el nuevo Supabase, ve a **Authentication → Users → Add user → Create new user** y crea las cuentas del equipo (marca *Auto Confirm User*).
+   - **Tip de nombres de usuario cortos:** si creas cuentas con el formato `usuario@letrerosolivar.com` (ej. `taller@letrerosolivar.com`, `juan@letrerosolivar.com`, no necesitan casilla real), en el Login de la Intranet el usuario puede escribir solo **`taller`** o **`juan`** (sin `@`) y el sistema completa `@letrerosolivar.com` automáticamente.
 2. Por defecto, toda cuenta nueva entra como **`admin`** (acceso total, evitando bloqueos).
 3. Para restringir una cuenta a **Taller** (solo ve *Taller & OTs*, *Agenda*, *Cortes 2D* y *Cronograma*, sin montos financieros ni Administración) o **Ventas** (sin Administración ni Bitácora), ejecuta este SQL cambiando el correo:
 
