@@ -29,28 +29,53 @@ import { formatCLP } from '../lib/formatters';
 
 const ErpContext = createContext(null);
 
+const ERP_CACHE_KEY = 'olivar_erp_cache_v1';
+
+const readErpCache = () => {
+  try {
+    const raw = sessionStorage.getItem(ERP_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeErpCache = (data) => {
+  try {
+    sessionStorage.setItem(ERP_CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // ignorar si supera cuota de sessionStorage
+  }
+};
+
 export function ErpProvider({ children }) {
+  const initialCache = useRef(readErpCache());
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [erpSyncing, setErpSyncing] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const [materials, setMaterials] = useState(DEFAULT_WORKSHOP_MATERIALS);
-  const [consumables, setConsumables] = useState(DEFAULT_WORKSHOP_CONSUMABLES);
-  const [clients, setClients] = useState([]);
-  const [quoteRequests, setQuoteRequests] = useState([]);
-  const [quotes, setQuotes] = useState([]);
-  const [workOrders, setWorkOrders] = useState([]);
-  const [calendarEvents, setCalendarEvents] = useState([]);
+  const [materials, setMaterials] = useState(
+    () => initialCache.current?.materials || DEFAULT_WORKSHOP_MATERIALS
+  );
+  const [consumables, setConsumables] = useState(
+    () => initialCache.current?.consumables || DEFAULT_WORKSHOP_CONSUMABLES
+  );
+  const [clients, setClients] = useState(() => initialCache.current?.clients || []);
+  const [quoteRequests, setQuoteRequests] = useState(() => initialCache.current?.quoteRequests || []);
+  const [quotes, setQuotes] = useState(() => initialCache.current?.quotes || []);
+  const [workOrders, setWorkOrders] = useState(() => initialCache.current?.workOrders || []);
+  const [calendarEvents, setCalendarEvents] = useState(() => initialCache.current?.calendarEvents || []);
   const [auditLogs, setAuditLogs] = useState([]);
-  const [auditLogsLoaded, setAuditLogsLoaded] = useState(false);
+  const auditLogsLoadedRef = useRef(false);
   const loadedUserRef = useRef(null);
 
   const loadAuditLogsOnDemand = useCallback(async ({ force = false } = {}) => {
-    if (auditLogsLoaded && !force) return;
+    if (auditLogsLoadedRef.current && !force) return;
     const rows = await erpService.loadAuditLogs();
     setAuditLogs(rows);
-    setAuditLogsLoaded(true);
-  }, [auditLogsLoaded]);
+    auditLogsLoadedRef.current = true;
+  }, []);
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type, id: Date.now() });
@@ -89,33 +114,57 @@ export function ErpProvider({ children }) {
   );
 
   const refreshErp = useCallback(async () => {
-    const data = await erpService.loadAllErpData();
-    setClients(data.clients);
-    setMaterials(data.materials);
-    setConsumables(data.consumables);
-    setQuoteRequests(data.quoteRequests);
-    setQuotes(data.quotes);
-    setWorkOrders(data.workOrders);
-    setCalendarEvents(data.calendarEvents);
-    if (auditLogsLoaded) {
-      setAuditLogs(await erpService.loadAuditLogs());
+    setErpSyncing(true);
+    try {
+      const data = await erpService.loadAllErpData();
+      setClients(data.clients);
+      setMaterials(data.materials);
+      setConsumables(data.consumables);
+      setQuoteRequests(data.quoteRequests);
+      setQuotes(data.quotes);
+      setWorkOrders(data.workOrders);
+      setCalendarEvents(data.calendarEvents);
+      writeErpCache(data);
+      if (auditLogsLoadedRef.current) {
+        setAuditLogs(await erpService.loadAuditLogs());
+      }
+    } finally {
+      setErpSyncing(false);
     }
-  }, [auditLogsLoaded]);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    const isIntranetPath = path.startsWith('/intranet');
+    const isTrackingPath = path.startsWith('/seguimiento');
+
     (async () => {
       try {
-        const [sess, pubMaterials] = await Promise.all([
-          erpService.getSession(),
-          erpService.loadPublicCatalog(),
-        ]);
+        if (isTrackingPath) {
+          // Tracking público no requiere esperar sesión ni catálogo
+          if (mounted) setLoading(false);
+          return;
+        }
+
+        const sess = await erpService.getSession();
         if (!mounted) return;
         setSession(sess);
-        setMaterials(pubMaterials);
+        // Desbloqueamos la UI apenas conocemos la sesión (~5ms); los datos sincronizan en paralelo.
+        if (mounted) setLoading(false);
+
         if (sess) {
           loadedUserRef.current = sess.user?.id || 'local';
-          await refreshErp();
+          // En Web Pública solo refrescamos el catálogo; el ERP completo se carga al abrir Intranet
+          // o en segundo plano sin bloquear nunca la pantalla.
+          if (isIntranetPath) {
+            await refreshErp();
+          } else {
+            refreshErp();
+          }
+        } else {
+          const pubMaterials = await erpService.loadPublicCatalog();
+          if (mounted) setMaterials(pubMaterials);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -135,6 +184,11 @@ export function ErpProvider({ children }) {
           }
         } else {
           loadedUserRef.current = null;
+          try {
+            sessionStorage.removeItem(ERP_CACHE_KEY);
+          } catch {
+            // ignore
+          }
         }
       });
 
@@ -600,6 +654,7 @@ export function ErpProvider({ children }) {
       value={{
         session,
         loading,
+        erpSyncing,
         isCloud: erpService.isCloud,
         toast,
         showToast,

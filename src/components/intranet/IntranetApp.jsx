@@ -23,16 +23,32 @@ import { erpService } from '../../lib/erpService';
 import QuotesManager from './QuotesManager';
 import WorkOrdersPanel from './WorkOrdersPanel';
 
-const RequestsInbox = lazy(() => import('./RequestsInbox'));
-const CalendarPanel = lazy(() => import('./CalendarPanel'));
-const ClientsPanel = lazy(() => import('./ClientsPanel'));
-const MaterialsPanel = lazy(() => import('./MaterialsPanel'));
-const ActivityLogPanel = lazy(() => import('./ActivityLogPanel'));
-const AdminReportsPanel = lazy(() => import('./AdminReportsPanel'));
-const QuoteEditorModal = lazy(() => import('./QuoteEditorModal'));
-const QuotePrintModal = lazy(() => import('./QuotePrintModal'));
-const WeeklyScheduleModal = lazy(() => import('./WeeklyScheduleModal'));
-const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
+const TAB_LOADERS = {
+  solicitudes: () => import('./RequestsInbox'),
+  calendario: () => import('./CalendarPanel'),
+  clientes: () => import('./ClientsPanel'),
+  tarifario: () => import('./MaterialsPanel'),
+  bitacora: () => import('./ActivityLogPanel'),
+  administracion: () => import('./AdminReportsPanel'),
+  optimizador: () => import('./CutOptimizer2D'),
+};
+
+const MODAL_LOADERS = [
+  () => import('./WeeklyScheduleModal'),
+  () => import('./QuoteEditorModal'),
+  () => import('./QuotePrintModal'),
+];
+
+const RequestsInbox = lazy(TAB_LOADERS.solicitudes);
+const CalendarPanel = lazy(TAB_LOADERS.calendario);
+const ClientsPanel = lazy(TAB_LOADERS.clientes);
+const MaterialsPanel = lazy(TAB_LOADERS.tarifario);
+const ActivityLogPanel = lazy(TAB_LOADERS.bitacora);
+const AdminReportsPanel = lazy(TAB_LOADERS.administracion);
+const QuoteEditorModal = lazy(MODAL_LOADERS[1]);
+const QuotePrintModal = lazy(MODAL_LOADERS[2]);
+const WeeklyScheduleModal = lazy(MODAL_LOADERS[0]);
+const CutOptimizer2D = lazy(TAB_LOADERS.optimizador);
 
 function PanelFallback({ label = 'Cargando módulo...' }) {
   return (
@@ -64,7 +80,21 @@ const resolveUserRole = (session) => {
 };
 
 export default function IntranetApp({ onGoPublic }) {
-  const { session, quotes, quoteRequests, workOrders, isCloud, signOut, showToast, recordAudit } = useErp();
+  const { session, erpSyncing, quotes, quoteRequests, workOrders, isCloud, signOut, showToast, recordAudit } = useErp();
+
+  // Precarga silenciosa en segundo plano de pestañas y modales secundarios para cambio instantáneo
+  useEffect(() => {
+    const prefetchAll = () => {
+      MODAL_LOADERS.forEach((fn) => fn().catch(() => {}));
+      Object.values(TAB_LOADERS).forEach((fn) => fn().catch(() => {}));
+    };
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(prefetchAll, { timeout: 1200 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = setTimeout(prefetchAll, 450);
+    return () => clearTimeout(timer);
+  }, []);
 
   const userRole = resolveUserRole(session);
   const roleMeta = ROLE_META[userRole] || ROLE_META.admin;
@@ -164,10 +194,16 @@ export default function IntranetApp({ onGoPublic }) {
                 Intranet Mini-ERP
               </div>
               <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500">
-                <Database className={`w-3 h-3 shrink-0 ${isCloud ? 'text-emerald-600' : 'text-amber-600'}`} />
-                <span className="sm:hidden truncate">{isCloud ? 'Supabase Cloud' : 'Modo Demo'}</span>
+                <Database className={`w-3 h-3 shrink-0 ${erpSyncing ? 'text-amber-500 animate-pulse' : isCloud ? 'text-emerald-600' : 'text-amber-600'}`} />
+                <span className="sm:hidden truncate">
+                  {erpSyncing ? 'Sincronizando...' : isCloud ? 'Supabase Cloud' : 'Modo Demo'}
+                </span>
                 <span className="hidden sm:inline truncate">
-                  {isCloud ? 'Supabase Cloud Activo' : 'Modo Local Demo (Listo para Supabase)'}
+                  {erpSyncing
+                    ? 'Sincronizando datos en vivo...'
+                    : isCloud
+                      ? 'Supabase Cloud Activo'
+                      : 'Modo Local Demo (Listo para Supabase)'}
                 </span>
               </div>
             </div>
@@ -233,6 +269,7 @@ export default function IntranetApp({ onGoPublic }) {
               return (
                 <button
                   key={item.id}
+                  onMouseEnter={() => TAB_LOADERS[item.id]?.().catch(() => {})}
                   onClick={() => setActiveTab(item.id)}
                   className={`px-3 sm:px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 sm:gap-2 border shrink-0 ${
                     active

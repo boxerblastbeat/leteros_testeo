@@ -4,8 +4,21 @@ import PublicSite from './components/public/PublicSite';
 import LoginModal from './components/common/LoginModal';
 import Toast from './components/common/Toast';
 
-const IntranetApp = lazy(() => import('./components/intranet/IntranetApp'));
-const OrderTrackingView = lazy(() => import('./components/public/OrderTrackingView'));
+const loadIntranetApp = () => import('./components/intranet/IntranetApp');
+const loadOrderTrackingView = () => import('./components/public/OrderTrackingView');
+
+// Iniciar descarga del chunk en paralelo con la sesión según la ruta inicial
+if (typeof window !== 'undefined') {
+  const initialPath = window.location.pathname;
+  if (initialPath.startsWith('/intranet')) {
+    loadIntranetApp();
+  } else if (initialPath.startsWith('/seguimiento')) {
+    loadOrderTrackingView();
+  }
+}
+
+const IntranetApp = lazy(loadIntranetApp);
+const OrderTrackingView = lazy(loadOrderTrackingView);
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -69,15 +82,12 @@ function MainRouter() {
     window.history.replaceState({}, '', '/');
   };
 
-  if (loading) {
-    const isIntranetPath = view === 'intranet';
+  // Solo esperamos la verificación local de sesión (~5ms) al entrar directo a /intranet.
+  // La Web Pública (/) y Tracking (/seguimiento) cargan al instante sin pantalla de bloqueo.
+  if (loading && view === 'intranet') {
     return (
-      <div
-        className={`min-h-screen flex items-center justify-center text-sm font-medium ${
-          isIntranetPath ? 'bg-slate-50 text-slate-600' : 'bg-zinc-950 text-zinc-400'
-        }`}
-      >
-        {isIntranetPath ? 'Cargando Intranet Mini-ERP...' : 'Cargando Letreros Olivar...'}
+      <div className="min-h-screen bg-slate-50 text-slate-600 flex items-center justify-center text-sm font-medium">
+        Cargando Intranet Mini-ERP...
       </div>
     );
   }
