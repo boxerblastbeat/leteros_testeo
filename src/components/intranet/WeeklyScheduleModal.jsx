@@ -17,6 +17,7 @@ import { OT_STATUSES, OT_PRIORITIES } from '../../data/company';
 import { DELIVERY_LABELS, formatDateCL, todayISO } from '../../lib/formatters';
 
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const DAY_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 const normalizeWorkshopStatus = (status) => {
   if (['entregado', 'despachado', 'pagada'].includes(status)) return 'despachado';
@@ -76,6 +77,7 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
       return {
         iso: toISODate(dateObj),
         label: DAY_NAMES[i],
+        shortLabel: DAY_SHORT[i],
         dayNum: dateObj.getDate(),
         monthShort: dateObj.toLocaleDateString('es-CL', { month: 'short' }),
       };
@@ -156,121 +158,127 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-[96vw] xl:max-w-[1440px] max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden text-slate-900">
+    <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-2 sm:p-3 lg:p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-[96vw] xl:max-w-[1360px] max-h-[88dvh] 2xl:max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden text-slate-900">
         {/* HEADER */}
-        <div className="px-4 sm:px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-heading text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-red-600 shrink-0" />
+        <div className="px-4 py-2.5 2xl:px-6 2xl:py-3.5 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="font-heading text-sm sm:text-base 2xl:text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Calendar className="w-4 h-4 2xl:w-5 2xl:h-5 text-red-600 shrink-0" />
               <span>Cronograma Semanal de Pedidos &amp; Prioridades</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-[11px] 2xl:text-xs text-slate-500">
               Haz clic en cualquier OT para ir directamente a gestionarla en Taller.
             </p>
           </div>
 
-          <div className="inline-flex items-center bg-white border border-slate-200 rounded-xl p-0.5 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setWeekOffset((w) => w - 1)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600"
-              title="Semana anterior"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setWeekOffset(0)}
-              className="px-2.5 py-1 text-xs font-bold text-slate-800 hover:bg-slate-100 rounded-lg whitespace-nowrap"
-            >
-              {weekOffset === 0 ? `Esta semana · ${weekRangeLabel}` : weekRangeLabel}
-            </button>
-            <button
-              type="button"
-              onClick={() => setWeekOffset((w) => w + 1)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600"
-              title="Semana siguiente"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* KPIs compactos integrados */}
+            <div className="hidden md:flex items-center gap-1.5 text-[11px]">
+              <span className="px-2 py-1 rounded-lg bg-red-50 border border-red-200 text-red-700 font-semibold">
+                Atrasados: <strong className="font-extrabold">{overdueOts.length}</strong>
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 font-semibold">
+                Urgentes: <strong className="font-extrabold">{urgentCount}</strong>
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-800 font-semibold">
+                Semana: <strong className="font-extrabold">{weekCount}</strong>
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 font-semibold">
+                Taller: <strong className="font-extrabold text-slate-900">{activeOts.length}</strong>
+              </span>
+            </div>
+
+            <div className="inline-flex items-center bg-white border border-slate-200 rounded-xl p-0.5 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setWeekOffset((w) => w - 1)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-600"
+                title="Semana anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setWeekOffset(0)}
+                className="px-2 py-0.5 text-[11px] 2xl:text-xs font-bold text-slate-800 hover:bg-slate-100 rounded-lg whitespace-nowrap"
+              >
+                {weekOffset === 0 ? `Esta semana · ${weekRangeLabel}` : weekRangeLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => setWeekOffset((w) => w + 1)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-600"
+                title="Semana siguiente"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* BODY */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1">
-          {/* KPIs */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-            <div className="p-3 rounded-xl bg-red-50/70 border border-red-200">
-              <div className="text-[11px] font-semibold text-red-700">Atrasados</div>
-              <div className="font-heading text-xl font-extrabold text-red-700 mt-0.5">
-                {overdueOts.length}
-              </div>
+        <div className="p-3 sm:p-4 2xl:p-5 overflow-y-auto space-y-3 2xl:space-y-4 flex-1">
+          {/* KPIs solo en móvil */}
+          <div className="grid grid-cols-2 gap-2 md:hidden">
+            <div className="px-2.5 py-2 rounded-xl bg-red-50/70 border border-red-200 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-red-700">Atrasados</span>
+              <span className="font-heading text-base font-extrabold text-red-700">{overdueOts.length}</span>
             </div>
-            <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200">
-              <div className="text-[11px] font-semibold text-amber-800">Urgentes Activos</div>
-              <div className="font-heading text-xl font-extrabold text-amber-700 mt-0.5">
-                {urgentCount}
-              </div>
+            <div className="px-2.5 py-2 rounded-xl bg-amber-50/70 border border-amber-200 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-amber-800">Urgentes</span>
+              <span className="font-heading text-base font-extrabold text-amber-700">{urgentCount}</span>
             </div>
-            <div className="p-3 rounded-xl bg-violet-50/70 border border-violet-200">
-              <div className="text-[11px] font-semibold text-violet-800">Entregas Esta Semana</div>
-              <div className="font-heading text-xl font-extrabold text-violet-700 mt-0.5">
-                {weekCount}
-              </div>
+            <div className="px-2.5 py-2 rounded-xl bg-violet-50/70 border border-violet-200 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-violet-800">Semana</span>
+              <span className="font-heading text-base font-extrabold text-violet-700">{weekCount}</span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <div className="text-[11px] font-semibold text-slate-600">Total en Taller</div>
-              <div className="font-heading text-xl font-extrabold text-slate-900 mt-0.5">
-                {activeOts.length}
-              </div>
+            <div className="px-2.5 py-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-600">En Taller</span>
+              <span className="font-heading text-base font-extrabold text-slate-900">{activeOts.length}</span>
             </div>
           </div>
 
           {/* ALERTA ATRASADOS */}
           {overdueOts.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 space-y-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-red-800">
-                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+            <div className="p-2.5 2xl:p-3 rounded-xl bg-red-50 border border-red-200 space-y-2">
+              <div className="flex items-center gap-1.5 text-[11px] 2xl:text-xs font-bold text-red-800">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
                 <span>
                   Pedidos con plazo vencido ({overdueOts.length}) — Haz clic para abrir la OT
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {overdueOts.map((ot) => (
                   <button
                     key={ot.id}
                     type="button"
                     onClick={() => handleOpenOt(ot)}
-                    className="w-full text-left p-3 rounded-xl bg-white hover:bg-red-50/40 border border-red-200 hover:border-red-400 transition flex items-start justify-between gap-3 text-xs group"
+                    className="w-full text-left px-2.5 py-2 rounded-lg bg-white hover:bg-red-50/40 border border-red-200 hover:border-red-400 transition flex items-center justify-between gap-2 text-[11px] group"
                   >
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex flex-wrap items-center gap-1">
                         <span className="font-mono font-bold text-slate-900">{ot.ot_number}</span>
                         <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ot.stageMeta.color}`}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${ot.stageMeta.color}`}
                         >
-                          Proceso: {ot.stageMeta.label} ({ot.stageIdx + 1}/{OT_STATUSES.length})
+                          {ot.stageMeta.label} ({ot.stageIdx + 1}/{OT_STATUSES.length})
                         </span>
-                        {ot.hasQuote ? (
-                          <span className="text-[10px] font-mono text-slate-500">
-                            {ot.quote_correlative}
-                          </span>
-                        ) : (
+                        {!ot.hasQuote && (
                           <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200">
                             Solo Taller
                           </span>
                         )}
                       </div>
-                      <div className="font-bold text-slate-900 break-words">{ot.client_name}</div>
+                      <div className="font-bold text-slate-900 truncate">{ot.client_name}</div>
                     </div>
-                    <div className="text-right shrink-0 space-y-1">
-                      <div className="text-[11px] font-mono font-bold text-red-600">
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] font-mono font-bold text-red-600">
                         {formatDateCL(ot.deadline)}
                       </div>
-                      <div className="text-[10px] font-semibold text-red-700 inline-flex items-center gap-1 group-hover:underline">
-                        <span>Abrir OT</span>
-                        <ExternalLink className="w-3 h-3" />
+                      <div className="text-[10px] font-semibold text-red-700 inline-flex items-center gap-0.5 group-hover:underline">
+                        <span>Abrir</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
                       </div>
                     </div>
                   </button>
@@ -279,31 +287,32 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
             </div>
           )}
 
-          {/* CRONOGRAMA SEMANAL COMPLETO (SIN RECORTAR OTs) */}
-          <div className="overflow-x-auto pb-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3 lg:min-w-[1260px]">
+          {/* CRONOGRAMA SEMANAL COMPLETO — AJUSTADO PARA LAPTOPS 13" Y MONITORES 24-27" */}
+          <div className="overflow-x-auto pb-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-1.5 xl:gap-2 2xl:gap-2.5 lg:min-w-[920px] xl:min-w-0">
               {weekDays.map((day) => {
                 const items = byDay[day.iso] || [];
                 const isToday = day.iso === today;
                 return (
                   <div
                     key={day.iso}
-                    className={`rounded-2xl border p-3 flex flex-col gap-2.5 min-h-[210px] ${
+                    className={`rounded-xl border p-2 2xl:p-2.5 flex flex-col gap-2 min-h-[155px] 2xl:min-h-[200px] min-w-0 ${
                       isToday
                         ? 'bg-red-50/40 border-red-300 ring-1 ring-red-200'
                         : 'bg-slate-50/70 border-slate-200'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 border-b border-slate-200/80 pb-2">
+                    <div className="flex items-center justify-between gap-1 border-b border-slate-200/80 pb-1.5">
                       <span
-                        className={`text-xs font-bold uppercase ${
+                        className={`text-[11px] 2xl:text-xs font-bold uppercase truncate ${
                           isToday ? 'text-red-700' : 'text-slate-600'
                         }`}
                       >
-                        {day.label}
+                        <span className="2xl:hidden">{day.shortLabel}</span>
+                        <span className="hidden 2xl:inline">{day.label}</span>
                       </span>
                       <span
-                        className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                        className={`text-[10px] 2xl:text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap shrink-0 ${
                           isToday
                             ? 'bg-red-600 text-white'
                             : 'bg-white text-slate-700 border border-slate-200'
@@ -314,40 +323,40 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
                     </div>
 
                     {items.length === 0 ? (
-                      <div className="flex-1 flex items-center justify-center text-xs text-slate-400 italic py-6">
+                      <div className="flex-1 flex items-center justify-center text-[11px] text-slate-400 italic py-4">
                         Sin entregas
                       </div>
                     ) : (
-                      <div className="space-y-2.5">
+                      <div className="space-y-2">
                         {items.map((ot) => (
                           <button
                             key={ot.id}
                             type="button"
                             onClick={() => handleOpenOt(ot)}
-                            className={`w-full text-left p-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-red-300 shadow-2xs hover:shadow-sm transition space-y-2 group ${
+                            className={`w-full text-left p-2 2xl:p-2.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 hover:border-red-300 shadow-2xs hover:shadow-sm transition space-y-1.5 group min-w-0 ${
                               ot.isOverdue || ot.priority === 'urgente'
                                 ? 'border-l-4 border-l-red-600'
                                 : 'border-l-4 border-l-emerald-500'
                             }`}
                           >
-                            {/* Correlativo completo + prioridad */}
-                            <div className="flex flex-wrap items-center justify-between gap-1">
-                              <span className="font-mono text-xs font-extrabold text-slate-900 group-hover:text-red-600 transition">
+                            {/* Correlativo + enlace */}
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-mono text-[11px] 2xl:text-xs font-extrabold text-slate-900 group-hover:text-red-600 transition truncate">
                                 {ot.ot_number}
                               </span>
-                              <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-red-600 shrink-0 transition" />
+                              <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-red-600 shrink-0 transition" />
                             </div>
 
-                            {/* Proceso actual bien visible */}
+                            {/* Proceso actual */}
                             <div className="space-y-1">
                               <div className="flex flex-wrap items-center gap-1">
                                 <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ot.stageMeta.color}`}
+                                  className={`text-[9px] 2xl:text-[10px] font-bold px-1.5 py-0.5 rounded-full border leading-tight ${ot.stageMeta.color}`}
                                 >
                                   {ot.stageMeta.label} ({ot.stageIdx + 1}/{OT_STATUSES.length})
                                 </span>
                                 {ot.priority === 'urgente' && (
-                                  <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                                  <span className="text-[9px] font-extrabold uppercase px-1 py-0.5 rounded bg-red-100 text-red-700 leading-tight">
                                     Urgente
                                   </span>
                                 )}
@@ -365,14 +374,14 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
                               </div>
                             </div>
 
-                            {/* Cliente completo (sin truncar) */}
-                            <div className="text-xs font-bold text-slate-900 leading-snug break-words">
+                            {/* Cliente */}
+                            <div className="text-[11px] 2xl:text-xs font-bold text-slate-900 leading-tight break-words">
                               {ot.client_name}
                             </div>
 
-                            {/* Trabajos completos */}
+                            {/* Trabajos */}
                             {(ot.items || []).length > 0 && (
-                              <div className="text-[11px] text-slate-600 leading-snug break-words space-y-0.5">
+                              <div className="text-[10px] 2xl:text-[11px] text-slate-600 leading-snug break-words space-y-0.5">
                                 {ot.items.map((item, idx) => (
                                   <div key={item.id || idx}>
                                     • {item.quantity}× {item.name}
@@ -382,10 +391,10 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
                             )}
 
                             {/* Origen, dirección y modificaciones de fecha */}
-                            <div className="pt-1.5 border-t border-slate-100 space-y-1 text-[10px] text-slate-500">
+                            <div className="pt-1 border-t border-slate-100 space-y-1 text-[10px] text-slate-500">
                               <div className="flex items-start gap-1">
-                                <MapPin className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
-                                <div className="break-words">
+                                <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0 mt-0.5" />
+                                <div className="break-words leading-tight">
                                   <div className="font-medium text-slate-700">
                                     {DELIVERY_LABELS[ot.delivery_method] || ot.delivery_method}
                                   </div>
@@ -396,8 +405,8 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
                               </div>
                               {Array.isArray(ot.deadline_history) &&
                                 ot.deadline_history.length > 0 && (
-                                  <div className="px-1.5 py-1 rounded bg-amber-50 border border-amber-200 text-amber-800 font-semibold break-words">
-                                    Fecha movida (
+                                  <div className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-semibold break-words leading-tight">
+                                    Movida (
                                     {ot.deadline_history[ot.deadline_history.length - 1].from ===
                                     'Sin fecha'
                                       ? 'Sin fecha'
@@ -410,14 +419,14 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
                               <div className="flex items-center gap-1">
                                 {ot.hasQuote ? (
                                   <>
-                                    <FileText className="w-3 h-3 text-slate-400 shrink-0" />
-                                    <span className="font-mono text-slate-600">
+                                    <FileText className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                                    <span className="font-mono text-slate-600 truncate">
                                       {ot.quote_correlative}
                                     </span>
                                   </>
                                 ) : (
                                   <>
-                                    <Wrench className="w-3 h-3 text-violet-500 shrink-0" />
+                                    <Wrench className="w-2.5 h-2.5 text-violet-500 shrink-0" />
                                     <span className="font-semibold text-violet-700">
                                       Solo Taller
                                     </span>
@@ -437,23 +446,23 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
 
           {/* SIN FECHA DEFINIDA */}
           {unscheduledOts.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            <div className="p-2.5 2xl:p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+              <div className="text-[11px] 2xl:text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-slate-500" />
                 <span>OTs activas sin fecha de entrega definida ({unscheduledOts.length}):</span>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {unscheduledOts.map((ot) => (
                   <button
                     key={ot.id}
                     type="button"
                     onClick={() => handleOpenOt(ot)}
-                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-xs flex items-center gap-2 transition"
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 text-[11px] flex items-center gap-1.5 transition"
                   >
                     <span className="font-mono font-bold text-slate-900">{ot.ot_number}</span>
                     <span className="text-slate-600">{ot.client_name}</span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ot.stageMeta.color}`}
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${ot.stageMeta.color}`}
                     >
                       {ot.stageMeta.label}
                     </span>
@@ -464,7 +473,7 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
           )}
 
           {overdueOts.length === 0 && weekCount === 0 && activeOts.length === 0 && (
-            <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-center text-xs text-emerald-800 flex items-center justify-center gap-2 font-semibold">
+            <div className="p-5 rounded-xl bg-emerald-50 border border-emerald-200 text-center text-xs text-emerald-800 flex items-center justify-center gap-2 font-semibold">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>No hay pedidos pendientes ni atrasados en Taller esta semana.</span>
             </div>
@@ -472,11 +481,14 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
         </div>
 
         {/* FOOTER — ÚNICA OPCIÓN DE CIERRE */}
-        <div className="px-4 sm:px-6 py-3.5 border-t border-slate-200 bg-slate-50 flex items-center justify-end">
+        <div className="px-4 py-2.5 2xl:px-6 2xl:py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
+          <span className="text-[11px] text-slate-500 hidden sm:inline">
+            {activeOts.length} OT{activeOts.length === 1 ? '' : 's'} activa{activeOts.length === 1 ? '' : 's'} en taller
+          </span>
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+            className="ml-auto px-4 py-1.5 2xl:px-5 2xl:py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
           >
             <span>Entendido, ir al ERP</span>
             <ArrowRight className="w-3.5 h-3.5" />
