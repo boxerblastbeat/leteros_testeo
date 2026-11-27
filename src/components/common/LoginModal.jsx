@@ -106,11 +106,6 @@ export default function LoginModal({ open, onClose, onSuccess }) {
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-sm text-slate-900 focus:outline-none focus:border-red-600"
                 placeholder="Ej: taller, ventas o correo@letrerosolivar.com"
               />
-              {identifier.trim() && !identifier.includes('@') && (
-                <p className="text-[11px] text-slate-400 mt-1 font-mono">
-                  Ingresará como: {normalizeLoginIdentifier(identifier)}
-                </p>
-              )}
             </div>
           )}
 
