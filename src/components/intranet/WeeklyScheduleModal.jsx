@@ -13,8 +13,9 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { OT_STATUSES } from '../../data/company';
+import { OT_STATUSES, OT_PRIORITIES } from '../../data/company';
 import { DELIVERY_LABELS, formatDateCL, todayISO } from '../../lib/formatters';
+import { useModalClose } from '../../lib/useModalClose';
 
 const DAY_NAMES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -56,6 +57,7 @@ const diffDaysISO = (fromIso, toIso) => {
 export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
   const { workOrders, quotes } = useErp();
   const [weekOffset, setWeekOffset] = useState(0);
+  const modalClose = useModalClose(true, onClose, { confirm: false });
 
   const today = todayISO();
 
@@ -115,8 +117,9 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
       .sort((a, b) => {
         if (a.isOverdue && !b.isOverdue) return -1;
         if (b.isOverdue && !a.isOverdue) return 1;
-        if (a.priority === 'urgente' && b.priority !== 'urgente') return -1;
-        if (b.priority === 'urgente' && a.priority !== 'urgente') return 1;
+        const rankA = OT_PRIORITIES.find((p) => p.id === a.priority)?.rank ?? 3;
+        const rankB = OT_PRIORITIES.find((p) => p.id === b.priority)?.rank ?? 3;
+        if (rankA !== rankB) return rankA - rankB;
         return (a.deadline || '9999-12-31').localeCompare(b.deadline || '9999-12-31');
       });
   }, [workOrders, quoteCorrelativesSet, today]);
@@ -155,7 +158,10 @@ export default function WeeklyScheduleModal({ onClose, onSelectOt }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4">
+    <div
+      onClick={modalClose.handleBackdropClick}
+      className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4"
+    >
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-[96vw] xl:max-w-[1440px] max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden text-slate-900">
         {/* HEADER */}
         <div className="px-4 sm:px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3">

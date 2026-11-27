@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Scissors, Plus, Trash2, Printer, RotateCw, Layers } from 'lucide-react';
 import { uid } from '../../lib/formatters';
 
@@ -139,7 +139,7 @@ function packParts2D(sheetW, sheetH, kerf, allowRotate, partsList) {
   return { sheets, unplaced, efficiency, totalUsedArea };
 }
 
-export default function CutOptimizer2D() {
+export default function CutOptimizer2D({ initialPayload = null }) {
   const [preset, setPreset] = useState('acm');
   const [sheetW, setSheetW] = useState(2440);
   const [sheetH, setSheetH] = useState(1220);
@@ -151,6 +151,22 @@ export default function CutOptimizer2D() {
     { id: 'p2', label: 'Placa Señalética', w: 600, h: 400, qty: 4 },
     { id: 'p3', label: 'Cenefa Lateral', w: 1100, h: 250, qty: 2 },
   ]);
+
+  useEffect(() => {
+    if (!initialPayload) return;
+    if (initialPayload.sheetW) setSheetW(initialPayload.sheetW);
+    if (initialPayload.sheetH) setSheetH(initialPayload.sheetH);
+    if (initialPayload.sheetW === 3000 && initialPayload.sheetH === 1000) {
+      setPreset('lata');
+    } else if (initialPayload.sheetW === 2440 && initialPayload.sheetH === 1220) {
+      setPreset('acm');
+    } else if (initialPayload.sheetW) {
+      setPreset('custom');
+    }
+    if (Array.isArray(initialPayload.parts) && initialPayload.parts.length > 0) {
+      setParts(initialPayload.parts);
+    }
+  }, [initialPayload]);
 
   const [newPart, setNewPart] = useState({ label: '', w: 500, h: 300, qty: 1 });
 

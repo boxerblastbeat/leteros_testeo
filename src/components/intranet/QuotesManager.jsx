@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { QUOTE_STATUSES, OT_STATUSES } from '../../data/company';
+import { QUOTE_STATUSES, OT_STATUSES, OT_PRIORITIES } from '../../data/company';
 import { formatCLP, formatDateCL, addDaysISO, todayISO, DELIVERY_LABELS } from '../../lib/formatters';
 import { useModalClose } from '../../lib/useModalClose';
 
@@ -338,7 +338,7 @@ export default function QuotesManager({
       q.total || 0,
     ]);
     const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -518,13 +518,16 @@ export default function QuotesManager({
                 )
               : -1;
             const otMeta = linkedOt ? OT_STATUSES[otStepIdx] || OT_STATUSES[0] : null;
+            const linkedOtPrio = linkedOt
+              ? OT_PRIORITIES.find((p) => p.id === linkedOt.priority) || OT_PRIORITIES[0]
+              : null;
             const isNetOnly = Number(q.tax_rate) === 0;
             const isUnpaid = ['facturada', 'despacho'].includes(q.status);
             const isPaid = q.status === 'pagada';
 
             let leftAccent = '';
-            if (linkedOt?.priority === 'urgente' && !isPaid) {
-              leftAccent = 'border-l-4 border-l-red-500';
+            if (linkedOtPrio && !isPaid && linkedOtPrio.id !== 'normal') {
+              leftAccent = linkedOtPrio.cardBorder;
             } else if (isPaid) {
               leftAccent = 'border-l-4 border-l-green-600';
             } else if (q.status === 'despacho') {
@@ -559,22 +562,18 @@ export default function QuotesManager({
                             <Wrench className="w-3 h-3" />
                             {linkedOt.ot_number} · {otMeta.label}
                           </span>
-                          <span
-                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                              linkedOt.priority === 'urgente'
-                                ? 'bg-red-50 text-red-700 border-red-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            }`}
-                          >
+                          {linkedOtPrio && (
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                linkedOt.priority === 'urgente' ? 'bg-red-500' : 'bg-emerald-500'
-                              }`}
-                            />
-                            {linkedOt.priority === 'urgente'
-                              ? 'Prioridad Urgente'
-                              : 'Prioridad Normal'}
-                          </span>
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${linkedOtPrio.badge}`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  linkedOtPrio.id === 'urgente' ? 'bg-white' : linkedOtPrio.dot
+                                }`}
+                              />
+                              Prioridad {linkedOtPrio.label}
+                            </span>
+                          )}
                         </>
                       )}
 
@@ -867,41 +866,51 @@ export default function QuotesManager({
             <div className="space-y-3">
               <div>
                 <label className="block text-xs text-slate-600 font-medium mb-1">
-                  N° Orden de Compra (Opcional)
+                  N° Orden de Compra del Cliente (Opcional)
                 </label>
                 <input
                   type="text"
                   value={approveForm.oc_number}
                   onChange={(e) => setApproveForm({ ...approveForm, oc_number: e.target.value })}
-                  placeholder="Ej: OC-2026-884"
+                  placeholder="Ej: OC-45001234 (solo si el cliente emite OC)"
                   className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-600 font-medium mb-1">
-                    Fecha Entrega / Obra
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={approveForm.deadline}
-                    onChange={(e) => setApproveForm({ ...approveForm, deadline: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-600 font-medium mb-1">
-                    Prioridad Taller
-                  </label>
-                  <select
-                    value={approveForm.priority}
-                    onChange={(e) => setApproveForm({ ...approveForm, priority: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="urgente">Urgente</option>
-                  </select>
+              <div>
+                <label className="block text-xs text-slate-600 font-medium mb-1">
+                  Fecha Entrega / Obra
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={approveForm.deadline}
+                  onChange={(e) => setApproveForm({ ...approveForm, deadline: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-600 font-medium mb-1.5">
+                  Prioridad Taller
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {OT_PRIORITIES.map((p) => {
+                    const active = approveForm.priority === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setApproveForm({ ...approveForm, priority: p.id })}
+                        className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                          active ? p.activeBtn : p.idleBtn
+                        }`}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${active ? 'bg-white' : p.dot}`}
+                        />
+                        <span>{p.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div>

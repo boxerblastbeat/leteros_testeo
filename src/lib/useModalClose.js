@@ -1,9 +1,11 @@
 import { useEffect, useCallback } from 'react';
 
 /**
- * Control estandarizado de cierre para modales:
- * - Cierra con tecla Escape, click en el fondo (backdrop) o botón X.
- * - Si `confirm` es true (formularios con ingreso de datos), solicita confirmación antes de cerrar.
+ * Control estandarizado e inteligente de cierre para modales:
+ * - Tecla Escape y botón X cierran de inmediato sin confirmación.
+ * - Click fuera del marco (backdrop):
+ *   - Si `confirm` es true (formularios), pide confirmación para evitar cierres accidentales.
+ *   - Si `confirm` es false (vistas de solo lectura / impresión), cierra de inmediato.
  */
 export function useModalClose(
   isOpen,
@@ -15,19 +17,17 @@ export function useModalClose(
 ) {
   const handleClose = useCallback(() => {
     if (!onClose) return;
-    if (confirm) {
-      if (!window.confirm(message)) return;
-    }
     onClose();
-  }, [onClose, confirm, message]);
+  }, [onClose]);
 
   const handleBackdropClick = useCallback(
     (e) => {
       if (e.target === e.currentTarget) {
-        handleClose();
+        if (confirm && !window.confirm(message)) return;
+        onClose?.();
       }
     },
-    [handleClose]
+    [onClose, confirm, message]
   );
 
   useEffect(() => {
@@ -35,12 +35,12 @@ export function useModalClose(
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        handleClose();
+        onClose?.();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, handleClose]);
+  }, [isOpen, onClose]);
 
   return { handleClose, handleBackdropClick };
 }

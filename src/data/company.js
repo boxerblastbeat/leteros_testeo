@@ -78,6 +78,39 @@ export const QUOTE_STATUSES = [
   { id: 'rechazada', label: 'Rechazada', color: 'bg-red-50 text-red-700 border-red-200', dot: 'bg-red-500' },
 ];
 
+export const OT_PRIORITIES = [
+  {
+    id: 'normal',
+    label: 'Normal',
+    rank: 3,
+    badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    idleBtn: 'bg-emerald-50/70 border-emerald-200 text-emerald-800 hover:bg-emerald-100',
+    activeBtn: 'bg-emerald-600 border-emerald-600 text-white shadow-sm',
+    dot: 'bg-emerald-500',
+    cardBorder: 'border-l-4 border-l-emerald-500',
+  },
+  {
+    id: 'alta',
+    label: 'Alta',
+    rank: 2,
+    badge: 'bg-amber-100 text-amber-900 border-amber-400',
+    idleBtn: 'bg-amber-50/70 border-amber-200 text-amber-900 hover:bg-amber-100',
+    activeBtn: 'bg-amber-500 border-amber-500 text-white shadow-sm',
+    dot: 'bg-amber-500',
+    cardBorder: 'border-l-4 border-l-amber-500',
+  },
+  {
+    id: 'urgente',
+    label: 'Urgente',
+    rank: 1,
+    badge: 'bg-red-600 text-white border-red-700 shadow-xs',
+    idleBtn: 'bg-red-50/70 border-red-200 text-red-700 hover:bg-red-100',
+    activeBtn: 'bg-red-600 border-red-600 text-white shadow-sm',
+    dot: 'bg-red-600',
+    cardBorder: 'border-l-4 border-l-red-600',
+  },
+];
+
 export const OT_STATUSES = [
   { id: 'pendiente', label: 'Pendiente', color: 'bg-slate-100 text-slate-700 border-slate-200' },
   { id: 'diseno', label: 'Diseño', color: 'bg-sky-50 text-sky-700 border-sky-200' },

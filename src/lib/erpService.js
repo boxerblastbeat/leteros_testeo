@@ -726,6 +726,17 @@ export const erpService = {
     return created;
   },
 
+  async deleteWorkOrder(id) {
+    if (isSupabaseConfigured) {
+      const { error } = await supabase.from('work_orders').delete().eq('id', id);
+      if (error) throw error;
+      return;
+    }
+    const db = readLocal();
+    db.workOrders = db.workOrders.filter((w) => w.id !== id);
+    writeLocal(db);
+  },
+
   // --- CALENDAR ---
   async saveCalendarEvent(ev) {
     if (isSupabaseConfigured) {

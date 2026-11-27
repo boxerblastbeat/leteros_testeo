@@ -12,11 +12,14 @@ import {
   ArrowLeft,
   Truck,
   Clock,
+  Scissors,
+  Trash2,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
-import { OT_STATUSES, COMPANY_INFO } from '../../data/company';
+import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
 import { formatDateCL, DELIVERY_LABELS, addDaysISO, uid } from '../../lib/formatters';
 import { useModalClose } from '../../lib/useModalClose';
+import { computeOtCubicationAndCuts } from '../../lib/cutOptimizer';
 
 // En Taller solo existen los 5 pasos productivos/despacho (facturación y cobro son exclusivos de Cotizaciones ERP)
 const normalizeWorkshopStatus = (status) => {
@@ -25,13 +28,14 @@ const normalizeWorkshopStatus = (status) => {
   return OT_STATUSES.some((s) => s.id === status) ? status : 'pendiente';
 };
 
-export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
+export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOpenInOptimizer }) {
   const {
     session,
     workOrders,
     quotes,
     calendarEvents,
     saveWorkOrder,
+    deleteWorkOrder,
     saveCalendarEvent,
     changeQuoteStatus,
     showToast,
@@ -126,10 +130,11 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
       return norm === filter;
     });
 
-    // Ordenar: urgentes primero, luego por fecha de entrega más próxima
+    // Ordenar: Urgente -> Alta -> Normal, luego por fecha de entrega más próxima
+    const rankOf = (prio) => OT_PRIORITIES.find((p) => p.id === prio)?.rank ?? 3;
     return [...list].sort((a, b) => {
-      if (a.priority === 'urgente' && b.priority !== 'urgente') return -1;
-      if (b.priority === 'urgente' && a.priority !== 'urgente') return 1;
+      const diff = rankOf(a.priority) - rankOf(b.priority);
+      if (diff !== 0) return diff;
       const da = a.deadline || '9999-12-31';
       const db = b.deadline || '9999-12-31';
       return da.localeCompare(db);
@@ -358,6 +363,8 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
             const nextMeta =
               currentIdx < OT_STATUSES.length - 1 ? OT_STATUSES[currentIdx + 1] : null;
             const isFinished = normStatus === 'despachado';
+            const prioMeta =
+              OT_PRIORITIES.find((p) => p.id === ot.priority) || OT_PRIORITIES[0];
 
             return (
               <div
@@ -367,13 +374,7 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                   highlightedId === ot.id
                     ? 'border-red-500 ring-4 ring-red-200 bg-red-50/20'
                     : 'border-slate-200'
-                } ${
-                  ot.priority === 'urgente' && !isFinished
-                    ? 'border-l-4 border-l-red-500'
-                    : isFinished
-                      ? 'border-l-4 border-l-orange-500'
-                      : 'border-l-4 border-l-emerald-500'
-                }`}
+                } ${isFinished ? 'border-l-4 border-l-orange-500' : prioMeta.cardBorder}`}
               >
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -386,16 +387,16 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                           {ot.quote_correlative}
                         </span>
                       )}
-                      {ot.priority === 'urgente' ? (
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 flex items-center gap-1">
+                      <span
+                        className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1 ${prioMeta.badge}`}
+                      >
+                        {ot.priority === 'urgente' ? (
                           <AlertTriangle className="w-3 h-3" />
-                          Urgente
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Normal
-                        </span>
-                      )}
+                        ) : (
+                          <span className={`w-1.5 h-1.5 rounded-full ${prioMeta.dot}`} />
+                        )}
+                        Prioridad {prioMeta.label}
+                      </span>
                     </div>
                     <span
                       className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border shrink-0 ${meta.color}`}
@@ -494,6 +495,70 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                   {ot.notes && (
                     <p className="text-xs text-slate-500 italic break-words">“{ot.notes}”</p>
                   )}
+
+                  {/* Glosa automática de cortes optimizados */}
+                  {(() => {
+                    const cub = computeOtCubicationAndCuts(ot.items);
+                    if (!cub.hasOptimization) return null;
+                    return (
+                      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide text-[10px]">
+                            <Scissors className="w-3.5 h-3.5 text-red-600" />
+                            Glosa de Cortes Optimizados ({cub.totalAreaSqm.toFixed(2)} m²)
+                          </span>
+                          {onOpenInOptimizer && cub.rigidResults.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const first = cub.rigidResults[0];
+                                onOpenInOptimizer({
+                                  sheetW: first.sheetW,
+                                  sheetH: first.sheetH,
+                                  parts: first.parts,
+                                });
+                              }}
+                              className="text-[10px] font-bold text-red-600 hover:text-red-700 underline underline-offset-2"
+                            >
+                              Ver en Cortes 2D
+                            </button>
+                          )}
+                        </div>
+                        {cub.rigidResults.map((r, rIdx) => (
+                          <div key={rIdx} className="text-slate-700 leading-snug">
+                            • <strong>{r.sheetCount} {r.sheetCount === 1 ? 'plancha' : 'planchas'}</strong>{' '}
+                            de <span className="font-semibold">{r.label}</span> ({r.sheetW}×{r.sheetH} mm) ·{' '}
+                            <span className="text-emerald-700 font-semibold">{r.efficiency.toFixed(1)}% aprov.</span>
+                            {r.patterns.length > 0 && (
+                              <div className="text-[10px] text-slate-500 pl-3 mt-0.5">
+                                {r.patterns.map((pat, pIdx) => (
+                                  <div key={pIdx}>
+                                    {pat.sheetIds.length > 1
+                                      ? `Planchas #${pat.sheetIds[0]}–#${pat.sheetIds[pat.sheetIds.length - 1]} (×${pat.sheetIds.length}): `
+                                      : `Plancha #${pat.sheetIds[0]}: `}
+                                    {pat.summaryItems
+                                      .map((si) => `${si.qty}× (${si.dims} mm)`)
+                                      .join(', ')}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {cub.rollResults.map((roll, rollIdx) => (
+                          <div key={rollIdx} className="text-slate-700 leading-snug">
+                            • <strong>{roll.linearMeters.toFixed(2)} ml</strong> de{' '}
+                            <span className="font-semibold">{roll.label}</span> (rollo {roll.rollWidthM}m ·{' '}
+                            {roll.areaSqm.toFixed(2)} m²)
+                            <span className="text-slate-500">
+                              {' '}
+                              — {roll.cuts.map((c) => `${c.qty}× ${c.wM}×${c.hM}m (${c.orientNote})`).join('; ')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
@@ -537,6 +602,19 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                         <span>Devolver</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`¿Eliminar definitivamente la orden ${ot.ot_number}?`)) {
+                          deleteWorkOrder(ot.id);
+                        }
+                      }}
+                      title="Eliminar OT"
+                      aria-label={`Eliminar ${ot.ot_number}`}
+                      className="p-2 sm:p-1.5 rounded-xl bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-400 hover:text-red-600 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
                   {nextMeta ? (
@@ -625,6 +703,7 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                     className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
                   >
                     <option value="normal">Normal</option>
+                    <option value="alta">Alta</option>
                     <option value="urgente">Urgente</option>
                   </select>
                 </div>
@@ -795,6 +874,7 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                 className="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-white border border-slate-300 text-sm text-slate-900"
               >
                 <option value="normal">Prioridad Normal</option>
+                <option value="alta">Prioridad Alta</option>
                 <option value="urgente">Prioridad Urgente</option>
               </select>
               <textarea
@@ -827,9 +907,9 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
       {printOt && (
         <div
           onClick={printOtClose.handleBackdropClick}
-          className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4"
+          className="print-modal-overlay fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm overflow-y-auto p-2.5 sm:p-4"
         >
-          <div className="max-w-3xl mx-auto">
+          <div className="print-modal-container max-w-3xl mx-auto">
             <div className="no-print flex flex-wrap justify-between items-center gap-2 mb-3 sm:mb-4 bg-white border border-slate-200 rounded-2xl p-3 shadow-lg">
               <span className="text-xs sm:text-sm font-bold text-slate-900 font-mono">
                 Ficha de Producción · {printOt.ot_number}
@@ -929,6 +1009,122 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus }) {
                   </tbody>
                 </table>
               </div>
+
+              {/* CUBICACIÓN Y GLOSA DE CORTES OPTIMIZADOS EN FICHA IMPRIMIBLE */}
+              {(() => {
+                const cub = computeOtCubicationAndCuts(printOt.items);
+                if (!cub.hasOptimization) return null;
+                return (
+                  <div className="space-y-3 border border-zinc-300 rounded-xl p-4 bg-zinc-50 print-avoid-break">
+                    <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
+                      <strong className="text-xs uppercase tracking-wider text-zinc-900">
+                        Cubicación y Glosa de Cortes Optimizados (Sangría 3 mm)
+                      </strong>
+                      <span className="text-[11px] font-mono text-zinc-600">
+                        {cub.totalPieces} piezas · {cub.totalAreaSqm.toFixed(2)} m² totales
+                      </span>
+                    </div>
+
+                    {cub.rigidResults.map((r, rIdx) => (
+                      <div key={rIdx} className="space-y-2.5 bg-white border border-zinc-200 rounded-lg p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                          <strong className="text-zinc-900">
+                            {r.label} — Formato {r.sheetW} × {r.sheetH} mm
+                          </strong>
+                          <span className="font-mono text-zinc-700">
+                            Retirar bodega: <strong>{r.sheetCount} {r.sheetCount === 1 ? 'plancha' : 'planchas'}</strong> ·
+                            Aprovechamiento: <strong className="text-emerald-700">{r.efficiency.toFixed(1)}%</strong>
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 text-[11px] text-zinc-700">
+                          {r.patterns.map((pat, pIdx) => (
+                            <div key={pIdx} className="flex flex-wrap items-center justify-between gap-2 py-1 border-b border-zinc-100 last:border-0">
+                              <span>
+                                <strong>
+                                  {pat.sheetIds.length > 1
+                                    ? `Planchas #${pat.sheetIds[0]} a #${pat.sheetIds[pat.sheetIds.length - 1]} (×${pat.sheetIds.length} idénticas)`
+                                    : `Plancha #${pat.sheetIds[0]}`}
+                                  :
+                                </strong>{' '}
+                                {pat.summaryItems
+                                  .map((si) => `${si.qty} cortes de ${si.dims} mm (${si.label})`)
+                                  .join(' + ')}
+                              </span>
+                              <span className="font-mono text-[10px] text-zinc-500">
+                                {pat.efficiency.toFixed(1)}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-3 pt-1">
+                          {r.patterns.slice(0, 4).map((pat, pIdx) => (
+                            <div key={pIdx} className="border border-zinc-200 rounded-lg p-2 bg-zinc-50">
+                              <div className="text-[10px] font-mono text-zinc-600 mb-1 flex justify-between">
+                                <span>
+                                  {pat.sheetIds.length > 1
+                                    ? `Patrón ×${pat.sheetIds.length} planchas`
+                                    : `Plancha #${pat.sheetIds[0]}`}
+                                </span>
+                                <span>{pat.efficiency.toFixed(1)}%</span>
+                              </div>
+                              <svg
+                                viewBox={`0 0 ${r.sheetW} ${r.sheetH}`}
+                                className="w-full h-auto max-h-28"
+                                preserveAspectRatio="xMidYMid meet"
+                              >
+                                <rect
+                                  x={0}
+                                  y={0}
+                                  width={r.sheetW}
+                                  height={r.sheetH}
+                                  fill="#ffffff"
+                                  stroke="#52525b"
+                                  strokeWidth={Math.max(8, r.sheetW * 0.004)}
+                                />
+                                {pat.sampleSheet.placed.map((p) => (
+                                  <rect
+                                    key={p.uid}
+                                    x={p.x}
+                                    y={p.y}
+                                    width={p.w}
+                                    height={p.h}
+                                    fill={p.color}
+                                    fillOpacity={0.8}
+                                    stroke="#ffffff"
+                                    strokeWidth={Math.max(6, r.sheetW * 0.003)}
+                                  />
+                                ))}
+                              </svg>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+
+                    {cub.rollResults.map((roll, idx) => (
+                      <div key={idx} className="bg-white border border-zinc-200 rounded-lg p-3 text-xs space-y-1">
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <strong className="text-zinc-900">
+                            Rollo Flexible: {roll.label} (Ancho {roll.rollWidthM}m)
+                          </strong>
+                          <span className="font-mono text-zinc-700">
+                            Consumo estimado: <strong>{roll.linearMeters.toFixed(2)} metros lineales</strong> ({roll.areaSqm.toFixed(2)} m²)
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-600">
+                          {roll.cuts.map((c, cIdx) => (
+                            <div key={cIdx}>
+                              • {c.qty}× piezas de {c.wM}m × {c.hM}m — {c.orientNote} ({c.linearMeters.toFixed(2)} ml)
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {printOt.notes && (
                 <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs">

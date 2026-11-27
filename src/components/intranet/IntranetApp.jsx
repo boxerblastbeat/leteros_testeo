@@ -39,6 +39,7 @@ export default function IntranetApp({ onGoPublic }) {
   const [printQuote, setPrintQuote] = useState(null);
   const [showWeeklyModal, setShowWeeklyModal] = useState(false);
   const [focusedOtId, setFocusedOtId] = useState(null);
+  const [optimizerPayload, setOptimizerPayload] = useState(null);
 
   useEffect(() => {
     if (!session) return;
@@ -192,6 +193,10 @@ export default function IntranetApp({ onGoPublic }) {
           <WorkOrdersPanel
             focusedOtId={focusedOtId}
             onClearFocus={() => setFocusedOtId(null)}
+            onOpenInOptimizer={(payload) => {
+              setOptimizerPayload(payload);
+              setActiveTab('optimizador');
+            }}
           />
         )}
         {activeTab === 'calendario' && <CalendarPanel />}
@@ -203,7 +208,7 @@ export default function IntranetApp({ onGoPublic }) {
               </div>
             }
           >
-            <CutOptimizer2D />
+            <CutOptimizer2D initialPayload={optimizerPayload} />
           </Suspense>
         )}
         {activeTab === 'clientes' && <ClientsPanel />}

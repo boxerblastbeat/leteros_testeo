@@ -363,6 +363,21 @@ export function ErpProvider({ children }) {
     return saved;
   };
 
+  const deleteWorkOrder = async (id) => {
+    const existing = workOrders.find((w) => w.id === id);
+    await erpService.deleteWorkOrder(id);
+    setWorkOrders((prev) => prev.filter((w) => w.id !== id));
+    await recordAudit({
+      action: 'eliminar',
+      entity_type: 'ot',
+      entity_id: id,
+      entity_ref: existing?.ot_number || 'OT',
+      summary: `Eliminó ${existing?.ot_number || 'OT'} (${existing?.client_name || 'Cliente'})`,
+      details: { quote_correlative: existing?.quote_correlative || undefined },
+    });
+    showToast('Orden de Trabajo eliminada');
+  };
+
   const saveCalendarEvent = async (ev, options = {}) => {
     const isEdit = Boolean(ev.id && calendarEvents.some((e) => e.id === ev.id));
     const saved = await erpService.saveCalendarEvent(ev);
@@ -484,6 +499,7 @@ export function ErpProvider({ children }) {
         changeQuoteStatus,
         deleteQuote,
         saveWorkOrder,
+        deleteWorkOrder,
         saveCalendarEvent,
         deleteCalendarEvent,
         saveClient,
