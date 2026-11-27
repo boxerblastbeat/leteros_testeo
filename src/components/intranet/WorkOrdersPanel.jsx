@@ -17,12 +17,15 @@ import {
   MessageCircle,
   Link2,
   DollarSign,
+  Camera,
+  ExternalLink,
 } from 'lucide-react';
 import { useErp } from '../../context/ErpContext';
 import { OT_STATUSES, OT_PRIORITIES, COMPANY_INFO } from '../../data/company';
 import { formatCLP, formatDateCL, DELIVERY_LABELS, addDaysISO, todayISO, uid } from '../../lib/formatters';
 import { useModalClose } from '../../lib/useModalClose';
 import { computeOtCubicationAndCuts } from '../../lib/cutOptimizer';
+import { erpService } from '../../lib/erpService';
 
 // En Taller solo existen los 5 pasos productivos/despacho (facturación y cobro son exclusivos de Cotizaciones ERP)
 const normalizeWorkshopStatus = (status) => {
@@ -48,6 +51,14 @@ const buildOtWhatsAppUrl = (ot) => {
 };
 
 const OT_COSTS_LOCAL_KEY = 'olivar_ot_extra_costs_v1';
+const OT_PHOTOS_LOCAL_KEY = 'olivar_ot_photos_v1';
+const readLocalOtPhotos = () => {
+  try {
+    return JSON.parse(localStorage.getItem(OT_PHOTOS_LOCAL_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
 const COST_CATEGORIES = [
   'Herrería / Estructura',
   'LED / Eléctrico',
@@ -121,6 +132,89 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
   const costsClose = useModalClose(Boolean(costsOt), () => setCostsOt(null), {
     confirm: false,
   });
+
+  const [photosOt, setPhotosOt] = useState(null);
+  const [localPhotosMap, setLocalPhotosMap] = useState(() => readLocalOtPhotos());
+  const [photoCaption, setPhotoCaption] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photosClose = useModalClose(Boolean(photosOt), () => setPhotosOt(null), {
+    confirm: false,
+  });
+
+  const getOtPhotos = (ot) => {
+    const linked = findLinkedQuoteForOt(ot);
+    const fromQuote = linked?.client_snapshot?.ot_photos;
+    if (Array.isArray(fromQuote)) return fromQuote;
+    return Array.isArray(localPhotosMap[ot?.id]) ? localPhotosMap[ot.id] : [];
+  };
+
+  const handleUploadOtPhoto = async (file) => {
+    if (!photosOt || !file) return;
+    setUploadingPhoto(true);
+    try {
+      const { url, storagePath } = await erpService.uploadOtPhoto(photosOt.id, file);
+      const entry = {
+        id: uid(),
+        url,
+        storagePath,
+        caption: photoCaption.trim() || 'Respaldo de avance / entrega',
+        at: new Date().toISOString(),
+        by: session?.user?.email || '',
+      };
+      const nextList = [entry, ...getOtPhotos(photosOt)];
+      const linked = findLinkedQuoteForOt(photosOt);
+      if (linked) {
+        await saveQuote({
+          ...linked,
+          client_snapshot: {
+            ...(linked.client_snapshot || {}),
+            ot_photos: nextList,
+          },
+        });
+      } else {
+        const updated = { ...localPhotosMap, [photosOt.id]: nextList };
+        setLocalPhotosMap(updated);
+        try {
+          localStorage.setItem(OT_PHOTOS_LOCAL_KEY, JSON.stringify(updated));
+        } catch {
+          // ignore
+        }
+      }
+      setPhotoCaption('');
+      showToast('Foto de respaldo guardada correctamente');
+    } catch (err) {
+      showToast(err?.message || 'Error al subir foto', 'error');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleDeleteOtPhoto = async (ot, photo) => {
+    if (!window.confirm('¿Eliminar esta foto de respaldo?')) return;
+    if (photo.storagePath) {
+      await erpService.deleteOtPhotoStorage(photo.storagePath);
+    }
+    const nextList = getOtPhotos(ot).filter((p) => p.id !== photo.id);
+    const linked = findLinkedQuoteForOt(ot);
+    if (linked) {
+      await saveQuote({
+        ...linked,
+        client_snapshot: {
+          ...(linked.client_snapshot || {}),
+          ot_photos: nextList,
+        },
+      });
+    } else {
+      const updated = { ...localPhotosMap, [ot.id]: nextList };
+      setLocalPhotosMap(updated);
+      try {
+        localStorage.setItem(OT_PHOTOS_LOCAL_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+    }
+    showToast('Foto eliminada');
+  };
 
   const findLinkedQuoteForOt = (ot) =>
     (ot?.quote_id && quotes.find((q) => q.id === ot.quote_id)) ||
@@ -729,6 +823,18 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
                         {getOtExtraCosts(ot).length > 0
                           ? ` (${formatCLP(getOtExtraCosts(ot).reduce((s, c) => s + (Number(c.amount) || 0), 0))})`
                           : ''}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPhotosOt(ot)}
+                      title="Adjuntar o ver fotos de avance y entrega en obra"
+                      className="px-2.5 py-2 sm:py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>
+                        Fotos{getOtPhotos(ot).length > 0 ? ` (${getOtPhotos(ot).length})` : ''}
                       </span>
                     </button>
 
@@ -1433,6 +1539,121 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* MODAL FOTOS DE AVANCE / ENTREGA EN OBRA */}
+      {photosOt && (() => {
+        const photos = getOtPhotos(photosOt);
+        return (
+          <div
+            onClick={photosClose.handleBackdropClick}
+            className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4"
+          >
+            <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90dvh] overflow-y-auto p-5 sm:p-6 space-y-4 shadow-2xl text-slate-900">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-heading font-bold text-slate-900 text-lg flex items-center gap-2">
+                    <Camera className="w-5 h-5 text-red-600" />
+                    <span>Fotos de Avance y Entrega · {photosOt.ot_number}</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {photosOt.client_name} · Comprimidas automáticamente para subida rápida desde terreno.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={photosClose.handleClose}
+                  className="p-1.5 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                <input
+                  type="text"
+                  value={photoCaption}
+                  onChange={(e) => setPhotoCaption(e.target.value)}
+                  placeholder="Descripción breve (ej: Letrero instalado en fachada, Entrega conforme...)"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900"
+                />
+                <label className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold cursor-pointer transition">
+                  <Camera className="w-4 h-4" />
+                  <span>{uploadingPhoto ? 'Subiendo foto...' : 'Tomar / Subir Foto de Respaldo'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    disabled={uploadingPhoto}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleUploadOtPhoto(f);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {photos.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                  Aún no hay fotos adjuntas para esta OT.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {photos.map((p) => (
+                    <div
+                      key={p.id}
+                      className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex flex-col"
+                    >
+                      <a
+                        href={p.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block aspect-video bg-slate-900 overflow-hidden"
+                      >
+                        <img
+                          src={p.url}
+                          alt={p.caption}
+                          loading="lazy"
+                          className="w-full h-full object-cover hover:scale-105 transition"
+                        />
+                      </a>
+                      <div className="p-2.5 flex items-center justify-between gap-2 text-xs bg-white">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800 truncate">{p.caption}</div>
+                          <div className="text-[10px] text-slate-400">
+                            {formatDateCL(p.at)}
+                            {p.by ? ` · ${p.by}` : ''}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <a
+                            href={p.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"
+                            title="Abrir tamaño completo"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOtPhoto(photosOt, p)}
+                            className="p-1.5 rounded-lg bg-slate-50 hover:bg-red-50 text-slate-400 hover:text-red-600"
+                            title="Eliminar foto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );

@@ -770,6 +770,75 @@ export const erpService = {
     };
   },
 
+  async uploadOtPhoto(otId, file) {
+    if (!file) throw new Error('Selecciona una imagen');
+
+    // Comprimir en cliente (máx 1280px, JPEG 0.78) para subir rápido desde terreno (4G)
+    const compressToBlob = (rawFile) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('Formato de imagen inválido'));
+          img.onload = () => {
+            const maxSide = 1280;
+            let { width, height } = img;
+            if (width > maxSide || height > maxSide) {
+              const ratio = Math.min(maxSide / width, maxSide / height);
+              width = Math.round(width * ratio);
+              height = Math.round(height * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) return reject(new Error('Error al comprimir imagen'));
+                resolve({ blob, dataUrl: canvas.toDataURL('image/jpeg', 0.75) });
+              },
+              'image/jpeg',
+              0.78
+            );
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(rawFile);
+      });
+
+    const { blob, dataUrl } = await compressToBlob(file);
+
+    if (isSupabaseConfigured) {
+      const filePath = `${otId}/${uid()}.jpg`;
+      const { error } = await supabase.storage
+        .from('ot-photos')
+        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: false });
+      if (error) {
+        if (String(error.message || '').toLowerCase().includes('bucket')) {
+          throw new Error(
+            'Falta crear el bucket "ot-photos" en Supabase Storage (ver bloque SQL de migración).'
+          );
+        }
+        throw error;
+      }
+      const { data: pub } = supabase.storage.from('ot-photos').getPublicUrl(filePath);
+      return { url: pub.publicUrl, storagePath: filePath };
+    }
+
+    return { url: dataUrl, storagePath: '' };
+  },
+
+  async deleteOtPhotoStorage(storagePath) {
+    if (!isSupabaseConfigured || !storagePath) return;
+    try {
+      await supabase.storage.from('ot-photos').remove([storagePath]);
+    } catch {
+      // ignore storage cleanup errors
+    }
+  },
+
   // --- CALENDAR ---
   async saveCalendarEvent(ev) {
     if (isSupabaseConfigured) {

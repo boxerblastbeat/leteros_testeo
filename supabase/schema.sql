@@ -394,3 +394,28 @@ end;
 $$;
 
 grant execute on function public.get_public_ot_status(text) to anon, authenticated;
+
+-- =====================================================================
+-- 10. STORAGE PARA FOTOS DE AVANCE Y ENTREGA EN OBRA (BUCKET ot-photos)
+-- =====================================================================
+insert into storage.buckets (id, name, public)
+values ('ot-photos', 'ot-photos', true)
+on conflict (id) do nothing;
+
+drop policy if exists "Public read ot-photos" on storage.objects;
+create policy "Public read ot-photos"
+  on storage.objects for select
+  to public
+  using (bucket_id = 'ot-photos');
+
+drop policy if exists "Auth upload ot-photos" on storage.objects;
+create policy "Auth upload ot-photos"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'ot-photos');
+
+drop policy if exists "Auth delete ot-photos" on storage.objects;
+create policy "Auth delete ot-photos"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'ot-photos');

@@ -31,15 +31,47 @@ import WeeklyScheduleModal from './WeeklyScheduleModal';
 
 const CutOptimizer2D = lazy(() => import('./CutOptimizer2D'));
 
+const ROLE_META = {
+  admin: { label: 'Admin', badge: 'bg-red-50 text-red-700 border-red-200' },
+  ventas: { label: 'Ventas', badge: 'bg-sky-50 text-sky-700 border-sky-200' },
+  taller: { label: 'Taller', badge: 'bg-violet-50 text-violet-700 border-violet-200' },
+};
+
+const ROLE_ALLOWED_TABS = {
+  admin: ['cotizaciones', 'solicitudes', 'taller', 'calendario', 'optimizador', 'clientes', 'tarifario', 'administracion', 'bitacora'],
+  ventas: ['cotizaciones', 'solicitudes', 'taller', 'calendario', 'clientes', 'tarifario'],
+  taller: ['taller', 'calendario', 'optimizador'],
+};
+
+const resolveUserRole = (session) => {
+  const raw =
+    session?.user?.app_metadata?.role ||
+    session?.user?.user_metadata?.role ||
+    'admin';
+  const normalized = String(raw).toLowerCase().trim();
+  return ROLE_ALLOWED_TABS[normalized] ? normalized : 'admin';
+};
+
 export default function IntranetApp({ onGoPublic }) {
   const { session, quotes, quoteRequests, workOrders, isCloud, signOut } = useErp();
 
-  const [activeTab, setActiveTab] = useState('cotizaciones');
+  const userRole = resolveUserRole(session);
+  const roleMeta = ROLE_META[userRole] || ROLE_META.admin;
+  const allowedTabs = ROLE_ALLOWED_TABS[userRole] || ROLE_ALLOWED_TABS.admin;
+  const canCreateQuote = userRole !== 'taller';
+
+  const [activeTab, setActiveTab] = useState(() => (userRole === 'taller' ? 'taller' : 'cotizaciones'));
   const [editorState, setEditorState] = useState({ open: false, quote: null, request: null });
   const [printQuote, setPrintQuote] = useState(null);
   const [showWeeklyModal, setShowWeeklyModal] = useState(false);
   const [focusedOtId, setFocusedOtId] = useState(null);
   const [optimizerPayload, setOptimizerPayload] = useState(null);
+
+  useEffect(() => {
+    if (!allowedTabs.includes(activeTab)) {
+      setActiveTab(allowedTabs[0]);
+    }
+  }, [allowedTabs, activeTab]);
 
   useEffect(() => {
     if (!session) return;
@@ -66,7 +98,7 @@ export default function IntranetApp({ onGoPublic }) {
     { id: 'tarifario', label: 'Tarifario', icon: Package },
     { id: 'administracion', label: 'Administración', icon: BarChart3 },
     { id: 'bitacora', label: 'Bitácora', icon: History },
-  ];
+  ].filter((item) => allowedTabs.includes(item.id));
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
@@ -101,6 +133,9 @@ export default function IntranetApp({ onGoPublic }) {
               <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs text-slate-600 font-medium">
                 <User className="w-3.5 h-3.5 text-slate-400" />
                 <span>{session.user.email}</span>
+                <span className={`ml-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleMeta.badge}`}>
+                  {roleMeta.label}
+                </span>
               </div>
             )}
             <button
@@ -111,14 +146,16 @@ export default function IntranetApp({ onGoPublic }) {
               <Calendar className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-red-600" />
               <span className="hidden md:inline">Cronograma</span>
             </button>
-            <button
-              onClick={() => setEditorState({ open: true, quote: null, request: null })}
-              className="px-3 sm:px-3.5 py-2 rounded-full sm:rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-red-600/20"
-              title="Nueva Cotización"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Nueva Cotización</span>
-            </button>
+            {canCreateQuote && (
+              <button
+                onClick={() => setEditorState({ open: true, quote: null, request: null })}
+                className="px-3 sm:px-3.5 py-2 rounded-full sm:rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-red-600/20"
+                title="Nueva Cotización"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Nueva Cotización</span>
+              </button>
+            )}
             <button
               onClick={onGoPublic}
               className="p-2 sm:px-3 sm:py-2 rounded-full sm:rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition shadow-xs"
