@@ -231,6 +231,8 @@ create index if not exists idx_requests_created on public.quote_requests(created
 create index if not exists idx_requests_converted_quote_id on public.quote_requests(converted_quote_id);
 create index if not exists idx_ot_status on public.work_orders(status);
 create index if not exists idx_ot_quote_id on public.work_orders(quote_id);
+create index if not exists idx_ot_quote_correlative on public.work_orders(quote_correlative);
+create index if not exists idx_ot_deadline on public.work_orders(deadline);
 create index if not exists idx_ot_created on public.work_orders(created_at desc);
 create index if not exists idx_cal_date on public.calendar_events(event_date);
 create index if not exists idx_materials_active_category on public.materials(category) where active = true;

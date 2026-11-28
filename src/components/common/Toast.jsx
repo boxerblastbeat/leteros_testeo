@@ -1,9 +1,9 @@
 import React from 'react';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
-import { useErp } from '../../context/ErpContext';
+import { useToast } from '../../context/ErpContext';
 
 export default function Toast() {
-  const { toast } = useErp();
+  const toast = useToast();
   if (!toast) return null;
 
   const styles =

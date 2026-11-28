@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { erpService } from '../lib/erpService';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { DEFAULT_WORKSHOP_MATERIALS, DEFAULT_WORKSHOP_CONSUMABLES } from '../data/products';
@@ -28,6 +28,7 @@ const applyRealtimeRow = (setter, payload, { maxItems = 400, sortFn = null } = {
 import { formatCLP } from '../lib/formatters';
 
 const ErpContext = createContext(null);
+const ToastContext = createContext(null);
 
 const ERP_CACHE_KEY = 'olivar_erp_cache_v1';
 
@@ -649,46 +650,81 @@ export function ErpProvider({ children }) {
     });
   };
 
-  return (
-    <ErpContext.Provider
-      value={{
-        session,
-        loading,
-        erpSyncing,
-        isCloud: erpService.isCloud,
-        toast,
-        showToast,
+  // Mantener la caché de sesión sincronizada tras cualquier mutación (con debounce)
+  useEffect(() => {
+    if (!session) return undefined;
+    const timer = setTimeout(() => {
+      writeErpCache({
+        clients,
         materials,
         consumables,
-        clients,
         quoteRequests,
         quotes,
         workOrders,
         calendarEvents,
-        auditLogs,
-        loadAuditLogsOnDemand,
-        refreshErp,
-        recordAudit,
-        signIn,
-        signOut,
-        submitPublicRequest,
-        updateRequestStatus,
-        deleteQuoteRequest,
-        saveQuote,
-        changeQuoteStatus,
-        addQuotePayment,
-        deleteQuote,
-        saveWorkOrder,
-        deleteWorkOrder,
-        saveCalendarEvent,
-        deleteCalendarEvent,
-        saveClient,
-        deleteClient,
-        saveMaterial,
-        deleteMaterial,
-      }}
-    >
-      {children}
+      });
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [session, clients, materials, consumables, quoteRequests, quotes, workOrders, calendarEvents]);
+
+  const contextValue = useMemo(
+    () => ({
+      session,
+      loading,
+      erpSyncing,
+      isCloud: erpService.isCloud,
+      showToast,
+      materials,
+      consumables,
+      clients,
+      quoteRequests,
+      quotes,
+      workOrders,
+      calendarEvents,
+      auditLogs,
+      loadAuditLogsOnDemand,
+      refreshErp,
+      recordAudit,
+      signIn,
+      signOut,
+      submitPublicRequest,
+      updateRequestStatus,
+      deleteQuoteRequest,
+      saveQuote,
+      changeQuoteStatus,
+      addQuotePayment,
+      deleteQuote,
+      saveWorkOrder,
+      deleteWorkOrder,
+      saveCalendarEvent,
+      deleteCalendarEvent,
+      saveClient,
+      deleteClient,
+      saveMaterial,
+      deleteMaterial,
+    }),
+    [
+      session,
+      loading,
+      erpSyncing,
+      showToast,
+      materials,
+      consumables,
+      clients,
+      quoteRequests,
+      quotes,
+      workOrders,
+      calendarEvents,
+      auditLogs,
+      loadAuditLogsOnDemand,
+      refreshErp,
+      recordAudit,
+    ]
+  );
+
+  return (
+    <ErpContext.Provider value={contextValue}>
+      <ToastContext.Provider value={toast}>{children}</ToastContext.Provider>
     </ErpContext.Provider>
   );
 }
@@ -698,3 +734,5 @@ export const useErp = () => {
   if (!ctx) throw new Error('useErp must be used inside ErpProvider');
   return ctx;
 };
+
+export const useToast = () => useContext(ToastContext);

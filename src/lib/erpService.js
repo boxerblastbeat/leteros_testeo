@@ -822,7 +822,8 @@ export const erpService = {
             canvas.toBlob(
               (blob) => {
                 if (!blob) return reject(new Error('Error al comprimir imagen'));
-                resolve({ blob, dataUrl: canvas.toDataURL('image/jpeg', 0.75) });
+                const dataUrl = isSupabaseConfigured ? '' : canvas.toDataURL('image/jpeg', 0.75);
+                resolve({ blob, dataUrl });
               },
               'image/jpeg',
               0.78

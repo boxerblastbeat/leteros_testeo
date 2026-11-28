@@ -253,9 +253,19 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
     );
   };
 
+  const { quotesById, quotesByCorrelative } = useMemo(() => {
+    const byId = new Map();
+    const byCorr = new Map();
+    quotes.forEach((q) => {
+      if (q.id) byId.set(q.id, q);
+      if (q.correlative) byCorr.set(q.correlative, q);
+    });
+    return { quotesById: byId, quotesByCorrelative: byCorr };
+  }, [quotes]);
+
   const findLinkedQuoteForOt = (ot) =>
-    (ot?.quote_id && quotes.find((q) => q.id === ot.quote_id)) ||
-    (ot?.quote_correlative && quotes.find((q) => q.correlative === ot.quote_correlative)) ||
+    (ot?.quote_id && quotesById.get(ot.quote_id)) ||
+    (ot?.quote_correlative && quotesByCorrelative.get(ot.quote_correlative)) ||
     null;
 
   const getOtExtraCosts = (ot) => {
@@ -418,9 +428,7 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
   }, [filtered]);
 
   const syncLinkedQuoteFromWorkshop = async (ot, targetStatus, direction) => {
-    const linked =
-      (ot.quote_id && quotes.find((q) => q.id === ot.quote_id)) ||
-      (ot.quote_correlative && quotes.find((q) => q.correlative === ot.quote_correlative));
+    const linked = findLinkedQuoteForOt(ot);
     if (!linked) return;
 
     // Nunca sobreescribir un estado financiero ya cerrado en Cotizaciones ERP
@@ -934,10 +942,17 @@ export default function WorkOrdersPanel({ focusedOtId = null, onClearFocus, onOp
                       )}
 
                       <button
-                        onClick={() => {
-                          if (window.confirm(`¿Eliminar definitivamente la orden ${ot.ot_number}?`)) {
-                            deleteWorkOrder(ot.id);
+                        onClick={async () => {
+                          if (!window.confirm(`¿Eliminar definitivamente la orden ${ot.ot_number}?`)) return;
+                          const otPhotos = getOtPhotos(ot);
+                          if (otPhotos.length > 0) {
+                            await Promise.all(
+                              otPhotos
+                                .filter((p) => p.storagePath)
+                                .map((p) => erpService.deleteOtPhotoStorage(p.storagePath))
+                            );
                           }
+                          await deleteWorkOrder(ot.id);
                         }}
                         title="Eliminar OT"
                         aria-label={`Eliminar ${ot.ot_number}`}
