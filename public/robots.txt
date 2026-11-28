@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /intranet
+Disallow: /intranet/
+Disallow: /seguimiento
+Disallow: /seguimiento/
 
 Sitemap: https://letrerosolivar.com/sitemap.xml
